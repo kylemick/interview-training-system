@@ -174,7 +174,7 @@ PORT=3001
 
 # DeepSeek API 配置
 DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxx
-DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
+DEEPSEEK_API_URL=https://api.deepseek.com
 
 # MySQL 数据库配置
 DB_HOST=localhost

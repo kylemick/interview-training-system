@@ -114,7 +114,7 @@ echo PORT=3001
 echo.
 echo # DeepSeek API 配置
 echo DEEPSEEK_API_KEY=%DEEPSEEK_API_KEY%
-echo DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
+echo DEEPSEEK_API_URL=https://api.deepseek.com
 echo.
 echo # MySQL 数据库配置
 echo DB_HOST=localhost
