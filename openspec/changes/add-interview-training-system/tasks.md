@@ -4,7 +4,7 @@
 - [ ] 1.1 创建项目目录结构（前端frontend/ 和 后端backend/）
 - [ ] 1.2 配置前端项目（React/Vue + TypeScript + Vite）
 - [ ] 1.3 配置后端项目（Node.js/Python + 框架选择）
-- [ ] 1.4 设置数据库schema（SQLite）并编写初始化脚本
+- [ ] 1.4 设置数据库schema（MySQL）并编写初始化脚本
 - [ ] 1.5 配置DeepSeek API集成（环境变量、错误处理）
 - [ ] 1.6 建立前后端API接口规范（REST API设计）
 - [ ] 1.7 配置开发环境（ESLint, Prettier, Git hooks）
@@ -122,7 +122,7 @@
 - [ ] 17.6 展示AI提取结果，允许编辑后保存
 
 ## 17. 数据管理和导入导出
-- [ ] 17.1 实现数据备份API（导出SQLite或JSON）
+- [ ] 17.1 实现数据备份API（导出MySQL或JSON）
 - [ ] 17.2 实现数据恢复API（导入备份）
 - [ ] 17.3 实现数据清理API（删除旧会话）
 - [ ] 17.4 前端集成数据管理功能

@@ -33,9 +33,9 @@ if [ "$NODE_VERSION" -lt 18 ]; then
     echo -e "${YELLOW}⚠️  警告: Node.js 版本过低 (当前: $(node -v), 需要: >= 18)${NC}"
 fi
 
-# 检查 Node.js 版本是否过高（better-sqlite3 兼容性问题）
+# 检查 Node.js 版本
 if [ "$NODE_VERSION" -ge 23 ]; then
-    echo -e "${YELLOW}⚠️  警告: Node.js v$NODE_VERSION 可能导致 better-sqlite3 编译问题${NC}"
+    echo -e "${YELLOW}⚠️  警告: Node.js v$NODE_VERSION 是较新版本${NC}"
     echo -e "${YELLOW}   建议使用 Node.js v18 或 v20 LTS 版本${NC}"
     echo -e "${YELLOW}   或者确保已安装 Xcode Command Line Tools: xcode-select --install${NC}"
     echo ""
@@ -49,7 +49,7 @@ echo ""
 if [[ "$OSTYPE" == "darwin"* ]]; then
     if ! xcode-select -p &> /dev/null; then
         echo -e "${YELLOW}⚠️  未检测到 Xcode Command Line Tools${NC}"
-        echo -e "${YELLOW}   better-sqlite3 需要此工具进行编译${NC}"
+        echo -e "${YELLOW}   某些原生模块可能需要此工具进行编译${NC}"
         echo ""
         read -p "是否现在安装 Xcode Command Line Tools? (y/n) " -n 1 -r
         echo
@@ -88,7 +88,7 @@ if [ ! -d "backend/node_modules" ]; then
     cd "$SCRIPT_DIR/backend"
     npm install || {
         echo -e "${RED}❌ 后端依赖安装失败${NC}"
-        echo -e "${YELLOW}如果是 better-sqlite3 编译错误，请尝试：${NC}"
+        echo -e "${YELLOW}如果遇到编译错误，请尝试：${NC}"
         echo -e "${YELLOW}1. 安装 Xcode Command Line Tools: xcode-select --install${NC}"
         echo -e "${YELLOW}2. 使用 Node.js LTS 版本 (v18 或 v20)${NC}"
         echo -e "${YELLOW}3. 查看完整日志: cat ~/.npm/_logs/*-debug-*.log${NC}"

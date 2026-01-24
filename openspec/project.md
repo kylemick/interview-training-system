@@ -28,7 +28,7 @@
 - 实时通信：WebSocket (AI模拟面试)
 
 **数据库**：
-- SQLite 3.35+（轻量级本地数据库）
+- MySQL 8.0+（关系型数据库）
 - ORM：Prisma (Node.js) 或 SQLAlchemy (Python)
 
 **AI集成**：
@@ -54,7 +54,7 @@
 - **本地Web应用**：浏览器访问localhost，本地服务器处理请求
 - **前后端分离**：React/Vue前端 + Node.js/Python后端
 - **数据驱动**：以"训练会话"为中心组织数据
-- **单一数据源**：SQLite作为唯一真相来源
+- **单一数据源**：MySQL作为唯一真相来源
 - **RESTful API**：前后端通过标准HTTP API通信
 - **WebSocket**：实时AI对话使用WebSocket
 - **提示工程**：通过精心设计的提示词与AI交互，追求结构化输出（JSON）
@@ -120,7 +120,7 @@
    - 需要：API Key（用户提供，存储在本地配置文件）
    - 备份方案：支持切换到其他兼容OpenAI API的模型
 
-2. **SQLite**
+2. **MySQL**
    - 用途：本地数据存储
    - 版本：3.35+（内置于Python和Node.js）
 
@@ -168,7 +168,7 @@ interview-training-system/
 │   └── package.json / requirements.txt
 │
 ├── data/                    # 数据文件
-│   ├── interview.db        # SQLite数据库
+│   ├── (MySQL数据库在服务器中运行，不在项目目录)
 │   └── seeds/              # 初始数据（学校、种子题目）
 │
 ├── docs/                    # 文档

@@ -21,5 +21,5 @@
 
 - 新增specs: training-plans, interview-practice, ai-feedback, question-bank, progress-tracking, school-profiles
 - 技术栈: Web应用（前端 + 后端），本地运行
-- 数据存储: SQLite数据库
+- 数据存储: MySQL数据库
 - 外部依赖: DeepSeek API（用于AI生成和反馈）
