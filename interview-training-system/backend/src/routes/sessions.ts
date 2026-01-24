@@ -23,13 +23,13 @@ router.post('/', async (req: Request, res: Response) => {
       [task_id || null, category, mode, 'in_progress']
     );
 
-    // 选择题目
+    // 选择题目（注意：LIMIT不能使用参数绑定，需要直接拼接）
     const questions = await query(
       `SELECT id FROM questions
        WHERE category = ?
        ORDER BY RAND()
-       LIMIT ?`,
-      [category, question_count]
+       LIMIT ${parseInt(question_count as string)}`,
+      [category]
     );
 
     const questionIds = questions.map((q: any) => q.id);
@@ -207,6 +207,39 @@ router.get('/recent/list', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('获取最近会话失败:', error);
     throw new AppError(500, '获取最近会话失败');
+  }
+});
+
+// 删除会话
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // 检查会话是否存在
+    const session = await queryOne('SELECT id, category FROM sessions WHERE id = ?', [id]);
+    if (!session) {
+      throw new AppError(404, '会话不存在');
+    }
+
+    // 先删除问答记录（外键约束）
+    await execute('DELETE FROM qa_records WHERE session_id = ?', [id]);
+    
+    // 删除会话总结（如果有）
+    await execute('DELETE FROM session_summaries WHERE session_id = ?', [id]);
+
+    // 删除会话
+    await execute('DELETE FROM sessions WHERE id = ?', [id]);
+
+    console.log(`🗑️  练习记录已删除: 会话ID=${id}, 类别=${session.category}`);
+
+    res.json({
+      success: true,
+      message: '练习记录已删除',
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('删除练习记录失败:', error);
+    throw new AppError(500, '删除练习记录失败');
   }
 });
 

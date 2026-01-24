@@ -245,6 +245,70 @@ router.get('/history', async (req: Request, res: Response) => {
   }
 });
 
+// 删除单个反馈
+router.delete('/record/:recordId', async (req: Request, res: Response) => {
+  try {
+    const { recordId } = req.params;
+
+    // 检查记录是否存在
+    const record = await queryOne('SELECT id, ai_feedback FROM qa_records WHERE id = ?', [recordId]);
+    if (!record) {
+      throw new AppError(404, '问答记录不存在');
+    }
+
+    if (!record.ai_feedback) {
+      throw new AppError(400, '该记录没有反馈');
+    }
+
+    // 清除反馈（设置为 NULL）
+    await execute('UPDATE qa_records SET ai_feedback = NULL WHERE id = ?', [recordId]);
+
+    console.log(`🗑️  反馈已删除: 记录ID=${recordId}`);
+
+    res.json({
+      success: true,
+      message: '反馈已删除',
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('删除反馈失败:', error);
+    throw new AppError(500, '删除反馈失败');
+  }
+});
+
+// 批量删除会话的所有反馈
+router.delete('/session/:sessionId', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+
+    // 检查会话是否存在
+    const session = await queryOne('SELECT id FROM sessions WHERE id = ?', [sessionId]);
+    if (!session) {
+      throw new AppError(404, '会话不存在');
+    }
+
+    // 清除该会话所有问答记录的反馈
+    const affectedRows = await execute(
+      'UPDATE qa_records SET ai_feedback = NULL WHERE session_id = ?',
+      [sessionId]
+    );
+
+    console.log(`🗑️  批量删除反馈: 会话ID=${sessionId}, 影响记录数=${affectedRows}`);
+
+    res.json({
+      success: true,
+      message: `已删除 ${affectedRows} 条反馈`,
+      data: {
+        deleted_count: affectedRows,
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('批量删除反馈失败:', error);
+    throw new AppError(500, '批量删除反馈失败');
+  }
+});
+
 function getCategoryName(category: string): string {
   const map: Record<string, string> = {
     'english-oral': '英文口语',

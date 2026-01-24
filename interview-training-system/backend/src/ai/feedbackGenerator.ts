@@ -18,9 +18,11 @@ export interface AIFeedback {
   language_score: number;
   content_score: number;
   overall_score: number;
-  strengths: string[];
-  weaknesses: string[];
+  score?: number; // 简化的综合评分 0-10
+  strengths: string | string[];
+  weaknesses: string | string[];
   suggestions: string;
+  reference_thinking?: string; // 参考回答思路
   reference_answer?: string;
   school_specific_tips?: string;
 }
@@ -54,33 +56,36 @@ export async function generateFeedback(params: FeedbackRequest): Promise<AIFeedb
 
 学生回答：
 ${answer_text}
-${reference_answer ? `\n参考答案：\n${reference_answer}` : ''}
+${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
 
 请以 JSON 格式返回详细反馈：
 
 {
+  "score": 7.5,
+  "strengths": "语法正确，表达流畅",
+  "weaknesses": "词汇较简单，缺少具体例子",
+  "suggestions": "建议增加具体例子来支持观点，可以使用更丰富的词汇...",
+  "reference_thinking": "回答这道题的思路：首先..., 其次..., 最后...",
+  "reference_answer": "优秀回答示例：...",
   "language_score": 85,
   "content_score": 78,
-  "overall_score": 82,
-  "strengths": ["语法正确", "表达流畅"],
-  "weaknesses": ["词汇较简单", "缺少具体例子"],
-  "suggestions": "建议增加具体例子来支持观点，可以使用更丰富的词汇...",
-  "reference_answer": "优秀回答示例...",
-  "school_specific_tips": "针对 SPCC，建议..."
+  "overall_score": 82
 }
 
 评分标准：
+- score（简化评分）：0-10分（小数），便于学生理解
 - language_score（语言质量）：0-100分，评估语法、词汇、表达流畅度
 - content_score（内容深度）：0-100分，评估相关性、完整性、见解深度
-- overall_score（综合得分）：0-100分，综合评分
+- overall_score（综合得分）：0-100分
 
 要求：
-1. 评分要客观公正，小学生水平的回答 60-80 分是合理的
-2. strengths 列出 2-3 个优点
-3. weaknesses 列出 2-3 个不足
-4. suggestions 具体可行的改进建议（100-200字）
-5. reference_answer 提供优秀回答示例（如果原题没有参考答案）
-6. school_specific_tips 针对目标学校的建议（50-100字）
+1. score 是简化版评分（0-10），小学生水平 6-8 分是合理的
+2. strengths 简洁地指出 2-3 个优点，用逗号分隔
+3. weaknesses 简洁地指出 2-3 个不足，用逗号分隔
+4. suggestions 具体可行的改进建议（80-150字）
+5. reference_thinking **必须提供**：清晰的答题思路（3-5个要点）
+6. reference_answer **必须提供**：一个优秀的参考答案（150-250字）
+7. 所有文字内容使用繁体中文
 
 现在请分析并返回反馈：`;
 
@@ -103,16 +108,32 @@ ${reference_answer ? `\n参考答案：\n${reference_answer}` : ''}
     // 解析 JSON
     const feedback = JSON.parse(jsonText) as AIFeedback;
 
+    // 规范化 strengths 和 weaknesses（可能是字符串或数组）
+    if (typeof feedback.strengths === 'string') {
+      feedback.strengths = feedback.strengths;
+    } else if (Array.isArray(feedback.strengths)) {
+      feedback.strengths = feedback.strengths.join('，');
+    }
+
+    if (typeof feedback.weaknesses === 'string') {
+      feedback.weaknesses = feedback.weaknesses;
+    } else if (Array.isArray(feedback.weaknesses)) {
+      feedback.weaknesses = feedback.weaknesses.join('，');
+    }
+
+    // 计算简化评分（如果没有）
+    if (!feedback.score && feedback.overall_score) {
+      feedback.score = Math.round((feedback.overall_score / 10) * 10) / 10;
+    }
+
     // 验证必要字段
     if (
-      typeof feedback.language_score !== 'number' ||
-      typeof feedback.content_score !== 'number' ||
       typeof feedback.overall_score !== 'number'
     ) {
       throw new Error('AI 返回的反馈格式不正确');
     }
 
-    console.log(`✅ 反馈生成成功: 综合得分=${feedback.overall_score}`);
+    console.log(`✅ 反馈生成成功: 综合得分=${feedback.overall_score}, 简化评分=${feedback.score}`);
     return feedback;
   } catch (error: any) {
     console.error('❌ AI 生成反馈失败:', error.message);
