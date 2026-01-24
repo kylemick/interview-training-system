@@ -30,7 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
       total: formattedSchools.length,
     });
   } catch (error) {
-    throw new AppError('获取学校列表失败', 500);
+    throw new AppError(500, '获取学校列表失败');
   }
 });
 
@@ -46,7 +46,7 @@ router.get('/:code', async (req: Request, res: Response) => {
     `, [code]);
 
     if (!school) {
-      throw new AppError('学校不存在', 404);
+      throw new AppError(404, '学校不存在');
     }
 
     // 解析 JSON 字段
@@ -63,7 +63,7 @@ router.get('/:code', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('获取学校信息失败', 500);
+    throw new AppError(500, '获取学校信息失败');
   }
 });
 
@@ -74,13 +74,13 @@ router.post('/', async (req: Request, res: Response) => {
 
     // 验证必填字段
     if (!code || !name || !name_zh || !focus_areas || !interview_style) {
-      throw new AppError('缺少必填字段', 400);
+      throw new AppError(400, '缺少必填字段');
     }
 
     // 检查代码是否已存在
     const existing = await queryOne('SELECT id FROM school_profiles WHERE code = ?', [code]);
     if (existing) {
-      throw new AppError('学校代码已存在', 409);
+      throw new AppError(409, '学校代码已存在');
     }
 
     // 插入新学校
@@ -95,7 +95,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('创建学校失败', 500);
+    throw new AppError(500, '创建学校失败');
   }
 });
 
@@ -108,7 +108,7 @@ router.put('/:code', async (req: Request, res: Response) => {
     // 检查学校是否存在
     const existing = await queryOne('SELECT id FROM school_profiles WHERE code = ?', [code]);
     if (!existing) {
-      throw new AppError('学校不存在', 404);
+      throw new AppError(404, '学校不存在');
     }
 
     // 更新学校
@@ -119,7 +119,7 @@ router.put('/:code', async (req: Request, res: Response) => {
     `, [name, name_zh, JSON.stringify(focus_areas), interview_style, notes, code]);
 
     if (affectedRows === 0) {
-      throw new AppError('更新学校失败', 500);
+      throw new AppError(500, '更新学校失败');
     }
 
     res.json({
@@ -128,7 +128,7 @@ router.put('/:code', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('更新学校失败', 500);
+    throw new AppError(500, '更新学校失败');
   }
 });
 
@@ -140,14 +140,14 @@ router.delete('/:code', async (req: Request, res: Response) => {
     // 检查学校是否存在
     const existing = await queryOne('SELECT id FROM school_profiles WHERE code = ?', [code]);
     if (!existing) {
-      throw new AppError('学校不存在', 404);
+      throw new AppError(404, '学校不存在');
     }
 
     // 删除学校
     const affectedRows = await execute('DELETE FROM school_profiles WHERE code = ?', [code]);
 
     if (affectedRows === 0) {
-      throw new AppError('删除学校失败', 500);
+      throw new AppError(500, '删除学校失败');
     }
 
     res.json({
@@ -156,7 +156,7 @@ router.delete('/:code', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('删除学校失败', 500);
+    throw new AppError(500, '删除学校失败');
   }
 });
 

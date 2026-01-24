@@ -17,7 +17,7 @@ router.post('/generate-school', async (req: Request, res: Response) => {
     const { schoolName } = req.body;
 
     if (!schoolName || !schoolName.trim()) {
-      throw new AppError('请提供学校名称', 400);
+      throw new AppError(400, '请提供学校名称');
     }
 
     console.log(`🤖 AI 生成学校档案: ${schoolName}`);
@@ -32,7 +32,7 @@ router.post('/generate-school', async (req: Request, res: Response) => {
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error('AI 生成学校档案失败:', error);
-    throw new AppError('AI 生成失败，请重试', 500);
+    throw new AppError(500, 'AI 生成失败，请重试');
   }
 });
 
