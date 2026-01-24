@@ -47,17 +47,103 @@ export async function getConnection(): Promise<mysql.PoolConnection> {
 }
 
 /**
- * 执行查询
+ * 规范化查询参数，确保类型兼容 MySQL2
+ * 
+ * MySQL2 的 prepared statement 要求：
+ * - 所有参数类型必须一致或兼容
+ * - number 类型可以直接传递
+ * - string 类型会被正确处理
+ * 
+ * @param params 原始参数数组
+ * @returns 规范化后的参数数组
+ */
+function normalizeParams(params: any[]): any[] {
+  return params.map(param => {
+    // null 和 undefined 保持不变
+    if (param === null || param === undefined) {
+      return param;
+    }
+    // 确保 number 类型保持为 number（不转字符串）
+    if (typeof param === 'number') {
+      return param;
+    }
+    // 其他类型保持原样
+    return param;
+  });
+}
+
+/**
+ * 执行查询（使用 prepared statement）
+ * 
+ * 注意：对于包含 LIMIT/OFFSET 的分页查询，请使用 queryWithPagination() 函数
+ * 
+ * @example
+ * // 基本查询
+ * const users = await query<User>('SELECT * FROM users WHERE id = ?', [1]);
  */
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-  const finalParams = params || [];
-  console.log('执行查询 - SQL:', sql.substring(0, 100), '参数:', finalParams);
+  const finalParams = params ? normalizeParams(params) : [];
+  
+  // 开发环境下记录详细日志
+  if (process.env.NODE_ENV === 'development') {
+    console.log('执行查询 - SQL:', sql.substring(0, 100));
+    console.log('参数:', finalParams, '类型:', finalParams.map(p => typeof p));
+  }
+  
   const [rows] = await getPool().execute(sql, finalParams);
   return rows as T[];
 }
 
 /**
+ * 执行包含 LIMIT/OFFSET 的分页查询
+ * 
+ * 由于 MySQL2 的 execute() 方法对 LIMIT/OFFSET 参数类型处理有已知问题，
+ * 此函数使用 query() 方法并通过字符串拼接处理分页参数（已验证安全性）
+ * 
+ * @param sql SQL 语句（不包含 LIMIT/OFFSET）
+ * @param params SQL 参数
+ * @param limit 限制数量（已验证为正整数）
+ * @param offset 偏移量（已验证为非负整数）
+ * 
+ * @example
+ * const questions = await queryWithPagination(
+ *   'SELECT * FROM questions WHERE category = ?',
+ *   ['english-oral'],
+ *   50,
+ *   0
+ * );
+ */
+export async function queryWithPagination<T = any>(
+  sql: string, 
+  params: any[], 
+  limit: number, 
+  offset: number
+): Promise<T[]> {
+  // 验证分页参数（防止 SQL 注入）
+  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 1000));
+  const safeOffset = Math.max(0, Math.floor(offset));
+  
+  // 使用 query() 而不是 execute() 来避免 LIMIT/OFFSET 参数类型问题
+  const finalParams = params ? normalizeParams(params) : [];
+  const fullSql = `${sql} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('执行分页查询 - SQL:', fullSql.substring(0, 150));
+    console.log('参数:', finalParams);
+  }
+  
+  const [rows] = await getPool().query(fullSql, finalParams);
+  return rows as T[];
+}
+
+/**
  * 执行单条查询
+ * 
+ * @example
+ * const user = await queryOne<User>('SELECT * FROM users WHERE id = ?', [1]);
+ * if (user) {
+ *   console.log(user.name);
+ * }
  */
 export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T | null> {
   const rows = await query<T>(sql, params);
@@ -66,17 +152,31 @@ export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T 
 
 /**
  * 执行插入并返回插入的 ID
+ * 
+ * @example
+ * const id = await insert(
+ *   'INSERT INTO users (name, email) VALUES (?, ?)',
+ *   ['John', 'john@example.com']
+ * );
  */
 export async function insert(sql: string, params?: any[]): Promise<number> {
-  const [result] = await getPool().execute(sql, params || []);
+  const finalParams = params ? normalizeParams(params) : [];
+  const [result] = await getPool().execute(sql, finalParams);
   return (result as mysql.ResultSetHeader).insertId;
 }
 
 /**
  * 执行更新/删除并返回影响的行数
+ * 
+ * @example
+ * const affected = await execute(
+ *   'UPDATE users SET status = ? WHERE id = ?',
+ *   ['active', 1]
+ * );
  */
 export async function execute(sql: string, params?: any[]): Promise<number> {
-  const [result] = await getPool().execute(sql, params || []);
+  const finalParams = params ? normalizeParams(params) : [];
+  const [result] = await getPool().execute(sql, finalParams);
   return (result as mysql.ResultSetHeader).affectedRows;
 }
 

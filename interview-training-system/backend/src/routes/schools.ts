@@ -16,13 +16,19 @@ router.get('/', async (req: Request, res: Response) => {
       ORDER BY name
     `);
 
-    // 解析 JSON 字段
-    const formattedSchools = schools.map((school: any) => ({
-      ...school,
-      focus_areas: typeof school.focus_areas === 'string' 
-        ? JSON.parse(school.focus_areas) 
-        : school.focus_areas,
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedSchools = schools.map((school: any) => {
+      let focus_areas = [];
+      try {
+        focus_areas = school.focus_areas 
+          ? (typeof school.focus_areas === 'string' ? JSON.parse(school.focus_areas) : school.focus_areas)
+          : [];
+      } catch (error) {
+        console.warn(`解析学校 ${school.code} 的 focus_areas 字段失败:`, error);
+        focus_areas = [];
+      }
+      return { ...school, focus_areas };
+    });
 
     res.json({
       success: true,
@@ -50,13 +56,18 @@ router.get('/:code', async (req: Request, res: Response) => {
       throw new AppError(404, '学校不存在');
     }
 
-    // 解析 JSON 字段
-    const formattedSchool = {
-      ...school,
-      focus_areas: typeof school.focus_areas === 'string' 
-        ? JSON.parse(school.focus_areas) 
-        : school.focus_areas,
-    };
+    // 解析 JSON 字段（添加错误处理）
+    let focus_areas = [];
+    try {
+      focus_areas = school.focus_areas 
+        ? (typeof school.focus_areas === 'string' ? JSON.parse(school.focus_areas) : school.focus_areas)
+        : [];
+    } catch (error) {
+      console.warn(`解析学校 ${school.code} 的 focus_areas 字段失败:`, error);
+      focus_areas = [];
+    }
+
+    const formattedSchool = { ...school, focus_areas };
 
     res.json({
       success: true,
@@ -64,6 +75,7 @@ router.get('/:code', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('获取学校信息失败:', error);
     throw new AppError(500, '获取学校信息失败');
   }
 });

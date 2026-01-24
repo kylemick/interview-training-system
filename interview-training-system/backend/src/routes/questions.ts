@@ -2,7 +2,7 @@
  * 题库管理路由
  */
 import { Router, Request, Response } from 'express';
-import { query, queryOne, insert, execute } from '../db/index.js';
+import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -24,6 +24,10 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { category, difficulty, school_code, source, limit = '50', offset = '0' } = req.query;
+
+    // 验证和规范化分页参数
+    const limitNum = Math.min(parseInt(limit as string) || 50, 100); // 最大 100
+    const offsetNum = Math.max(parseInt(offset as string) || 0, 0);   // 最小 0
 
     // 构建查询条件
     const conditions: string[] = [];
@@ -58,29 +62,35 @@ router.get('/', async (req: Request, res: Response) => {
     );
     const total = countResult?.total || 0;
 
-    // 获取题目列表
-    console.log('查询参数:', { whereClause, params, limit, offset });
-    const questions = await query(
+    // 获取题目列表（使用专门的分页查询函数）
+    const questions = await queryWithPagination(
       `SELECT id, category, question_text, difficulty, reference_answer, tags, school_code, source, created_at, updated_at
        FROM questions
        ${whereClause}
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit as string), parseInt(offset as string)]
+       ORDER BY created_at DESC`,
+      params,
+      limitNum,
+      offsetNum
     );
 
-    // 解析 JSON 字段
-    const formattedQuestions = questions.map((q: any) => ({
-      ...q,
-      tags: q.tags ? (typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags) : [],
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedQuestions = questions.map((q: any) => {
+      let tags = [];
+      try {
+        tags = q.tags ? (typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags) : [];
+      } catch (error) {
+        console.warn(`解析题目 ${q.id} 的 tags 字段失败:`, error);
+        tags = [];
+      }
+      return { ...q, tags };
+    });
 
     res.json({
       success: true,
       data: formattedQuestions,
       total,
-      limit: parseInt(limit as string),
-      offset: parseInt(offset as string),
+      limit: limitNum,
+      offset: offsetNum,
     });
   } catch (error) {
     console.error('获取题目列表失败:', error);
@@ -103,11 +113,16 @@ router.get('/:id', async (req: Request, res: Response) => {
       throw new AppError(404, '题目不存在');
     }
 
-    // 解析 JSON 字段
-    const formattedQuestion = {
-      ...question,
-      tags: question.tags ? (typeof question.tags === 'string' ? JSON.parse(question.tags) : question.tags) : [],
-    };
+    // 解析 JSON 字段（添加错误处理）
+    let tags = [];
+    try {
+      tags = question.tags ? (typeof question.tags === 'string' ? JSON.parse(question.tags) : question.tags) : [];
+    } catch (error) {
+      console.warn(`解析题目 ${question.id} 的 tags 字段失败:`, error);
+      tags = [];
+    }
+
+    const formattedQuestion = { ...question, tags };
 
     res.json({
       success: true,
