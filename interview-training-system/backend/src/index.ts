@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './middleware/logger.js'
 import { initDatabase } from './db/index.js'
 import schoolRoutes from './routes/schools.js'
+import aiRoutes from './routes/ai.js'
 
 // 加载环境变量
 dotenv.config()
@@ -27,6 +28,7 @@ app.get('/health', (req, res) => {
 
 // API 路由
 app.use('/api/schools', schoolRoutes)
+app.use('/api/ai', aiRoutes)
 app.use('/api/questions', (req, res) => res.json({ message: 'Questions API - TODO' }))
 app.use('/api/plans', (req, res) => res.json({ message: 'Plans API - TODO' }))
 app.use('/api/sessions', (req, res) => res.json({ message: 'Sessions API - TODO' }))

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, message, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, Space, message, Tag, Spin } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, RobotOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { TextArea } = Input;
@@ -30,6 +30,7 @@ export default function SchoolsPage() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [form] = Form.useForm();
 
   // 加载学校列表
@@ -54,12 +55,60 @@ export default function SchoolsPage() {
   const handleEdit = (school?: School) => {
     if (school) {
       setEditingSchool(school);
-      form.setFieldsValues(school);
+      form.setFieldsValue(school);
     } else {
       setEditingSchool(null);
       form.resetFields();
     }
     setModalVisible(true);
+  };
+
+  // AI 生成学校档案
+  const handleAiGenerate = async () => {
+    try {
+      const schoolName = form.getFieldValue('name') || form.getFieldValue('name_zh');
+      
+      if (!schoolName || !schoolName.trim()) {
+        message.warning('请先输入学校名称（中文或英文）');
+        return;
+      }
+
+      setAiGenerating(true);
+      message.loading('AI 正在生成学校档案...', 0);
+
+      const response = await axios.post('http://localhost:3001/api/ai/generate-school', {
+        schoolName: schoolName.trim(),
+      });
+
+      message.destroy();
+
+      if (response.data.success) {
+        const profile = response.data.data;
+        
+        // 自动填充表单
+        form.setFieldsValue({
+          code: profile.code,
+          name: profile.name,
+          name_zh: profile.name_zh,
+          focus_areas: profile.focus_areas,
+          interview_style: profile.interview_style,
+          notes: profile.notes,
+        });
+
+        message.success('AI 已生成学校档案，请检查并修改');
+      }
+    } catch (error: any) {
+      message.destroy();
+      console.error('AI 生成失败:', error);
+      
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('AI 生成失败，请检查 DeepSeek API Key 配置');
+      }
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   // 保存学校
@@ -205,16 +254,23 @@ export default function SchoolsPage() {
           form={form}
           layout="vertical"
         >
-          <Form.Item
-            label="学校代码"
-            name="code"
-            rules={[{ required: true, message: '请输入学校代码' }]}
-          >
-            <Input placeholder="例如：SPCC" disabled={!!editingSchool} />
-          </Form.Item>
+          <Space style={{ marginBottom: 16, width: '100%' }} direction="vertical">
+            <Button
+              type="dashed"
+              icon={<RobotOutlined />}
+              onClick={handleAiGenerate}
+              loading={aiGenerating}
+              block
+            >
+              {aiGenerating ? 'AI 生成中...' : '🤖 AI 自动生成学校档案'}
+            </Button>
+            <div style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
+              提示：先输入学校中文名或英文名，然后点击上方按钮让 AI 自动填充其他信息
+            </div>
+          </Space>
 
           <Form.Item
-            label="中文名称"
+            label="学校中文名称"
             name="name_zh"
             rules={[{ required: true, message: '请输入中文名称' }]}
           >
@@ -222,11 +278,19 @@ export default function SchoolsPage() {
           </Form.Item>
 
           <Form.Item
-            label="英文名称"
+            label="学校英文名称"
             name="name"
             rules={[{ required: true, message: '请输入英文名称' }]}
           >
             <Input placeholder="例如：St. Paul's Co-educational College" />
+          </Form.Item>
+
+          <Form.Item
+            label="学校代码"
+            name="code"
+            rules={[{ required: true, message: '请输入学校代码' }]}
+          >
+            <Input placeholder="例如：SPCC" disabled={!!editingSchool} />
           </Form.Item>
 
           <Form.Item
