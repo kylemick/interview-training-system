@@ -12,7 +12,7 @@ interface SeedQuestion {
   school_code?: string;
 }
 
-const seedQuestions: SeedQuestion[] = [
+const seedQuestionsData: SeedQuestion[] = [
   // 英文口语 (English Oral)
   {
     category: 'english-oral',
@@ -192,7 +192,7 @@ export async function seedQuestions(): Promise<void> {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const q of seedQuestions) {
+    for (const q of seedQuestionsData) {
       try {
         await insert(
           `INSERT INTO questions (category, question_text, difficulty, reference_answer, tags, school_code, source)
