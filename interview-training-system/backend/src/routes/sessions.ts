@@ -2,7 +2,7 @@
  * 练习会话路由
  */
 import { Router, Request, Response } from 'express';
-import { query, queryOne, insert, execute } from '../db/index.js';
+import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -77,13 +77,19 @@ router.get('/:id', async (req: Request, res: Response) => {
       [id]
     );
 
-    // 解析 JSON 字段
-    const formattedRecords = qaRecords.map((record: any) => ({
-      ...record,
-      ai_feedback: record.ai_feedback
-        ? (typeof record.ai_feedback === 'string' ? JSON.parse(record.ai_feedback) : record.ai_feedback)
-        : null,
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedRecords = qaRecords.map((record: any) => {
+      let ai_feedback = null;
+      try {
+        ai_feedback = record.ai_feedback
+          ? (typeof record.ai_feedback === 'string' ? JSON.parse(record.ai_feedback) : record.ai_feedback)
+          : null;
+      } catch (error) {
+        console.warn(`解析记录 ${record.id} 的 ai_feedback 失败:`, error);
+        ai_feedback = null;
+      }
+      return { ...record, ai_feedback };
+    });
 
     res.json({
       success: true,
@@ -181,14 +187,16 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
 router.get('/recent/list', async (req: Request, res: Response) => {
   try {
     const { limit = '10' } = req.query;
+    const limitNum = Math.min(parseInt(limit as string) || 10, 100);
 
-    const sessions = await query(
+    const sessions = await queryWithPagination(
       `SELECT id, category, mode, start_time, end_time, status,
               (SELECT COUNT(*) FROM qa_records WHERE session_id = sessions.id) as question_count
        FROM sessions
-       ORDER BY start_time DESC
-       LIMIT ?`,
-      [parseInt(limit as string)]
+       ORDER BY start_time DESC`,
+      [],
+      limitNum,
+      0
     );
 
     res.json({

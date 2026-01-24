@@ -33,17 +33,25 @@ router.get('/', async (req: Request, res: Response) => {
               daily_duration, category_allocation, ai_suggestions, status, created_at, updated_at
        FROM training_plans
        ${whereClause}
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC`,
       params
     );
 
-    // 解析 JSON 字段
-    const formattedPlans = plans.map((plan: any) => ({
-      ...plan,
-      category_allocation: typeof plan.category_allocation === 'string'
-        ? JSON.parse(plan.category_allocation)
-        : plan.category_allocation,
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedPlans = plans.map((plan: any) => {
+      let category_allocation = {};
+      try {
+        category_allocation = plan.category_allocation
+          ? (typeof plan.category_allocation === 'string' 
+              ? JSON.parse(plan.category_allocation) 
+              : plan.category_allocation)
+          : {};
+      } catch (error) {
+        console.warn(`解析计划 ${plan.id} 的 category_allocation 失败:`, error);
+        category_allocation = {};
+      }
+      return { ...plan, category_allocation };
+    });
 
     res.json({
       success: true,
@@ -72,13 +80,20 @@ router.get('/:id', async (req: Request, res: Response) => {
       throw new AppError(404, '训练计划不存在');
     }
 
-    // 解析 JSON 字段
-    const formattedPlan = {
-      ...plan,
-      category_allocation: typeof plan.category_allocation === 'string'
-        ? JSON.parse(plan.category_allocation)
-        : plan.category_allocation,
-    };
+    // 解析 JSON 字段（添加错误处理）
+    let category_allocation = {};
+    try {
+      category_allocation = plan.category_allocation
+        ? (typeof plan.category_allocation === 'string'
+            ? JSON.parse(plan.category_allocation)
+            : plan.category_allocation)
+        : {};
+    } catch (error) {
+      console.warn(`解析计划 ${plan.id} 的 category_allocation 失败:`, error);
+      category_allocation = {};
+    }
+
+    const formattedPlan = { ...plan, category_allocation };
 
     // 获取该计划的所有每日任务
     const tasks = await query(
@@ -89,13 +104,21 @@ router.get('/:id', async (req: Request, res: Response) => {
       [id]
     );
 
-    // 解析 JSON 字段
-    const formattedTasks = tasks.map((task: any) => ({
-      ...task,
-      question_ids: typeof task.question_ids === 'string'
-        ? JSON.parse(task.question_ids)
-        : task.question_ids || [],
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedTasks = tasks.map((task: any) => {
+      let question_ids = [];
+      try {
+        question_ids = task.question_ids
+          ? (typeof task.question_ids === 'string'
+              ? JSON.parse(task.question_ids)
+              : task.question_ids)
+          : [];
+      } catch (error) {
+        console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
+        question_ids = [];
+      }
+      return { ...task, question_ids };
+    });
 
     res.json({
       success: true,
@@ -266,13 +289,21 @@ router.get('/today/tasks', async (req: Request, res: Response) => {
       [today, 'active']
     );
 
-    // 解析 JSON 字段
-    const formattedTasks = tasks.map((task: any) => ({
-      ...task,
-      question_ids: typeof task.question_ids === 'string'
-        ? JSON.parse(task.question_ids)
-        : task.question_ids || [],
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedTasks = tasks.map((task: any) => {
+      let question_ids = [];
+      try {
+        question_ids = task.question_ids
+          ? (typeof task.question_ids === 'string'
+              ? JSON.parse(task.question_ids)
+              : task.question_ids)
+          : [];
+      } catch (error) {
+        console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
+        question_ids = [];
+      }
+      return { ...task, question_ids };
+    });
 
     res.json({
       success: true,

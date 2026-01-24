@@ -2,7 +2,7 @@
  * 反馈路由
  */
 import { Router, Request, Response } from 'express';
-import { query, queryOne, insert, execute } from '../db/index.js';
+import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateFeedback, generateSessionSummary } from '../ai/feedbackGenerator.js';
 
@@ -151,14 +151,27 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
       throw new AppError(404, '会话总结不存在');
     }
 
-    // 解析 JSON 字段
-    const formattedSummary = {
-      ...summary,
-      strengths:
-        typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths || [],
-      weaknesses:
-        typeof summary.weaknesses === 'string' ? JSON.parse(summary.weaknesses) : summary.weaknesses || [],
-    };
+    // 解析 JSON 字段（添加错误处理）
+    let strengths = [];
+    let weaknesses = [];
+    try {
+      strengths = summary.strengths
+        ? (typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths)
+        : [];
+    } catch (error) {
+      console.warn(`解析总结 ${summary.id} 的 strengths 失败:`, error);
+      strengths = [];
+    }
+    try {
+      weaknesses = summary.weaknesses
+        ? (typeof summary.weaknesses === 'string' ? JSON.parse(summary.weaknesses) : summary.weaknesses)
+        : [];
+    } catch (error) {
+      console.warn(`解析总结 ${summary.id} 的 weaknesses 失败:`, error);
+      weaknesses = [];
+    }
+
+    const formattedSummary = { ...summary, strengths, weaknesses };
 
     res.json({
       success: true,
@@ -175,6 +188,7 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
 router.get('/history', async (req: Request, res: Response) => {
   try {
     const { category, limit = '20' } = req.query;
+    const limitNum = Math.min(parseInt(limit as string) || 20, 100);
 
     const conditions: string[] = [];
     const params: any[] = [];
@@ -186,26 +200,39 @@ router.get('/history', async (req: Request, res: Response) => {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const summaries = await query(
+    const summaries = await queryWithPagination(
       `SELECT ss.*, s.category, s.start_time, s.end_time
        FROM session_summaries ss
        INNER JOIN sessions s ON ss.session_id = s.id
        ${whereClause}
-       ORDER BY ss.created_at DESC
-       LIMIT ?`,
-      [...params, parseInt(limit as string)]
+       ORDER BY ss.created_at DESC`,
+      params,
+      limitNum,
+      0
     );
 
-    // 解析 JSON 字段
-    const formattedSummaries = summaries.map((summary: any) => ({
-      ...summary,
-      strengths:
-        typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths || [],
-      weaknesses:
-        typeof summary.weaknesses === 'string'
-          ? JSON.parse(summary.weaknesses)
-          : summary.weaknesses || [],
-    }));
+    // 解析 JSON 字段（添加错误处理）
+    const formattedSummaries = summaries.map((summary: any) => {
+      let strengths = [];
+      let weaknesses = [];
+      try {
+        strengths = summary.strengths
+          ? (typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths)
+          : [];
+      } catch (error) {
+        console.warn(`解析总结 ${summary.id} 的 strengths 失败:`, error);
+        strengths = [];
+      }
+      try {
+        weaknesses = summary.weaknesses
+          ? (typeof summary.weaknesses === 'string' ? JSON.parse(summary.weaknesses) : summary.weaknesses)
+          : [];
+      } catch (error) {
+        console.warn(`解析总结 ${summary.id} 的 weaknesses 失败:`, error);
+        weaknesses = [];
+      }
+      return { ...summary, strengths, weaknesses };
+    });
 
     res.json({
       success: true,
