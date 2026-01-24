@@ -53,6 +53,38 @@ ERROR: The symbol "seedQuestions" has already been declared
 
 ---
 
+### Bug 4: MySQL 参数传递问题 ⭐ **关键问题**
+**错误信息：**
+```
+Error: Incorrect arguments to mysqld_stmt_execute
+code: 'ER_WRONG_ARGUMENTS'
+errno: 1210
+```
+
+**原因：**
+- MySQL2 的 `execute()` 方法要求参数必须是数组
+- 当 `params` 为 `undefined` 时导致错误
+- 影响所有不传参数的查询（如无筛选条件的列表查询）
+
+**修复：** (Commit: 73421e9, 3b98278)
+- 在 `query()`, `insert()`, `execute()` 三个函数中
+- 将 `params` 改为 `params || []`
+- 确保始终传入数组而不是 `undefined`
+- 添加所有路由的错误日志记录
+
+**受影响的功能：**
+- ✅ 学校列表查询（无筛选）
+- ✅ 题目列表查询（无筛选）
+- ✅ 所有统计查询
+- ✅ 任何不需要 WHERE 条件的查询
+
+**教训：**
+- MySQL2 与原生 MySQL 客户端行为不同
+- 必须为可选参数提供默认值
+- 添加详细日志对调试至关重要
+
+---
+
 ## ✅ 修复验证
 
 ### 预期正常启动日志：
@@ -96,6 +128,16 @@ ERROR: The symbol "seedQuestions" has already been declared
    - 统一使用单例实例（`deepseekClient`）而非每次创建新实例
    - 保持方法调用格式一致
 
+4. **MySQL2 特性** ⭐ **重要**
+   - `execute()` 方法**必须**接收数组参数，不能是 `undefined`
+   - 可选参数需要提供默认值：`params || []`
+   - 与原生 MySQL 客户端行为不同，需要特别注意
+
+5. **调试策略**
+   - 在所有 catch 块中添加 `console.error` 记录实际错误
+   - 不要只抛出通用错误消息
+   - 详细的错误日志是快速定位问题的关键
+
 ---
 
 ## 🔄 更新的文件
@@ -104,6 +146,8 @@ ERROR: The symbol "seedQuestions" has already been declared
 - `1d69b28` - fix: 修正 DeepSeek API 导出和使用
 - `4dd4e00` - fix: 修正 schools.ts 导入路径错误  
 - `076658f` - fix: 修正 questions.ts 中的命名冲突
+- `3b98278` - fix: 添加题库路由错误日志以便调试
+- `73421e9` - fix: 修复 MySQL 参数传递问题 ⭐
 
 ### 受影响文件：
 ```
@@ -111,9 +155,18 @@ backend/src/
 ├── ai/
 │   ├── deepseek.ts           # 导出 DeepSeekClient 类
 │   └── questionGenerator.ts  # 使用 deepseekClient 实例
-└── db/seeds/
-    ├── schools.ts            # 修正导入路径
-    └── questions.ts          # 重命名数据数组
+├── db/
+│   ├── index.ts              # 修复参数默认值 ⭐
+│   └── seeds/
+│       ├── schools.ts        # 修正导入路径
+│       └── questions.ts      # 重命名数据数组
+└── routes/
+    ├── schools.ts            # 添加错误日志
+    └── questions.ts          # 添加错误日志
+
+docs/
+├── BUG_FIXES.md              # 本文档
+└── DATABASE_SPEC.md          # 新增：数据库访问规范 ⭐
 ```
 
 ---
@@ -124,5 +177,14 @@ backend/src/
 ✅ **后端服务可正常启动**
 ✅ **种子数据可正确导入**
 ✅ **API 端点可正常访问**
+✅ **学校列表和题目列表均可正常显示**
+
+## 📚 新增文档
+
+- ✅ `docs/DATABASE_SPEC.md` - 数据库访问规范文档
+  - 定义了标准的数据库操作模式
+  - 列举了常见错误及避免方法
+  - 提供了代码示例和检查清单
+  - **强烈建议**在编写新功能前阅读此文档
 
 下一步：继续实现训练计划生成功能（Task 2.3）
