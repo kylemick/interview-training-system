@@ -82,6 +82,7 @@ router.get('/', async (req: Request, res: Response) => {
       offset: parseInt(offset as string),
     });
   } catch (error) {
+    console.error('获取题目列表失败:', error);
     throw new AppError(500, '获取题目列表失败');
   }
 });
@@ -113,6 +114,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('获取题目详情失败:', error);
     throw new AppError(500, '获取题目详情失败');
   }
 });
@@ -160,6 +162,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('创建题目失败:', error);
     throw new AppError(500, '创建题目失败');
   }
 });
@@ -212,6 +215,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('更新题目失败:', error);
     throw new AppError(500, '更新题目失败');
   }
 });
@@ -240,6 +244,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
+    console.error('删除题目失败:', error);
     throw new AppError(500, '删除题目失败');
   }
 });
@@ -282,6 +287,7 @@ router.get('/stats/summary', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    console.error('获取统计信息失败:', error);
     throw new AppError(500, '获取统计信息失败');
   }
 });
