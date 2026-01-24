@@ -14,8 +14,9 @@
    - 配置到 `.env` 文件
 
 2. **数据库**
-   - SQLite自动初始化
-   - 位置：`data/interview.db`
+   - MySQL 8.0+
+   - 使用 `setup.sh` 自动安装和配置
+   - 或手动参考 `docs/MYSQL_SETUP.md`
 
 ### API文档
 
