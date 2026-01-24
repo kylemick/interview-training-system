@@ -33,7 +33,8 @@ class DeepSeekClient {
       console.warn('⚠️  DEEPSEEK_API_KEY not configured')
     }
 
-    const baseURL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1'
+    // DeepSeek API base URL (不包含版本路径)
+    const baseURL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com'
     
     this.client = axios.create({
       baseURL,
@@ -43,26 +44,26 @@ class DeepSeekClient {
       },
       timeout: 60000, // 60秒超时
     })
+
+    console.log(`🔑 DeepSeek API configured: ${baseURL}`)
   }
 
   /**
    * 调用DeepSeek Chat API
    */
-  async chat(messages: DeepSeekMessage[], options?: {
-    model?: string
-    temperature?: number
-    maxTokens?: number
-  }): Promise<string> {
+  async chat(messages: DeepSeekMessage[], temperature?: number, maxTokens?: number): Promise<string> {
     if (!this.apiKey) {
       throw new AppError(500, 'DeepSeek API key not configured', 'API_KEY_MISSING')
     }
 
     try {
-      const response = await this.client.post<DeepSeekResponse>('/chat/completions', {
-        model: options?.model || 'deepseek-chat',
+      console.log('🤖 Calling DeepSeek API...')
+      
+      const response = await this.client.post<DeepSeekResponse>('/v1/chat/completions', {
+        model: 'deepseek-chat',
         messages,
-        temperature: options?.temperature || 0.7,
-        max_tokens: options?.maxTokens || 2000,
+        temperature: temperature || 0.7,
+        max_tokens: maxTokens || 2000,
       })
 
       const content = response.data.choices[0]?.message?.content
@@ -78,6 +79,13 @@ class DeepSeekClient {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status || 500
         const message = error.response?.data?.error?.message || error.message
+        const url = error.config?.url || 'unknown'
+
+        console.error(`❌ DeepSeek API error:`)
+        console.error(`   Status: ${status}`)
+        console.error(`   URL: ${url}`)
+        console.error(`   Message: ${message}`)
+        console.error(`   Response:`, error.response?.data)
 
         throw new AppError(
           status,
