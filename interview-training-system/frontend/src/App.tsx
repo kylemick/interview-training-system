@@ -7,6 +7,7 @@ import Progress from './pages/Progress'
 import Settings from './pages/Settings'
 import InterviewMemory from './pages/InterviewMemory'
 import Schools from './pages/Schools'
+import Questions from './pages/Questions'
 import Layout from './components/Layout'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/schools" element={<Schools />} />
+        <Route path="/questions" element={<Questions />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/memory" element={<InterviewMemory />} />
       </Routes>
