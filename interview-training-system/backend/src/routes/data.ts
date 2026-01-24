@@ -13,12 +13,28 @@ const router = Router();
 router.post('/seed-schools', async (req: Request, res: Response) => {
   try {
     console.log('🌱 手动导入学校种子数据...');
+    
+    // 导入前检查现有数据
+    const { query } = await import('../db/index.js');
+    const [existing] = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
+    const beforeCount = existing?.count || 0;
+    
     const { seedSchoolProfiles } = await import('../db/seeds/schools.js');
     await seedSchoolProfiles();
     
+    // 导入后统计
+    const [after] = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
+    const afterCount = after?.count || 0;
+    const imported = afterCount - beforeCount;
+    
     res.json({
       success: true,
-      message: '学校种子数据导入成功',
+      message: '学校种子数据导入完成',
+      data: {
+        before: beforeCount,
+        after: afterCount,
+        imported: imported,
+      },
     });
   } catch (error) {
     console.error('导入学校种子数据失败:', error);
@@ -33,12 +49,28 @@ router.post('/seed-schools', async (req: Request, res: Response) => {
 router.post('/seed-questions', async (req: Request, res: Response) => {
   try {
     console.log('🌱 手动导入题库种子数据...');
+    
+    // 导入前检查现有数据
+    const { query } = await import('../db/index.js');
+    const [existing] = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
+    const beforeCount = existing?.count || 0;
+    
     const { seedQuestions } = await import('../db/seeds/questions.js');
     await seedQuestions();
     
+    // 导入后统计
+    const [after] = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
+    const afterCount = after?.count || 0;
+    const imported = afterCount - beforeCount;
+    
     res.json({
       success: true,
-      message: '题库种子数据导入成功',
+      message: '题库种子数据导入完成',
+      data: {
+        before: beforeCount,
+        after: afterCount,
+        imported: imported,
+      },
     });
   } catch (error) {
     console.error('导入题库种子数据失败:', error);

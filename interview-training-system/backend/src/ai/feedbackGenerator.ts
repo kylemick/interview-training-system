@@ -41,14 +41,66 @@ export async function generateFeedback(params: FeedbackRequest): Promise<AIFeedb
       [target_school]
     );
     if (school) {
-      schoolContext = `\n目标学校：${school.name_zh} (${target_school})
+      if (category === 'english-oral') {
+        schoolContext = `\nTarget School: ${school.name_zh} (${target_school})
+Interview Style: ${school.interview_style}
+School Characteristics: ${school.notes}`;
+      } else {
+        schoolContext = `\n目标学校：${school.name_zh} (${target_school})
 面试风格：${school.interview_style}
 学校特点：${school.notes}`;
+      }
     }
   }
 
-  // 构建提示词
-  const prompt = `你是一位资深的香港升中面试辅导老师。请分析学生的回答并给出详细反馈。
+  let prompt: string;
+
+  // 英文口语类别使用全英文提示词
+  if (category === 'english-oral') {
+    prompt = `IMPORTANT: You MUST respond in English ONLY. All feedback content must be in English.
+
+You are an experienced Hong Kong secondary school interview tutor.
+Please analyze the student's English oral response and provide detailed feedback in English.
+
+Question Information:
+Category: English Oral
+Question: ${question_text}${schoolContext}
+
+Student's Answer:
+${answer_text}
+${reference_answer ? `\nReference Answer:\n${reference_answer}` : ''}
+
+Return in JSON format with ALL FIELDS IN ENGLISH:
+{
+  "score": 7.5,
+  "strengths": "Good grammar, fluent expression",
+  "weaknesses": "Limited vocabulary, lack of specific examples",
+  "suggestions": "Consider adding specific examples to support your points. You could use more sophisticated vocabulary to make your response more impressive. Try to elaborate more on your reasons with concrete details...",
+  "reference_thinking": "To answer this question: First, introduce yourself clearly with your name and basic information. Second, explain your hobbies with specific details and why you enjoy them. Finally, connect your interests with the school's values and explain why you're a good fit.",
+  "reference_answer": "An excellent response would be: Hello, my name is... I am passionate about... because it helps me... I would like to join your school because I've learned that your school emphasizes... which aligns perfectly with my interests and goals...",
+  "language_score": 85,
+  "content_score": 78,
+  "overall_score": 82
+}
+
+Scoring Criteria:
+- score (simplified): 0-10 scale (decimal), easy for students to understand
+- language_score: 0-100, assess grammar, vocabulary, fluency
+- content_score: 0-100, assess relevance, completeness, depth of insight
+- overall_score: 0-100
+
+Requirements:
+1. score is simplified version (0-10), 6-8 is reasonable for primary students
+2. strengths: briefly list 2-3 strong points in English, separated by commas
+3. weaknesses: briefly list 2-3 areas for improvement in English, separated by commas
+4. suggestions: specific actionable improvement suggestions in English (80-150 words)
+5. reference_thinking: MUST provide clear answer structure in English (3-5 key points)
+6. reference_answer: MUST provide an excellent sample answer in English (150-250 words)
+
+Now analyze and return the feedback:`;
+  } else {
+    // 其他类别使用中文提示词
+    prompt = `你是一位资深的香港升中面试辅导老师。请分析学生的回答并给出详细反馈。
 
 题目信息：
 类别：${getCategoryName(category)}
@@ -88,6 +140,7 @@ ${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
 7. 所有文字内容使用繁体中文
 
 现在请分析并返回反馈：`;
+  }
 
   console.log(`🤖 生成反馈: 类别=${category}, 学校=${target_school || '无'}`);
 
