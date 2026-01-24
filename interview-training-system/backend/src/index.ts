@@ -29,7 +29,8 @@ app.get('/health', (req, res) => {
 // API 路由
 app.use('/api/schools', schoolRoutes)
 app.use('/api/ai', aiRoutes)
-app.use('/api/questions', (req, res) => res.json({ message: 'Questions API - TODO' }))
+import questionRoutes from './routes/questions.js'
+app.use('/api/questions', questionRoutes)
 app.use('/api/plans', (req, res) => res.json({ message: 'Plans API - TODO' }))
 app.use('/api/sessions', (req, res) => res.json({ message: 'Sessions API - TODO' }))
 app.use('/api/feedback', (req, res) => res.json({ message: 'Feedback API - TODO' }))

@@ -137,6 +137,9 @@ export async function initDatabase(): Promise<void> {
     console.log('🌱 初始化种子数据...');
     const { seedSchoolProfiles } = await import('./seeds/schools.js');
     await seedSchoolProfiles();
+    
+    const { seedQuestions } = await import('./seeds/questions.js');
+    await seedQuestions();
   } catch (error) {
     console.error('❌ 数据库初始化失败:', error);
     throw error;
