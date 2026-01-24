@@ -1,7 +1,7 @@
 /**
  * 学校档案种子数据
  */
-import { insert, queryOne } from './index.js';
+import { insert, queryOne } from '../index.js';
 
 const seedSchools = [
   {
