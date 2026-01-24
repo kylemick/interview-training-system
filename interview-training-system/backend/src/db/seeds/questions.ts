@@ -189,6 +189,15 @@ export async function seedQuestions(): Promise<void> {
   console.log('🌱 导入题库种子数据...');
 
   try {
+    // 检查是否已有种子数据
+    const { queryOne } = await import('../index.js');
+    const existing = await queryOne('SELECT COUNT(*) as count FROM questions WHERE source = ?', ['seed']);
+    
+    if (existing && existing.count > 0) {
+      console.log(`  ⏭️  已存在 ${existing.count} 条种子数据，跳过导入`);
+      return;
+    }
+
     let successCount = 0;
     let errorCount = 0;
 

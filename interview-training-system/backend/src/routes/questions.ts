@@ -59,6 +59,7 @@ router.get('/', async (req: Request, res: Response) => {
     const total = countResult?.total || 0;
 
     // 获取题目列表
+    console.log('查询参数:', { whereClause, params, limit, offset });
     const questions = await query(
       `SELECT id, category, question_text, difficulty, reference_answer, tags, school_code, source, created_at, updated_at
        FROM questions

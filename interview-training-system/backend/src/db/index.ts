@@ -50,7 +50,9 @@ export async function getConnection(): Promise<mysql.PoolConnection> {
  * 执行查询
  */
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-  const [rows] = await getPool().execute(sql, params || []);
+  const finalParams = params || [];
+  console.log('执行查询 - SQL:', sql.substring(0, 100), '参数:', finalParams);
+  const [rows] = await getPool().execute(sql, finalParams);
   return rows as T[];
 }
 
