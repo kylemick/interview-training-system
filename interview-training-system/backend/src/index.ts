@@ -37,7 +37,8 @@ import planRoutes from './routes/plans.js'
 app.use('/api/plans', planRoutes)
 import sessionRoutes from './routes/sessions.js'
 app.use('/api/sessions', sessionRoutes)
-app.use('/api/feedback', (req, res) => res.json({ message: 'Feedback API - TODO' }))
+import feedbackRoutes from './routes/feedback.js'
+app.use('/api/feedback', feedbackRoutes)
 app.use('/api/progress', (req, res) => res.json({ message: 'Progress API - TODO' }))
 
 // 错误处理
