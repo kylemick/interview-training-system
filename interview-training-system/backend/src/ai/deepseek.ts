@@ -22,7 +22,7 @@ export interface DeepSeekResponse {
   }
 }
 
-class DeepSeekClient {
+export class DeepSeekClient {
   private client: AxiosInstance
   private apiKey: string
 

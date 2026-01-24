@@ -1,10 +1,8 @@
 /**
  * AI 题目生成服务
  */
-import { DeepSeekClient } from './deepseek.js';
+import { deepseekClient } from './deepseek.js';
 import { AppError } from '../middleware/errorHandler.js';
-
-const client = new DeepSeekClient();
 
 // 类别中文名称映射
 const CATEGORY_NAMES: Record<string, string> = {
@@ -120,10 +118,11 @@ export async function generateQuestions(params: GenerateQuestionsRequest): Promi
   console.log(`🤖 生成题目: ${categoryName} (${difficultyName}) x ${count}`);
 
   try {
-    const response = await client.chat(prompt, {
-      temperature: 0.8,
-      max_tokens: 4000,
-    });
+    const response = await deepseekClient.chat(
+      [{ role: 'user', content: prompt }],
+      0.8,
+      4000
+    );
 
     // 提取 JSON
     let jsonText = response.trim();
