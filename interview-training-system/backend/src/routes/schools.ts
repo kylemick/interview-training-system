@@ -30,6 +30,7 @@ router.get('/', async (req: Request, res: Response) => {
       total: formattedSchools.length,
     });
   } catch (error) {
+    console.error('获取学校列表失败:', error);
     throw new AppError(500, '获取学校列表失败');
   }
 });

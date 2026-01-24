@@ -50,7 +50,7 @@ export async function getConnection(): Promise<mysql.PoolConnection> {
  * 执行查询
  */
 export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
-  const [rows] = await getPool().execute(sql, params);
+  const [rows] = await getPool().execute(sql, params || []);
   return rows as T[];
 }
 
@@ -66,7 +66,7 @@ export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T 
  * 执行插入并返回插入的 ID
  */
 export async function insert(sql: string, params?: any[]): Promise<number> {
-  const [result] = await getPool().execute(sql, params);
+  const [result] = await getPool().execute(sql, params || []);
   return (result as mysql.ResultSetHeader).insertId;
 }
 
@@ -74,7 +74,7 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
  * 执行更新/删除并返回影响的行数
  */
 export async function execute(sql: string, params?: any[]): Promise<number> {
-  const [result] = await getPool().execute(sql, params);
+  const [result] = await getPool().execute(sql, params || []);
   return (result as mysql.ResultSetHeader).affectedRows;
 }
 
