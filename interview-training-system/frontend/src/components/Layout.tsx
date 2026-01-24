@@ -10,6 +10,7 @@ import {
   FileTextOutlined,
   BankOutlined,
   DatabaseOutlined,
+  ToolOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
 
@@ -31,6 +32,7 @@ export default function Layout({ children }: LayoutProps) {
     { key: '/schools', icon: <BankOutlined />, label: <Link to="/schools">学校档案</Link> },
     { key: '/questions', icon: <DatabaseOutlined />, label: <Link to="/questions">题库管理</Link> },
     { key: '/memory', icon: <FileTextOutlined />, label: <Link to="/memory">面试回忆</Link> },
+    { key: '/data', icon: <ToolOutlined />, label: <Link to="/data">数据管理</Link> },
     { key: '/settings', icon: <SettingOutlined />, label: <Link to="/settings">设置</Link> },
   ]
 
