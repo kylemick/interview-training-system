@@ -66,10 +66,22 @@ interface QuestionStats {
   by_source: { source: string; count: number }[];
 }
 
+interface School {
+  id: number;
+  code: string;
+  name: string;
+  name_zh: string;
+  focus_areas: string[];
+  interview_style: string;
+  notes?: string;
+}
+
 const Questions = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [stats, setStats] = useState<QuestionStats | null>(null);
+  const [schools, setSchools] = useState<School[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingSchools, setLoadingSchools] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -86,6 +98,7 @@ const Questions = () => {
   useEffect(() => {
     fetchQuestions();
     fetchStats();
+    fetchSchools();
   }, [filters]);
 
   const fetchQuestions = async () => {
@@ -111,6 +124,19 @@ const Questions = () => {
       setStats(response.data.data);
     } catch (error) {
       console.error('获取统计信息失败:', error);
+    }
+  };
+
+  const fetchSchools = async () => {
+    setLoadingSchools(true);
+    try {
+      const response = await axios.get(`${API_BASE}/schools`);
+      setSchools(response.data.data);
+    } catch (error) {
+      console.error('获取学校列表失败:', error);
+      message.error('获取学校列表失败');
+    } finally {
+      setLoadingSchools(false);
     }
   };
 
@@ -418,7 +444,19 @@ const Questions = () => {
           </Form.Item>
 
           <Form.Item name="school_code" label="目标学校（可选）">
-            <Input placeholder="如: SPCC, QC, LSC" />
+            <Select
+              placeholder="选择学校或不指定"
+              allowClear
+              loading={loadingSchools}
+              showSearch
+              optionFilterProp="children"
+            >
+              {schools.map((school) => (
+                <Option key={school.code} value={school.code}>
+                  {school.name_zh} ({school.code})
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
         </Form>
       </Modal>
@@ -465,7 +503,19 @@ const Questions = () => {
           </Form.Item>
 
           <Form.Item name="school_code" label="目标学校（可选）">
-            <Input placeholder="如: SPCC, QC, LSC" />
+            <Select
+              placeholder="选择学校或不指定"
+              allowClear
+              loading={loadingSchools}
+              showSearch
+              optionFilterProp="children"
+            >
+              {schools.map((school) => (
+                <Option key={school.code} value={school.code}>
+                  {school.name_zh} ({school.code})
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           <Form.Item name="topic" label="主题（可选）">
