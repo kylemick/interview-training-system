@@ -1,0 +1,15 @@
+{
+  "name": "interview-training-root",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"后端,前端\" -c \"bgBlue.bold,bgGreen.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ..",
+    "db:init": "cd backend && npm run db:init"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
