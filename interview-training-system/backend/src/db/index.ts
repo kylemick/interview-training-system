@@ -234,15 +234,14 @@ export async function initDatabase(): Promise<void> {
     console.log(`  数据库: ${dbConfig.database}`);
     console.log(`  用户: ${dbConfig.user}`);
     console.log('');
-    console.log('💡 提示：如需导入种子数据，请在管理页面操作');
-    console.log('');
     
-    // 注释掉自动导入种子数据
-    // 现在通过页面手动触发导入
-    // const { seedSchoolProfiles } = await import('./seeds/schools.js');
-    // await seedSchoolProfiles();
-    // const { seedQuestions } = await import('./seeds/questions.js');
-    // await seedQuestions();
+    // 初始化种子数据
+    console.log('🌱 初始化种子数据...');
+    const { seedSchoolProfiles } = await import('./seeds/schools.js');
+    await seedSchoolProfiles();
+    
+    const { seedQuestions } = await import('./seeds/questions.js');
+    await seedQuestions();
   } catch (error) {
     console.error('❌ 数据库初始化失败:', error);
     throw error;
