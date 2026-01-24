@@ -2,7 +2,7 @@
  * AI 生成工具路由
  */
 import { Router, Request, Response } from 'express';
-import { generateSchoolProfile } from '../ai/services.js';
+import { generateSchoolProfile } from '../ai/schoolProfile.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
