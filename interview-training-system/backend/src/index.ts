@@ -33,7 +33,8 @@ import questionRoutes from './routes/questions.js'
 app.use('/api/questions', questionRoutes)
 import dataRoutes from './routes/data.js'
 app.use('/api/data', dataRoutes)
-app.use('/api/plans', (req, res) => res.json({ message: 'Plans API - TODO' }))
+import planRoutes from './routes/plans.js'
+app.use('/api/plans', planRoutes)
 app.use('/api/sessions', (req, res) => res.json({ message: 'Sessions API - TODO' }))
 app.use('/api/feedback', (req, res) => res.json({ message: 'Feedback API - TODO' }))
 app.use('/api/progress', (req, res) => res.json({ message: 'Progress API - TODO' }))
