@@ -18,6 +18,17 @@ export const CATEGORIES = [
   'group-discussion',  // 小组讨论
 ] as const;
 
+// 四个学科能力类别定义
+export const SUBJECT_CATEGORIES = [
+  'chinese-reading',   // 中文阅读理解
+  'english-reading',   // 英文阅读理解
+  'mathematics',       // 数学基础
+  'science-practice', // 科学实践
+] as const;
+
+// 所有类别（七大专项 + 四个学科能力）
+export const ALL_CATEGORIES = [...CATEGORIES, ...SUBJECT_CATEGORIES] as const;
+
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 
 // 获取所有题目（支持筛选）
@@ -178,9 +189,9 @@ router.post('/', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category, question_text, difficulty');
     }
 
-    // 验证类别
-    if (!CATEGORIES.includes(category)) {
-      throw new AppError(400, `无效的类别，必须是: ${CATEGORIES.join(', ')}`);
+    // 验证类别（支持所有类别）
+    if (!ALL_CATEGORIES.includes(category)) {
+      throw new AppError(400, `无效的类别，必须是: ${ALL_CATEGORIES.join(', ')}`);
     }
 
     // 验证难度
@@ -228,9 +239,9 @@ router.put('/:id', async (req: Request, res: Response) => {
       throw new AppError(404, '题目不存在');
     }
 
-    // 验证类别
-    if (category && !CATEGORIES.includes(category)) {
-      throw new AppError(400, `无效的类别，必须是: ${CATEGORIES.join(', ')}`);
+    // 验证类别（支持所有类别）
+    if (category && !ALL_CATEGORIES.includes(category)) {
+      throw new AppError(400, `无效的类别，必须是: ${ALL_CATEGORIES.join(', ')}`);
     }
 
     // 验证难度

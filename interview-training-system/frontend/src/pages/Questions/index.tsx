@@ -39,6 +39,17 @@ const CATEGORIES = [
   { value: 'group-discussion', label: '小组讨论', color: 'red' },
 ];
 
+// 四个学科能力类别
+const SUBJECT_CATEGORIES = [
+  { value: 'chinese-reading', label: '中文阅读理解', color: 'green' },
+  { value: 'english-reading', label: '英文阅读理解', color: 'blue' },
+  { value: 'mathematics', label: '数学基础', color: 'purple' },
+  { value: 'science-practice', label: '科学实践', color: 'cyan' },
+];
+
+// 所有类别（七大专项 + 四个学科能力）
+const ALL_CATEGORIES = [...CATEGORIES, ...SUBJECT_CATEGORIES];
+
 const DIFFICULTIES = [
   { value: 'easy', label: '简单', color: 'green' },
   { value: 'medium', label: '中等', color: 'orange' },
@@ -187,7 +198,7 @@ const Questions = () => {
       const values = await aiForm.validateFields();
       setLoading(true);
 
-      const categoryLabel = CATEGORIES.find(c => c.value === values.category)?.label || values.category;
+      const categoryLabel = ALL_CATEGORIES.find(c => c.value === values.category)?.label || values.category;
 
       await executeWithThinking(
         'generate-questions',
@@ -219,11 +230,11 @@ const Questions = () => {
 
   // 优化：使用 useMemo 缓存计算结果
   const getCategoryLabel = useCallback((value: string) => {
-    return CATEGORIES.find((c) => c.value === value)?.label || value;
+    return ALL_CATEGORIES.find((c) => c.value === value)?.label || value;
   }, []);
 
   const getCategoryColor = useCallback((value: string) => {
-    return CATEGORIES.find((c) => c.value === value)?.color || 'default';
+    return ALL_CATEGORIES.find((c) => c.value === value)?.color || 'default';
   }, []);
 
   const getDifficultyLabel = useCallback((value: string) => {
@@ -354,7 +365,7 @@ const Questions = () => {
           value={filters.category}
           onChange={(value) => setFilters({ ...filters, category: value })}
         >
-          {CATEGORIES.map((cat) => (
+          {ALL_CATEGORIES.map((cat) => (
             <Option key={cat.value} value={cat.value}>
               {cat.label}
             </Option>
@@ -427,7 +438,7 @@ const Questions = () => {
         <Form form={form} layout="vertical">
           <Form.Item name="category" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
             <Select placeholder="选择类别">
-              {CATEGORIES.map((cat) => (
+              {ALL_CATEGORIES.map((cat) => (
                 <Option key={cat.value} value={cat.value}>
                   {cat.label}
                 </Option>
@@ -488,7 +499,7 @@ const Questions = () => {
         <Form form={aiForm} layout="vertical">
           <Form.Item name="category" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
             <Select placeholder="选择类别">
-              {CATEGORIES.map((cat) => (
+              {ALL_CATEGORIES.map((cat) => (
                 <Option key={cat.value} value={cat.value}>
                   {cat.label}
                 </Option>

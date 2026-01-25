@@ -7,6 +7,10 @@ export type Category =
   | 'science-knowledge'
   | 'personal-growth'
   | 'group-discussion'
+  | 'chinese-reading'   // 中文阅读理解
+  | 'english-reading'   // 英文阅读理解
+  | 'mathematics'       // 数学基础
+  | 'science-practice'  // 科学实践
 
 // 难度等级
 export type Difficulty = 1 | 2 | 3 | 4 | 5

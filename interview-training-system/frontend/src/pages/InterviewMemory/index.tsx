@@ -28,6 +28,7 @@ const { TextArea } = Input
 const { Option } = Select
 const { Title, Paragraph, Text } = Typography
 
+// 七大专项类别
 const CATEGORIES = [
   { value: 'english-oral', label: '英文口语' },
   { value: 'chinese-oral', label: '中文表达' },
@@ -36,7 +37,18 @@ const CATEGORIES = [
   { value: 'science-knowledge', label: '科学常识' },
   { value: 'personal-growth', label: '个人成长' },
   { value: 'group-discussion', label: '小组讨论' },
-]
+];
+
+// 四个学科能力类别
+const SUBJECT_CATEGORIES = [
+  { value: 'chinese-reading', label: '中文阅读理解' },
+  { value: 'english-reading', label: '英文阅读理解' },
+  { value: 'mathematics', label: '数学基础' },
+  { value: 'science-practice', label: '科学实践' },
+];
+
+// 所有类别（七大专项 + 四个学科能力）
+const ALL_CATEGORIES = [...CATEGORIES, ...SUBJECT_CATEGORIES];
 
 // 学校列表从API动态加载，存储在 schools 状态中
 
@@ -421,7 +433,7 @@ export default function InterviewMemory() {
                   value={category}
                   onChange={setCategory}
                 >
-                  {CATEGORIES.map((cat) => (
+                  {ALL_CATEGORIES.map((cat) => (
                     <Option key={cat.value} value={cat.value}>
                       {cat.label}
                     </Option>

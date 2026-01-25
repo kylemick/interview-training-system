@@ -50,70 +50,74 @@ export async function generateLearningMaterial(
   const weaknessTypeName = weaknessTypeMap[weakness.weakness_type] || weakness.weakness_type;
   const materialTypeName = materialTypeMap[material_type] || material_type;
 
-  // 构建AI提示词
-  const prompt = `你是一个专业的升中面试培训专家。请为以下学生弱点生成一份${materialTypeName}学习素材。
+  // 構建AI提示詞
+  const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-**弱点信息：**
-- 专项类别：${weakness.category}
-- 弱点类型：${weaknessTypeName}
-- 严重程度：${weakness.severity}
-- 弱点描述：${weakness.description}
+你是一個專業的升中面試培訓專家。請為以下學生弱點生成一份${materialTypeName}學習素材。
+
+**弱點信息：**
+- 專項類別：${weakness.category}
+- 弱點類型：${weaknessTypeName}
+- 嚴重程度：${weakness.severity}
+- 弱點描述：${weakness.description}
 ${weakness.example_text ? `- 示例文本：${weakness.example_text}` : ''}
-${weakness.improvement_suggestions ? `- 改进建议：${weakness.improvement_suggestions}` : ''}
-${weakness.related_topics ? `- 相关话题：${Array.isArray(weakness.related_topics) ? weakness.related_topics.join('、') : weakness.related_topics}` : ''}
+${weakness.improvement_suggestions ? `- 改進建議：${weakness.improvement_suggestions}` : ''}
+${weakness.related_topics ? `- 相關話題：${Array.isArray(weakness.related_topics) ? weakness.related_topics.join('、') : weakness.related_topics}` : ''}
 
 **素材要求：**
-1. 针对性强：内容必须针对上述弱点类型和描述
-2. 实用性强：提供具体可操作的建议和方法
-3. 适合升中面试：内容要贴近香港升中面试场景
-4. 结构清晰：使用Markdown格式，包含标题、段落、列表等
+1. 針對性強：內容必須針對上述弱點類型和描述
+2. 實用性強：提供具體可操作的建議和方法
+3. 適合升中面試：內容要貼近香港升中面試場景
+4. 結構清晰：使用Markdown格式，包含標題、段落、列表等
+5. 所有內容必須使用繁體中文
 
-**素材类型：${materialTypeName}**
+**素材類型：${materialTypeName}**
 
 ${material_type === 'text' ? `
-请生成知识点讲解素材，包括：
-- 核心概念说明
-- 重要知识点
-- 常见应用场景
-- 注意事项
+請生成知識點講解素材，包括：
+- 核心概念說明
+- 重要知識點
+- 常見應用場景
+- 注意事項
 ` : ''}
 
 ${material_type === 'example' ? `
-请生成常见错误示例素材，包括：
-- 典型错误案例
-- 错误原因分析
-- 正确做法对比
-- 避免错误的技巧
+請生成常見錯誤示例素材，包括：
+- 典型錯誤案例
+- 錯誤原因分析
+- 正確做法對比
+- 避免錯誤的技巧
 ` : ''}
 
 ${material_type === 'tip' ? `
-请生成改进技巧素材，包括：
-- 实用技巧和方法
-- 练习建议
-- 注意事项
-- 快速提升要点
+請生成改進技巧素材，包括：
+- 實用技巧和方法
+- 練習建議
+- 注意事項
+- 快速提升要點
 ` : ''}
 
 ${material_type === 'practice' ? `
-请生成练习建议素材，包括：
-- 针对性练习方法
-- 练习步骤
-- 练习重点
-- 效果评估方法
+請生成練習建議素材，包括：
+- 針對性練習方法
+- 練習步驟
+- 練習重點
+- 效果評估方法
 ` : ''}
 
-请按照以下JSON格式返回：
+請按照以下JSON格式返回：
 {
-  "title": "素材标题（简洁明了，20字以内）",
-  "content": "素材内容（Markdown格式，详细完整）",
-  "tags": ["标签1", "标签2", "标签3"]
+  "title": "素材標題（簡潔明瞭，20字以內，必須使用繁體中文）",
+  "content": "素材內容（Markdown格式，詳細完整，必須使用繁體中文）",
+  "tags": ["標籤1", "標籤2", "標籤3"]
 }
 
 注意：
-- title要简洁有力，能概括素材核心内容
-- content要详细完整，使用Markdown格式，包含标题、段落、列表等
-- tags要相关且有意义，3-5个标签即可
-- 内容要针对弱点，实用可操作`;
+- title要簡潔有力，能概括素材核心內容（必須使用繁體中文）
+- content要詳細完整，使用Markdown格式，包含標題、段落、列表等（必須使用繁體中文）
+- tags要相關且有意義，3-5個標籤即可（必須使用繁體中文）
+- 內容要針對弱點，實用可操作
+- 所有文字內容必須使用繁體中文`;
 
   try {
     const response = await deepseekClient.chat([

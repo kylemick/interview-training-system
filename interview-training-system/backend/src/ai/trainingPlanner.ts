@@ -61,25 +61,35 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
 备注：${school.notes}`;
   }
 
-  // 构建提示词
-  const prompt = `你是一位资深的香港升中面试辅导专家。请为学生生成一个系统化的训练计划。
+  // 構建提示詞
+  const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-学生信息：
+你是一位資深的香港升中面試輔導專家。請為學生生成一個系統化的訓練計劃。
+
+學生信息：
 - 姓名：${student_name}
-- 目标学校：${target_school}${schoolInfo}
-- 训练周期：${start_date} 至 ${end_date}（共 ${total_days} 天）
-- 每日可用时长：${daily_duration} 分钟
+- 目標學校：${target_school}${schoolInfo}
+- 訓練週期：${start_date} 至 ${end_date}（共 ${total_days} 天）
+- 每日可用時長：${daily_duration} 分鐘
 
-七大专项类别：
-1. english-oral（英文口语）
-2. chinese-oral（中文表达）
-3. logic-thinking（逻辑思维）
-4. current-affairs（时事常识）
-5. science-knowledge（科学常识）
-6. personal-growth（个人成长）
-7. group-discussion（小组讨论）
+七大專項類別：
+1. english-oral（英文口語）
+2. chinese-oral（中文表達）
+3. logic-thinking（邏輯思維）
+4. current-affairs（時事常識）
+5. science-knowledge（科學常識）
+6. personal-growth（個人成長）
+7. group-discussion（小組討論）
 
-请生成训练计划，以 JSON 格式返回：
+四個學科能力類別（可選，用於專項基礎能力訓練）：
+8. chinese-reading（中文閱讀理解）：通過閱讀文章，考察閱讀理解、字詞理解、觀點提煉等能力
+9. english-reading（英文閱讀理解）：通過閱讀英文文章，考察閱讀理解、詞彙、觀點分析等能力
+10. mathematics（數學基礎）：考察計算能力、數學概念理解、基礎數學知識應用
+11. science-practice（科學實踐）：考察科學現象說明、科學推理、科學行為等能力
+
+注意：學科能力類別可以作為補充訓練，建議與相關專項類別結合（如英文閱讀理解與英文口語結合）。
+
+請生成訓練計劃，以 JSON 格式返回：
 
 {
   "category_allocation": {
@@ -91,7 +101,7 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
     "personal-growth": 10,
     "group-discussion": 5
   },
-  "ai_suggestions": "根据 ${target_school} 的特点，建议重点加强...",
+  "ai_suggestions": "根據 ${target_school} 的特點，建議重點加強...（必須使用繁體中文）",
   "daily_tasks": [
     {
       "task_date": "${start_date}",
@@ -103,12 +113,14 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
 }
 
 要求：
-1. category_allocation 为各专项的百分比分配（总和=100）
-2. 根据学校特点调整专项比例（如 SPCC 增加 science-knowledge）
-3. daily_tasks 数组包含每一天的任务安排
-4. 每天可以安排 1-2 个专项
-5. 合理分配时间，确保每个专项都有充分练习
-6. ai_suggestions 提供针对性建议（200-300字）
+1. category_allocation 為各專項的百分比分配（總和=100）
+2. 根據學校特點調整專項比例（如 SPCC 增加 science-knowledge 和 science-practice）
+3. 學科能力類別可以作為補充訓練，建議與相關專項類別結合（如英文閱讀理解與英文口語結合）
+4. daily_tasks 數組包含每一天的任務安排
+5. 每天可以安排 1-2 個專項（可以是專項類別或學科能力類別）
+6. 合理分配時間，確保每個專項都有充分練習
+7. ai_suggestions 必須使用繁體中文
+7. ai_suggestions 提供针对性建议（200-300字），如果包含学科能力训练，应说明训练重点
 
 现在请生成完整的训练计划：`;
 
@@ -255,6 +267,12 @@ ${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : '
 5. science-knowledge（科学常识）
 6. personal-growth（个人成长）
 7. group-discussion（小组讨论）
+
+四个学科能力类别（可选，用于专项基础能力训练）：
+8. chinese-reading（中文阅读理解）：通过阅读文章，考察阅读理解、字词理解、观点提炼等能力
+9. english-reading（英文阅读理解）：通过阅读英文文章，考察阅读理解、词汇、观点分析等能力
+10. mathematics（数学基础）：考察计算能力、数学概念理解、基础数学知识应用
+11. science-practice（科学实践）：考察科学现象说明、科学推理、科学行为等能力
 
 请生成针对该弱点的训练计划，以 JSON 格式返回：
 
@@ -439,6 +457,10 @@ function getCategoryName(category: string): string {
     'science-knowledge': '科学常识',
     'personal-growth': '个人成长',
     'group-discussion': '小组讨论',
+    'chinese-reading': '中文阅读理解',
+    'english-reading': '英文阅读理解',
+    'mathematics': '数学基础',
+    'science-practice': '科学实践',
   };
   return map[category] || category;
 }

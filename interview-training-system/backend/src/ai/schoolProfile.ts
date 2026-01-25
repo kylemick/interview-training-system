@@ -17,26 +17,28 @@ export async function generateSchoolProfile(schoolName: string): Promise<{
   interview_style: string;
   notes: string;
 }> {
-  const systemPrompt = `你是一位资深的香港教育咨询专家，对香港中学的面试特点非常了解。
-请严格按照JSON格式返回数据，不要包含任何其他文字。`;
+  const systemPrompt = `⚠️ 重要：你必須使用繁體中文回應。所有中文內容必須使用繁體中文。
 
-  const userPrompt = `请根据以下学校名称，生成详细的学校档案信息：
-学校名称：${schoolName}
+你是一位資深的香港教育諮詢專家，對香港中學的面試特點非常了解。
+請嚴格按照JSON格式返回數據，不要包含任何其他文字。`;
 
-请提供以下信息（JSON格式）：
-1. code: 学校简称代码（大写字母，如 SPCC, QC, LSC）
-2. name: 学校英文全名
-3. name_zh: 学校中文全名
-4. focus_areas: 面试重点领域数组，从以下选择3-5项：
-   - "english-oral" (英文口语)
-   - "chinese-expression" (中文表达)
-   - "logical-thinking" (逻辑思维)
-   - "current-affairs" (时事常识)
-   - "science-knowledge" (科学常识)
-   - "personal-growth" (个人成长)
-   - "group-discussion" (小组讨论)
-5. interview_style: 面试风格，简短描述（如：academic-rigorous, balanced, holistic, interactive）
-6. notes: 学校面试特点和重点的详细说明（100-200字）`;
+  const userPrompt = `請根據以下學校名稱，生成詳細的學校檔案信息：
+學校名稱：${schoolName}
+
+請提供以下信息（JSON格式）：
+1. code: 學校簡稱代碼（大寫字母，如 SPCC, QC, LSC）
+2. name: 學校英文全名
+3. name_zh: 學校中文全名（必須使用繁體中文）
+4. focus_areas: 面試重點領域數組，從以下選擇3-5項：
+   - "english-oral" (英文口語)
+   - "chinese-expression" (中文表達)
+   - "logical-thinking" (邏輯思維)
+   - "current-affairs" (時事常識)
+   - "science-knowledge" (科學常識)
+   - "personal-growth" (個人成長)
+   - "group-discussion" (小組討論)
+5. interview_style: 面試風格，簡短描述（如：academic-rigorous, balanced, holistic, interactive）
+6. notes: 學校面試特點和重點的詳細說明（100-200字，必須使用繁體中文）`;
 
   const messages: DeepSeekMessage[] = [
     { role: 'system', content: systemPrompt },

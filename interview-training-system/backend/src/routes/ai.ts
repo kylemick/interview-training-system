@@ -153,89 +153,92 @@ router.post('/extract-interview-memory', async (req: Request, res: Response) => 
     if (interview_round) {
       roundContext = `\n面试轮次：${interview_round}（用户已指定）`;
     } else {
-      roundContext = `\n请尝试从文本中识别面试轮次信息（如"第一轮"、"第二轮"、"最终轮"等），如果无法识别则返回null。`;
+      roundContext = `\n請嘗試從文本中識別面試輪次信息（如"第一輪"、"第二輪"、"最終輪"等），如果無法識別則返回null。`;
     }
     
-    const prompt = `你是一个面试题目提取和弱点分析专家。请从以下香港升中面试回忆文本中：
-1. 提取所有的面试问题
-2. 分析学生的表现弱点
-3. 对每个问题的分类进行置信度评估
-4. 识别面试轮次信息（如果文本中包含）${roundContext}
+    const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有分析結果必須使用繁體中文（除英文專項的原始問題外）。
 
-面试回忆文本：
+你是一個面試題目提取和弱點分析專家。請從以下香港升中面試回憶文本中：
+1. 提取所有的面試問題
+2. 分析學生的表現弱點
+3. 對每個問題的分類進行置信度評估
+4. 識別面試輪次信息（如果文本中包含）${roundContext}
+
+面試回憶文本：
 """
 ${text.trim()}
 """
 
-专项类别定义（七大类别）：
-- english-oral: 英文口语（自我介绍、日常对话、看图说话、即兴演讲）
-- chinese-oral: 中文表达（朗读、时事讨论、阅读理解、观点阐述）
-- logic-thinking: 逻辑思维（数学应用题、推理题、解难题、脑筋急转弯）
-- current-affairs: 时事常识（新闻热点、社会议题、香港本地事务、国际事件）
-- science-knowledge: 科学常识（科学原理、生活中的科学、环境保护、科技发展、STEM相关话题）
-- personal-growth: 个人成长（兴趣爱好、学习经历、志向抱负、自我认知）
-- group-discussion: 小组讨论（合作技巧、表达观点、倾听回应、领导协调）
+專項類別定義（七大類別）：
+- english-oral: 英文口語（自我介紹、日常對話、看圖說話、即興演講）
+- chinese-oral: 中文表達（朗讀、時事討論、閱讀理解、觀點闡述）
+- logic-thinking: 邏輯思維（數學應用題、推理題、解難題、腦筋急轉彎）
+- current-affairs: 時事常識（新聞熱點、社會議題、香港本地事務、國際事件）
+- science-knowledge: 科學常識（科學原理、生活中的科學、環境保護、科技發展、STEM相關話題）
+- personal-growth: 個人成長（興趣愛好、學習經歷、志向抱負、自我認知）
+- group-discussion: 小組討論（合作技巧、表達觀點、傾聽回應、領導協調）
 
-分类示例（正确分类）：
+分類示例（正確分類）：
 - "Tell me about your favorite book." → english-oral (置信度: 0.95)
-- "你觉得什么是领导力？" → chinese-oral (置信度: 0.90)
-- "如果1+1=2，那么2+2等于多少？" → logic-thinking (置信度: 0.98)
-- "你对香港最近的新闻有什么看法？" → current-affairs (置信度: 0.85)
-- "为什么天空是蓝色的？" → science-knowledge (置信度: 0.92)
-- "你平时有什么兴趣爱好？" → personal-growth (置信度: 0.88)
-- "在小组讨论中，你如何表达不同意见？" → group-discussion (置信度: 0.90)
+- "你覺得什麼是領導力？" → chinese-oral (置信度: 0.90)
+- "如果1+1=2，那麼2+2等於多少？" → logic-thinking (置信度: 0.98)
+- "你對香港最近的新聞有什麼看法？" → current-affairs (置信度: 0.85)
+- "為什麼天空是藍色的？" → science-knowledge (置信度: 0.92)
+- "你平時有什麼興趣愛好？" → personal-growth (置信度: 0.88)
+- "在小組討論中，你如何表達不同意見？" → group-discussion (置信度: 0.90)
 
-常见误分类模式（避免）：
-- 不要将英文问题误分类为 chinese-oral
-- 不要将逻辑题误分类为 science-knowledge
-- 不要将个人成长问题误分类为 group-discussion
-- 注意区分 current-affairs 和 chinese-oral（时事讨论类）
+常見誤分類模式（避免）：
+- 不要將英文問題誤分類為 chinese-oral
+- 不要將邏輯題誤分類為 science-knowledge
+- 不要將個人成長問題誤分類為 group-discussion
+- 注意區分 current-affairs 和 chinese-oral（時事討論類）
 
-请按照以下JSON格式返回分析结果：
+請按照以下JSON格式返回分析結果：
 {
   "questions": [
     {
-      "question_text": "面试官问的问题",
-      "category": "专项类别（必须从七大类别中选择一个）",
+      "question_text": "面試官問的問題（英文專項保持英文，其他使用繁體中文）",
+      "category": "專項類別（必須從七大類別中選擇一個）",
       "classification_confidence": 0.85,
-      "difficulty": "难度（easy/medium/hard）",
-      "reference_answer": "建议答案要点",
-      "tags": ["标签1", "标签2"],
-      "notes": "从文本中提取的原始回答或备注"
+      "difficulty": "難度（easy/medium/hard）",
+      "reference_answer": "建議答案要點（必須使用繁體中文，英文專項除外）",
+      "tags": ["標籤1", "標籤2"],
+      "notes": "從文本中提取的原始回答或備註（必須使用繁體中文，英文專項除外）"
     }
   ],
   "weaknesses": [
     {
-      "category": "专项类别",
-      "weakness_type": "弱点类型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）",
-      "description": "弱点描述（具体说明问题所在）",
-      "example_text": "体现弱点的原文片段",
-      "severity": "严重程度（low/medium/high）",
-      "improvement_suggestions": "具体的改进建议",
-      "related_topics": ["相关话题1", "相关话题2"]
+      "category": "專項類別",
+      "weakness_type": "弱點類型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）",
+      "description": "弱點描述（具體說明問題所在，必須使用繁體中文）",
+      "example_text": "體現弱點的原文片段",
+      "severity": "嚴重程度（low/medium/high）",
+      "improvement_suggestions": "具體的改進建議（必須使用繁體中文）",
+      "related_topics": ["相關話題1", "相關話題2"]
     }
   ],
-  "summary": "对这次面试的整体分析和特点总结",
-  "interview_round": "面试轮次（如：first-round, second-round, final-round，如果无法识别则返回null）"
+  "summary": "對這次面試的整體分析和特點總結（必須使用繁體中文）",
+  "interview_round": "面試輪次（如：first-round, second-round, final-round，如果無法識別則返回null）"
 }
 
 注意：
-1. 问题提取：只提取明确的问题，不要臆造
-2. 分类要求：
-   - 必须从七大类别中选择一个最合适的类别
-   - 每个分类必须提供置信度分数（0-1之间的小数）
-   - 置信度低于0.7的分类应标记为"待确认"
-   - 如果问题涉及多个类别，选择最主要的类别
-3. 弱点分析：基于学生的实际回答进行分析
-4. 弱点类型说明：
-   - vocabulary: 词汇量不足
-   - grammar: 语法错误
-   - logic: 逻辑不清晰
-   - knowledge_gap: 知识盲区
-   - confidence: 信心不足、表达犹豫
-   - expression: 表达能力弱
-5. 严重程度评估要客观合理
-6. 改进建议要具体可操作`;
+1. 問題提取：只提取明確的問題，不要臆造
+2. 分類要求：
+   - 必須從七大類別中選擇一個最合適的類別
+   - 每個分類必須提供置信度分數（0-1之間的小數）
+   - 置信度低於0.7的分類應標記為"待確認"
+   - 如果問題涉及多個類別，選擇最主要的類別
+3. 弱點分析：基於學生的實際回答進行分析
+4. 弱點類型說明：
+   - vocabulary: 詞彙量不足
+   - grammar: 語法錯誤
+   - logic: 邏輯不清晰
+   - knowledge_gap: 知識盲區
+   - confidence: 信心不足、表達猶豫
+   - expression: 表達能力弱
+5. 嚴重程度評估要客觀合理
+6. 改進建議要具體可操作
+7. 所有中文內容必須使用繁體中文（除英文專項的原始問題外）`;
 
     const response = await deepseekClient.chat([
       { role: 'user', content: prompt }
@@ -788,28 +791,31 @@ router.post('/generate-questions-from-weaknesses', async (req: Request, res: Res
 
     const { deepseekClient } = await import('../ai/deepseek.js');
     
-    const prompt = `你是一个香港升中面试题目生成专家。请根据以下学生的弱点，生成 ${count} 道针对性的练习题目。
+    const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有題目內容必須使用繁體中文（除英文專項外）。
 
-学生弱点分析：
+你是一個香港升中面試題目生成專家。請根據以下學生的弱點，生成 ${count} 道針對性的練習題目。
+
+學生弱點分析：
 ${weaknessDescriptions}
 
 要求：
-1. 题目要针对上述弱点进行强化训练
-2. 难度要适中，既能挑战学生又不会过难
-3. 题目要实用，贴近真实面试场景
-4. 每道题目要有清晰的训练目标
+1. 題目要針對上述弱點進行強化訓練
+2. 難度要適中，既能挑戰學生又不會過難
+3. 題目要實用，貼近真實面試場景
+4. 每道題目要有清晰的訓練目標
+5. 所有內容必須使用繁體中文（除英文專項外）
 
-请按照以下JSON格式返回：
+請按照以下JSON格式返回：
 {
   "questions": [
     {
-      "question_text": "题目内容",
-      "category": "专项类别",
+      "question_text": "題目內容（必須使用繁體中文，英文專項除外）",
+      "category": "專項類別",
       "difficulty": "medium",
-      "reference_answer": "参考答案要点",
-      "tags": ["标签1", "标签2"],
-      "target_weakness": "针对的弱点类型",
-      "training_focus": "训练重点说明"
+      "reference_answer": "參考答案要點（必須使用繁體中文，英文專項除外）",
+      "tags": ["標籤1", "標籤2"],
+      "target_weakness": "針對的弱點類型",
+      "training_focus": "訓練重點說明（必須使用繁體中文）"
     }
   ]
 }`;

@@ -2,53 +2,53 @@
 
 ## Purpose
 
-这是一个针对香港小学生升读顶尖中学的面试训练系统。目标学校包括SPCC（圣保罗男女中学）、QC（皇仁书院）、LSC（喇沙书院）等TOP学校。
+這是一個針對香港小學生升讀頂尖中學的面試訓練系統。目標學校包括SPCC（聖保羅男女中學）、QC（皇仁書院）、LSC（喇沙書院）等TOP學校。
 
-系统的核心目标：
-1. 提供系统化的面试训练，覆盖七大专项：英文口语、中文表达、逻辑思维、时事常识、科学常识、个人成长、小组讨论
-2. 使用AI（DeepSeek API）自动生成训练计划、题目和反馈
-3. 追踪学习进度，识别弱点并自适应调整训练计划
-4. 根据目标学校特点提供针对性建议
+系統的核心目標：
+1. 提供系統化的面試訓練，覆蓋七大專項：英文口語、中文表達、邏輯思維、時事常識、科學常識、個人成長、小組討論
+2. 使用AI（DeepSeek API）自動生成訓練計劃、題目和反饋
+3. 追蹤學習進度，識別弱點並自適應調整訓練計劃
+4. 根據目標學校特點提供針對性建議
 
 ## Tech Stack
 
 **前端**：
 - 框架：React 18+ with TypeScript
-- UI组件：Ant Design
-- 状态管理：React Context + Zustand
+- UI組件：Ant Design
+- 狀態管理：React Context + Zustand
 - 路由：React Router
-- 图表：ECharts
-- 样式：CSS Modules + Ant Design样式系统
-- 构建工具：Vite
+- 圖表：ECharts
+- 樣式：CSS Modules + Ant Design樣式系統
+- 構建工具：Vite
 
-**后端**：
-- 运行时：Node.js 18+
+**後端**：
+- 運行時：Node.js 18+
 - 框架：Express with TypeScript
-- API风格：RESTful API
-- 数据库访问：原生MySQL2驱动（不使用ORM）
+- API風格：RESTful API
+- 數據庫訪問：原生MySQL2驅動（不使用ORM）
 
-**数据库**：
-- MySQL 8.0+（关系型数据库）
-- 使用原生SQL查询，通过封装的数据库访问层（`src/db/index.ts`）统一管理
+**數據庫**：
+- MySQL 8.0+（關係型數據庫）
+- 使用原生SQL查詢，通過封裝的數據庫訪問層（`src/db/index.ts`）統一管理
 
 **AI集成**：
-- DeepSeek API (HTTP客户端)
+- DeepSeek API (HTTP客戶端)
 - 支持OpenAI兼容API的其他模型
 
-**开发工具**：
+**開發工具**：
 - 包管理：npm
-- 代码规范：ESLint + Prettier
-- 类型检查：TypeScript
+- 代碼規範：ESLint + Prettier
+- 類型檢查：TypeScript
 
 ## Project Conventions
 
 ### Code Style
-- 前端：遵循Airbnb Style Guide (React) 或 Vue官方风格指南
-- 后端：遵循所选语言的标准风格指南（PEP 8 for Python, StandardJS for Node.js）
-- 使用清晰的变量和函数命名（英文，但可以包含拼音如 `spccProfile`）
-- 优先简洁明了的实现，避免过度工程化
-- 注释使用中文，便于维护
-- 组件化开发，单一职责原则
+- 前端：遵循Airbnb Style Guide (React) 或 Vue官方風格指南
+- 後端：遵循所選語言的標準風格指南（PEP 8 for Python, StandardJS for Node.js）
+- 使用清晰的變量函數命名（英文，但可以包含拼音如 `spccProfile`）
+- 優先簡潔明瞭的實現，避免過度工程化
+- 註釋使用繁體中文，便於維護
+- 組件化開發，單一職責原則
 
 ### Architecture Patterns
 - **本地Web应用**：浏览器访问localhost，本地服务器处理请求
@@ -96,6 +96,12 @@
 5. **科学常识** (`science-knowledge`)：科学原理、生活中的科学、环境保护、科技发展、STEM相关话题（尤其SPCC重视）
 6. **个人成长** (`personal-growth`)：兴趣爱好、学习经历、志向抱负、自我认知
 7. **小组讨论** (`group-discussion`)：合作技巧、表达观点、倾听回应、领导协调
+
+### 四个学科能力类别
+8. **中文阅读理解** (`chinese-reading`)：通过阅读文章，考察阅读理解、字词理解、观点提炼等能力
+9. **英文阅读理解** (`english-reading`)：通过阅读英文文章，考察阅读理解、词汇、观点分析等能力
+10. **数学基础** (`mathematics`)：考察计算能力、数学概念理解、基础数学知识应用
+11. **科学实践** (`science-practice`)：考察科学现象说明、科学推理、科学行为等能力
 
 ### 用户画像
 - **主要用户**：小学五六年级学生（10-12岁）
@@ -146,6 +152,62 @@
    - 学校列表等下拉选项必须从数据库实时获取
    - 所有数据库操作通过封装的 `src/db/index.ts` 函数
 9. **文档和测试要求**：所有代码变更必须更新相关文档，并通过测试验证确保功能正常
+10. **AI调用超时规范**：
+    - **⚠️ 重要：所有AI相关接口必须设置无超时限制**
+    - **后端规范**：
+      - DeepSeek客户端（`backend/src/ai/deepseek.ts`）中的axios实例必须设置 `timeout: 0`
+      - 所有AI服务路由（`backend/src/routes/ai.ts`）不应设置请求超时
+    - **前端规范**：
+      - 所有AI相关API调用必须显式设置 `{ timeout: 0 }`
+      - 包括但不限于以下接口：
+        - `api.ai.*` - 所有AI服务接口（生成题目、生成计划、生成学校档案、提取面试回忆、保存弱点、生成学习素材等）
+        - `api.feedback.generate` - 生成反馈
+        - `api.feedback.batchGenerate` - 批量生成反馈
+        - `api.plans.create` - 创建训练计划（会调用AI生成）
+        - `api.plans.createFromWeakness` - 从弱点创建计划
+        - `api.sessions.createSchoolRoundMock` - 创建学校轮次模拟面试
+        - `api.weaknesses.generateQuestions` - 从弱点生成题目
+      - **正确示例**：
+        ```typescript
+        // ✅ 正确：AI接口不设置超时
+        api.ai.generateQuestions(data, { timeout: 0 })
+        ```
+      - **错误示例**：
+        ```typescript
+        // ❌ 错误：不要使用默认超时
+        api.ai.generateQuestions(data) // 会使用默认的10秒超时
+        ```
+    - **原因**：AI处理可能需要较长时间（生成题目、反馈、计划等），不应因超时而中断，确保AI能够完整处理请求
+11. **前端AI交互组件规范**：
+    - **⚠️ 重要：所有AI调用页面必须使用通用悬浮框组件**
+    - **组件位置**：`frontend/src/components/AiThinkingDisplay/`
+    - **状态管理**：使用 `frontend/src/store/useAiThinkingStore.ts` 管理AI思考状态
+    - **Hook使用**：使用 `frontend/src/hooks/useAiThinking.ts` 简化AI调用时的思考展示管理
+    - **适用范围**：所有涉及AI调用的页面必须集成 `AiThinkingDisplay` 组件，包括但不限于：
+      - 题库管理页面（生成题目）
+      - 训练计划页面（生成计划）
+      - 练习页面（生成反馈）
+      - 学校档案页面（生成学校档案）
+      - 面试回忆页面（提取面试回忆）
+      - 弱点分析页面（生成题目和学习素材）
+      - Dashboard页面（生成题目）
+    - **原因**：保持用戶體驗一致性，避免各自實現不同的loading提示，統一展示AI思考過程，讓用戶了解AI正在處理什麼任務
+12. **繁體中文規範**：
+    - **⚠️ 重要：所有中文內容必須使用繁體中文，禁止使用簡體中文**
+    - **強制要求**：
+      - 所有代碼註釋和文檔字符串必須使用繁體中文
+      - 所有項目文檔（README、設計文檔、API文檔等）必須使用繁體中文
+      - 所有用戶界面文字（按鈕、標籤、提示信息等）必須使用繁體中文
+      - 所有錯誤消息和日誌輸出必須使用繁體中文
+      - 所有AI生成的內容必須使用繁體中文（除英文專項外）
+      - 所有數據庫註釋和種子數據中的中文內容必須使用繁體中文
+      - 所有代碼中的字符串字面量（如提示信息、錯誤消息）必須使用繁體中文
+    - **原因**：項目目標用戶是香港小學生，使用繁體中文符合本地使用習慣，體現項目的專業性和對本地文化的尊重
+    - **例外情況**：
+      - 英文專項（english-oral, english-reading）的AI生成內容必須使用英文
+      - 代碼變量名、函數名、類名等技術標識符使用英文
+      - API接口路徑和參數名使用英文
+      - 英文專項的題目和參考答案保持英文
 
 ## External Dependencies
 
@@ -182,7 +244,9 @@ interview-training-system/
 │   │   │   ├── Settings/        # 系统设置
 │   │   │   ├── DataManagement/   # 数据管理
 │   │   │   └── InterviewMemory/ # 面试回忆
-│   │   ├── components/     # 通用组件（Layout等）
+│   │   ├── components/     # 通用组件
+│   │   │   ├── Layout/            # 布局组件
+│   │   │   └── AiThinkingDisplay/ # AI思考展示悬浮框组件
 │   │   ├── store/          # 状态管理（useAppStore, useSessionStore）
 │   │   ├── utils/          # 工具函数（api.ts等）
 │   │   ├── App.tsx         # 主应用组件

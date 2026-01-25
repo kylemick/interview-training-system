@@ -33,16 +33,29 @@ import { useAiThinking } from '../../hooks/useAiThinking'
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
 
-// 专项类别
+// 七大专项类别
 const CATEGORIES = [
   { value: 'english-oral', label: '英文口语' },
-  { value: 'chinese-expression', label: '中文表达' },
-  { value: 'logical-thinking', label: '逻辑思维' },
+  { value: 'chinese-oral', label: '中文表达' },
+  { value: 'chinese-expression', label: '中文表达', deprecated: true }, // 兼容旧值
+  { value: 'logic-thinking', label: '逻辑思维' },
+  { value: 'logical-thinking', label: '逻辑思维', deprecated: true }, // 兼容旧值
   { value: 'current-affairs', label: '时事常识' },
   { value: 'science-knowledge', label: '科学常识' },
   { value: 'personal-growth', label: '个人成长' },
   { value: 'group-discussion', label: '小组讨论' },
-]
+];
+
+// 四个学科能力类别
+const SUBJECT_CATEGORIES = [
+  { value: 'chinese-reading', label: '中文阅读理解' },
+  { value: 'english-reading', label: '英文阅读理解' },
+  { value: 'mathematics', label: '数学基础' },
+  { value: 'science-practice', label: '科学实践' },
+];
+
+// 所有类别（七大专项 + 四个学科能力）
+const ALL_CATEGORIES = [...CATEGORIES.filter(c => !c.deprecated), ...SUBJECT_CATEGORIES];
 
 interface Question {
   id: string
@@ -973,13 +986,13 @@ export default function Practice() {
               content: (
                 <div>
                   <p style={{ marginBottom: 8 }}>
-                    <strong>{CATEGORIES.find(c => c.value === category)?.label}</strong> 练习已完成!
+                    <strong>{ALL_CATEGORIES.find(c => c.value === category)?.label || CATEGORIES.find(c => c.value === category)?.label}</strong> 练习已完成!
                   </p>
                   <p>还有 {pendingTasks.length} 个任务待完成,是否继续?</p>
                   <ul style={{ marginTop: 8 }}>
                     {pendingTasks.slice(0, 3).map((task: any) => (
                       <li key={task.id}>
-                        {CATEGORIES.find(c => c.value === task.category)?.label} ({task.duration}分钟)
+                        {ALL_CATEGORIES.find(c => c.value === task.category)?.label || CATEGORIES.find(c => c.value === task.category)?.label} ({task.duration}分钟)
                       </li>
                     ))}
                   </ul>
@@ -1237,7 +1250,7 @@ export default function Practice() {
                   placeholder="请选择专项类别"
                   value={category}
                   onChange={setCategory}
-                  options={CATEGORIES}
+                  options={ALL_CATEGORIES}
                 />
               </div>
             )}
@@ -1335,7 +1348,7 @@ export default function Practice() {
               </Text>
               <Divider type="vertical" />
               <Text>
-                {CATEGORIES.find((c) => c.value === taskInfo.category)?.label}
+                {ALL_CATEGORIES.find((c) => c.value === taskInfo.category)?.label || CATEGORIES.find((c) => c.value === taskInfo.category)?.label}
               </Text>
               <Divider type="vertical" />
               <Text>{taskInfo.duration}分钟</Text>
@@ -1359,7 +1372,7 @@ export default function Practice() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Space>
               <Tag color="blue">
-                {CATEGORIES.find((c) => c.value === category)?.label}
+                {ALL_CATEGORIES.find((c) => c.value === category)?.label || CATEGORIES.find((c) => c.value === category)?.label}
               </Tag>
               <Text strong>
                 第 {currentIndex + 1} / {questions.length} 题

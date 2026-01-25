@@ -247,7 +247,24 @@ Body: {
 
 ## 数据类型
 
-### Category (专项类别)
+### Category (专项类别和学科能力类别)
+
+系统支持以下类别：
+
+**七大专项类别：**
+- `english-oral` - 英文口语
+- `chinese-oral` - 中文表达
+- `logic-thinking` - 逻辑思维
+- `current-affairs` - 时事常识
+- `science-knowledge` - 科学常识
+- `personal-growth` - 个人成长
+- `group-discussion` - 小组讨论
+
+**四个学科能力类别：**
+- `chinese-reading` - 中文阅读理解
+- `english-reading` - 英文阅读理解
+- `mathematics` - 数学基础
+- `science-practice` - 科学实践
 - `english-oral` - 英文口语
 - `chinese-oral` - 中文表达
 - `logic-thinking` - 逻辑思维
