@@ -73,12 +73,30 @@ const TrainingPlan = () => {
   const [selectedPlan, setSelectedPlan] = useState<TrainingPlan | null>(null);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([]);
+  const [loadingSchools, setLoadingSchools] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
     fetchPlans();
     loadSettings();
+    loadSchools();
   }, []);
+
+  // 加载学校列表
+  const loadSchools = async () => {
+    try {
+      setLoadingSchools(true);
+      const response = await api.schools.list();
+      if (response.success && response.data) {
+        setSchools(response.data);
+      }
+    } catch (error) {
+      console.error('加载学校列表失败:', error);
+    } finally {
+      setLoadingSchools(false);
+    }
+  };
 
   // 加载设置信息
   const loadSettings = async () => {
@@ -117,25 +135,51 @@ const TrainingPlan = () => {
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
-      setLoading(true);
+      
+      // 验证必填字段
+      if (!values.dateRange || !Array.isArray(values.dateRange) || values.dateRange.length !== 2) {
+        message.error('请选择训练周期');
+        return;
+      }
 
       const [startDate, endDate] = values.dateRange;
+      
+      // 验证目标学校
+      const targetSchool = values.target_school || settings?.target_school;
+      if (!targetSchool) {
+        message.error('请选择目标学校');
+        return;
+      }
+
+      // 验证学生姓名
+      const studentName = values.student_name || settings?.student_name;
+      if (!studentName) {
+        message.error('请输入学生姓名');
+        return;
+      }
+
+      setLoading(true);
 
       // 使用设置中的学生信息(如果表单中没有)
       const response = await api.plans.create({
-        student_name: values.student_name || settings?.student_name,
-        target_school: values.target_school || settings?.target_school,
+        student_name: studentName,
+        target_school: targetSchool,
         start_date: startDate.format('YYYY-MM-DD'),
         end_date: endDate.format('YYYY-MM-DD'),
         daily_duration: values.daily_duration || settings?.daily_duration || 30,
       });
 
-      message.success(response.data.message);
+      message.success(response.message || '训练计划创建成功');
       setModalOpen(false);
       form.resetFields();
       fetchPlans();
     } catch (error: any) {
-      message.error(error.response?.data?.error?.message || '创建训练计划失败');
+      console.error('创建训练计划失败:', error);
+      const errorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message 
+        || error.message 
+        || '创建训练计划失败';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -486,17 +530,19 @@ const TrainingPlan = () => {
             name="target_school" 
             label="目标学校" 
             rules={[{ required: true, message: '请选择目标学校' }]}
-            tooltip={settings?.target_school ? '此信息来自设置页面,如需修改请前往设置页面' : undefined}
+            tooltip={settings?.target_school ? '已自动填充设置中的目标学校，可以修改' : undefined}
           >
             <Select 
               placeholder={settings?.target_school ? `当前: ${settings.target_school}` : "选择目标学校"}
-              disabled={!!settings?.target_school}
+              loading={loadingSchools}
+              showSearch
+              optionFilterProp="children"
             >
-              <Option value="SPCC">圣保罗男女中学 (SPCC)</Option>
-              <Option value="QC">皇仁书院 (QC)</Option>
-              <Option value="LSC">喇沙书院 (LSC)</Option>
-              <Option value="DBS">拔萃男书院 (DBS)</Option>
-              <Option value="DGS">拔萃女书院 (DGS)</Option>
+              {schools.map((school) => (
+                <Option key={school.code} value={school.code}>
+                  {school.name_zh} ({school.code})
+                </Option>
+              ))}
             </Select>
           </Form.Item>
 

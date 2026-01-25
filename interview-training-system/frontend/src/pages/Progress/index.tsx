@@ -100,10 +100,27 @@ export default function Progress() {
       const totalSessions = filteredSessions.length
       let totalQuestions = 0
       let totalDuration = 0
-      const categoryStats: Record<string, { count: number; avgScore: number }> = {}
+      const categoryStats: Record<string, { count: number; avgScore: number; scores: number[] }> = {}
       const dateStats: Record<string, number> = {}
+      const allScores: number[] = []
 
-      for (const session of filteredSessions) {
+      // 获取所有会话的详情以计算平均分
+      const sessionDetailsPromises = filteredSessions.map(async (session: any) => {
+        try {
+          const detailRes = await api.sessions.get(session.id)
+          return detailRes.success ? detailRes.data : null
+        } catch (error) {
+          console.error(`获取会话 ${session.id} 详情失败:`, error)
+          return null
+        }
+      })
+
+      const sessionDetails = await Promise.all(sessionDetailsPromises)
+
+      for (let i = 0; i < filteredSessions.length; i++) {
+        const session = filteredSessions[i]
+        const sessionDetail = sessionDetails[i]
+
         totalQuestions += session.question_count || 0
 
         // 计算时长
@@ -116,21 +133,60 @@ export default function Progress() {
 
         // 按类别统计
         if (!categoryStats[session.category]) {
-          categoryStats[session.category] = { count: 0, avgScore: 0 }
+          categoryStats[session.category] = { count: 0, avgScore: 0, scores: [] }
         }
         categoryStats[session.category].count++
+
+        // 从反馈中提取分数
+        if (sessionDetail?.qa_records) {
+          for (const record of sessionDetail.qa_records) {
+            if (record.ai_feedback) {
+              let feedback = record.ai_feedback
+              if (typeof feedback === 'string') {
+                try {
+                  feedback = JSON.parse(feedback)
+                } catch {
+                  continue
+                }
+              }
+
+              // 优先使用score，其次使用overall_score
+              const score = feedback.score ?? feedback.overall_score
+              if (typeof score === 'number' && score >= 0 && score <= 10) {
+                allScores.push(score)
+                categoryStats[session.category].scores.push(score)
+              }
+            }
+          }
+        }
 
         // 按日期统计
         const dateKey = new Date(session.start_time).toISOString().split('T')[0]
         dateStats[dateKey] = (dateStats[dateKey] || 0) + 1
       }
 
+      // 计算平均分
+      const averageScore = allScores.length > 0
+        ? Math.round((allScores.reduce((sum, s) => sum + s, 0) / allScores.length) * 10) / 10
+        : 0
+
+      // 计算各类别的平均分
+      const formattedCategoryStats: Record<string, { count: number; avgScore: number }> = {}
+      for (const [category, stats] of Object.entries(categoryStats)) {
+        formattedCategoryStats[category] = {
+          count: stats.count,
+          avgScore: stats.scores.length > 0
+            ? Math.round((stats.scores.reduce((sum, s) => sum + s, 0) / stats.scores.length) * 10) / 10
+            : 0,
+        }
+      }
+
       setStats({
         totalSessions,
         totalQuestions,
         totalDuration,
-        averageScore: 0, // TODO: 从反馈中计算
-        categoryStats,
+        averageScore,
+        categoryStats: formattedCategoryStats,
         dateStats,
       })
 
@@ -366,8 +422,12 @@ export default function Progress() {
                       <Text strong>{CATEGORY_MAP[cat]}</Text>
                       <div>
                         <Tag color="blue">{stats.categoryStats[cat]?.count || 0}次</Tag>
+                        {stats.categoryStats[cat]?.avgScore > 0 && (
+                          <Tag color="green" style={{ marginLeft: 8 }}>
+                            均分: {stats.categoryStats[cat].avgScore.toFixed(1)}
+                          </Tag>
+                        )}
                       </div>
-                      {/* TODO: 显示平均分 */}
                     </Space>
                   </Card>
                 </Col>

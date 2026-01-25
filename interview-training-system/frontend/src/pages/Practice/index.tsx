@@ -94,6 +94,7 @@ export default function Practice() {
   const [feedbacks, setFeedbacks] = useState<Record<number, AIFeedback>>({})
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [targetSchool, setTargetSchool] = useState<string>('SPCC') // 默认值，从设置中加载
 
   // 继续现有会话（加载已提交的答案和反馈）
   const continueExistingSession = async (sessionId: string) => {
@@ -386,6 +387,22 @@ export default function Practice() {
   }
 
   // 任务模式: 自动加载任务并开始练习
+  // 加载用户设置
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await api.settings.get()
+        if (response.success && response.data?.target_school) {
+          setTargetSchool(response.data.target_school)
+        }
+      } catch (error) {
+        console.error('加载设置失败:', error)
+        // 使用默认值，不显示错误提示
+      }
+    }
+    loadSettings()
+  }, [])
+
   useEffect(() => {
     if (taskId && practiceMode === 'task') {
       startTaskPractice(taskId)
@@ -473,7 +490,7 @@ export default function Practice() {
           question_text: currentQuestion.question_text,
           answer_text: answers[currentIndex],
           category,
-          target_school: 'SPCC', // TODO: 从用户设置获取
+          target_school: targetSchool,
         })
 
         const feedback = feedbackRes.data

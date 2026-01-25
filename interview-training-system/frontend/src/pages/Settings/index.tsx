@@ -43,10 +43,27 @@ export default function Settings() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([])
+  const [loadingSchools, setLoadingSchools] = useState(false)
 
   useEffect(() => {
     loadSettings()
+    loadSchools()
   }, [])
+
+  const loadSchools = async () => {
+    try {
+      setLoadingSchools(true)
+      const response = await api.schools.list()
+      if (response.success && response.data) {
+        setSchools(response.data)
+      }
+    } catch (error) {
+      console.error('加载学校列表失败:', error)
+    } finally {
+      setLoadingSchools(false)
+    }
+  }
 
   const loadSettings = async () => {
     try {
@@ -276,12 +293,18 @@ export default function Settings() {
                     label="目标学校"
                     rules={[{ required: true, message: '请选择目标学校' }]}
                   >
-                    <Select placeholder="选择目标学校" size="large">
-                      <Option value="SPCC">圣保罗男女中学 (SPCC)</Option>
-                      <Option value="QC">皇仁书院 (QC)</Option>
-                      <Option value="LSC">喇沙书院 (LSC)</Option>
-                      <Option value="DBS">拔萃男书院 (DBS)</Option>
-                      <Option value="DGS">拔萃女书院 (DGS)</Option>
+                    <Select 
+                      placeholder="选择目标学校" 
+                      size="large"
+                      loading={loadingSchools}
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {schools.map((school) => (
+                        <Option key={school.code} value={school.code}>
+                          {school.name_zh} ({school.code})
+                        </Option>
+                      ))}
                     </Select>
                   </Form.Item>
 

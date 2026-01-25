@@ -42,7 +42,8 @@ export class DeepSeekClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      timeout: 60000, // 60秒超时
+      // AI接口不设置超时，允许长时间处理
+      timeout: 0,
     })
 
     console.log(`🔑 DeepSeek API configured: ${baseURL}`)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   Input,
@@ -40,13 +40,7 @@ const CATEGORIES = [
   { value: 'group-discussion', label: '小组讨论' },
 ]
 
-const SCHOOLS = [
-  { value: 'SPCC', label: '圣保罗男女中学 (SPCC)' },
-  { value: 'QC', label: '皇仁书院 (QC)' },
-  { value: 'LSC', label: '喇沙书院 (LSC)' },
-  { value: 'DBS', label: '拔萃男书院 (DBS)' },
-  { value: 'DGS', label: '拔萃女书院 (DGS)' },
-]
+// SCHOOLS 列表将从API动态加载
 
 interface ExtractedQuestion {
   question_text: string
@@ -86,6 +80,26 @@ export default function InterviewMemory() {
   const [editingQuestion, setEditingQuestion] = useState<ExtractedQuestion | null>(null)
   const [editingIndex, setEditingIndex] = useState<number>(-1)
   const [form] = Form.useForm()
+  const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([])
+  const [loadingSchools, setLoadingSchools] = useState(false)
+
+  // 加载学校列表
+  useEffect(() => {
+    const loadSchools = async () => {
+      try {
+        setLoadingSchools(true)
+        const response = await api.schools.list()
+        if (response.success && response.data) {
+          setSchools(response.data)
+        }
+      } catch (error) {
+        console.error('加载学校列表失败:', error)
+      } finally {
+        setLoadingSchools(false)
+      }
+    }
+    loadSchools()
+  }, [])
 
   // AI 分析文本
   const handleExtract = async () => {
@@ -388,10 +402,13 @@ export default function InterviewMemory() {
                   style={{ width: 200 }}
                   value={schoolCode}
                   onChange={setSchoolCode}
+                  loading={loadingSchools}
+                  showSearch
+                  optionFilterProp="children"
                 >
-                  {SCHOOLS.map((school) => (
-                    <Option key={school.value} value={school.value}>
-                      {school.label}
+                  {schools.map((school) => (
+                    <Option key={school.code} value={school.code}>
+                      {school.name_zh} ({school.code})
                     </Option>
                   ))}
                 </Select>

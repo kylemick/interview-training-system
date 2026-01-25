@@ -78,6 +78,23 @@ export default function Feedback() {
   const [selectedSession, setSelectedSession] = useState<string | null>(sessionIdFromUrl)
   const [sessionDetail, setSessionDetail] = useState<SessionDetail | null>(null)
   const [generatingFeedback, setGeneratingFeedback] = useState(false)
+  const [targetSchool, setTargetSchool] = useState<string>('SPCC') // 默认值，从设置中加载
+
+  // 加载用户设置
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await api.settings.get()
+        if (response.success && response.data?.target_school) {
+          setTargetSchool(response.data.target_school)
+        }
+      } catch (error) {
+        console.error('加载设置失败:', error)
+        // 使用默认值，不显示错误提示
+      }
+    }
+    loadSettings()
+  }, [])
 
   // 加载会话列表
   useEffect(() => {
@@ -207,7 +224,7 @@ export default function Feedback() {
         question_text: questionText,
         answer_text: answerText,
         category: sessionDetail.session.category, // 从会话中获取类别
-        target_school: 'SPCC', // TODO: 从用户设置中获取
+        target_school: targetSchool,
       })
 
       message.success('反馈生成成功')

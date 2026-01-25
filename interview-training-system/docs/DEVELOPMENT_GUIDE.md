@@ -36,6 +36,62 @@
 - **API 响应时间**：< 500ms（简单查询），< 2 秒（复杂查询）
 - **页面刷新**：所有页面刷新后能正常加载数据
 
+### API 超时设置规范
+
+**重要规则：AI 相关接口不设置超时限制**
+
+所有涉及 AI 处理的接口（包括但不限于以下接口）必须设置 `timeout: 0`（无超时限制）：
+
+#### 后端规范
+- **DeepSeek 客户端**：`backend/src/ai/deepseek.ts` 中的 axios 实例必须设置 `timeout: 0`
+- **原因**：AI 处理可能需要较长时间，不应因超时而中断
+
+#### 前端规范
+以下接口必须显式设置 `{ timeout: 0 }`：
+
+1. **AI 服务接口** (`api.ai.*`)
+   - `generateQuestions` - 生成题目
+   - `generatePlan` - 生成计划
+   - `generateSchool` - 生成学校档案
+   - `extractInterviewMemory` - 提取面试回忆
+   - `saveInterviewQuestions` - 保存面试题目
+   - `saveWeaknesses` - 保存弱点
+   - `testConnection` - 测试连接
+
+2. **反馈接口** (`api.feedback.*`)
+   - `generate` - 生成反馈
+   - `batchGenerate` - 批量生成反馈
+
+3. **训练计划接口** (`api.plans.*`)
+   - `create` - 创建训练计划（会调用 AI 生成）
+
+4. **弱点管理接口** (`api.weaknesses.*`)
+   - `generateQuestions` - 从弱点生成题目
+
+#### 实现示例
+
+**前端示例**：
+```typescript
+// ✅ 正确：AI 接口不设置超时
+api.ai.generateQuestions(data, { timeout: 0 })
+
+// ❌ 错误：不要使用默认超时
+api.ai.generateQuestions(data) // 会使用默认的 10 秒超时
+```
+
+**后端示例**：
+```typescript
+// ✅ 正确：DeepSeek 客户端不设置超时
+this.client = axios.create({
+  baseURL,
+  headers: { ... },
+  timeout: 0, // AI 接口不设置超时
+})
+```
+
+#### 非 AI 接口
+非 AI 相关接口保持默认超时设置（前端 10 秒），确保快速响应和错误处理。
+
 ### 性能优化最佳实践
 
 1. **API 请求优化**

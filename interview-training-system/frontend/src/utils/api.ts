@@ -259,7 +259,8 @@ export const api = {
     get: (id: string) => enhancedRequest({ method: 'get', url: `/plans/${id}` }),
     create: (data: any) => {
       clearCache('plans')
-      return apiClient.post('/plans', data).then(res => res.data)
+      // 创建训练计划会调用AI生成，不设置超时
+      return apiClient.post('/plans', data, { timeout: 0 }).then(res => res.data)
     },
     updateStatus: (id: string, status: string) => {
       clearCache('plans')
@@ -300,11 +301,11 @@ export const api = {
 
   // 反馈相关
   feedback: {
-    generate: (data: any) => apiClient.post('/feedback/generate', data).then(res => res.data),
+    generate: (data: any) => apiClient.post('/feedback/generate', data, { timeout: 0 }).then(res => res.data),
     list: (sessionId: string) => 
       enhancedRequest({ method: 'get', url: `/feedback/session/${sessionId}` }),
     batchGenerate: (sessionId: string) => 
-      apiClient.post('/feedback/batch', { session_id: sessionId }).then(res => res.data),
+      apiClient.post('/feedback/batch', { session_id: sessionId }, { timeout: 0 }).then(res => res.data),
     deleteRecord: (recordId: string) => {
       clearCache('feedback')
       return apiClient.delete(`/feedback/record/${recordId}`).then(res => res.data)
@@ -315,33 +316,33 @@ export const api = {
     },
   },
 
-  // AI服务相关
+  // AI服务相关（不设置超时，允许长时间处理）
   ai: {
     generateQuestions: (data: any) => {
       clearCache('questions')
-      return apiClient.post('/ai/generate-questions', data).then(res => res.data)
+      return apiClient.post('/ai/generate-questions', data, { timeout: 0 }).then(res => res.data)
     },
     generatePlan: (data: any) => {
       clearCache('plans')
-      return apiClient.post('/ai/generate-plan', data).then(res => res.data)
+      return apiClient.post('/ai/generate-plan', data, { timeout: 0 }).then(res => res.data)
     },
     generateSchool: (data: any) => {
       clearCache('schools')
-      return apiClient.post('/ai/generate-school', data).then(res => res.data)
+      return apiClient.post('/ai/generate-school', data, { timeout: 0 }).then(res => res.data)
     },
     extractInterviewMemory: (data: any) => {
-      return apiClient.post('/ai/extract-interview-memory', data).then(res => res.data)
+      return apiClient.post('/ai/extract-interview-memory', data, { timeout: 0 }).then(res => res.data)
     },
     saveInterviewQuestions: (data: any) => {
       clearCache('questions')
-      return apiClient.post('/ai/save-interview-questions', data).then(res => res.data)
+      return apiClient.post('/ai/save-interview-questions', data, { timeout: 0 }).then(res => res.data)
     },
     saveWeaknesses: (data: any) => {
       clearCache('weaknesses')
-      return apiClient.post('/ai/save-weaknesses', data).then(res => res.data)
+      return apiClient.post('/ai/save-weaknesses', data, { timeout: 0 }).then(res => res.data)
     },
     testConnection: (data: any) => {
-      return apiClient.post('/ai/test-connection', data).then(res => res.data)
+      return apiClient.post('/ai/test-connection', data, { timeout: 0 }).then(res => res.data)
     },
   },
 
@@ -395,7 +396,7 @@ export const api = {
       enhancedRequest({ method: 'get', url: '/weaknesses/stats/trends', params }),
     generateQuestions: (data: any) => {
       clearCache('questions')
-      return apiClient.post('/ai/generate-questions-from-weaknesses', data).then(res => res.data)
+      return apiClient.post('/ai/generate-questions-from-weaknesses', data, { timeout: 0 }).then(res => res.data)
     },
   },
 
