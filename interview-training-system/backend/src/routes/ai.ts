@@ -6,8 +6,36 @@ import { AppError } from '../middleware/errorHandler.js';
 import { generateSchoolProfile } from '../ai/schoolProfile.js';
 import { generateQuestions } from '../ai/questionGenerator.js';
 import { insert, query } from '../db/index.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
 
 const router = Router();
+
+/**
+ * 从设置文件读取学生信息
+ */
+async function getStudentInfoFromSettings(): Promise<{ student_name: string; target_school?: string }> {
+  try {
+    const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
+    const settings = JSON.parse(data);
+    return {
+      student_name: settings.student_name || '学生',
+      target_school: settings.target_school,
+    };
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // 文件不存在，返回默认值
+      return { student_name: '学生' };
+    }
+    console.error('读取设置失败:', error);
+    return { student_name: '学生' };
+  }
+}
 
 /**
  * AI 生成学校档案
@@ -251,17 +279,22 @@ ${text.trim()}
 /**
  * 保存学生弱点分析
  * POST /api/ai/save-weaknesses
- * Body: { weaknesses: Array<Weakness>, student_name?, source_text? }
+ * Body: { weaknesses: Array<Weakness>, source_text? }
+ * 注意：student_name 统一从设置获取，不再从请求参数获取
  */
 router.post('/save-weaknesses', async (req: Request, res: Response) => {
   try {
-    const { weaknesses, student_name, source_text } = req.body;
+    const { weaknesses, source_text } = req.body;
 
     if (!weaknesses || !Array.isArray(weaknesses) || weaknesses.length === 0) {
       throw new AppError(400, '请提供要保存的弱点分析列表');
     }
 
-    console.log(`💾 保存 ${weaknesses.length} 条弱点分析...`);
+    // 从设置获取学生信息
+    const settings = await getStudentInfoFromSettings();
+    const student_name = settings.student_name;
+
+    console.log(`💾 保存 ${weaknesses.length} 条弱点分析... (学生: ${student_name || '未设置'})`);
     const savedIds: number[] = [];
 
     for (const w of weaknesses) {

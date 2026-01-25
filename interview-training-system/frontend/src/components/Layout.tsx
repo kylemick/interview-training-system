@@ -11,6 +11,7 @@ import {
   BankOutlined,
   DatabaseOutlined,
   ToolOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
 
@@ -29,6 +30,7 @@ export default function Layout({ children }: LayoutProps) {
     { key: '/practice', icon: <EditOutlined />, label: <Link to="/practice">开始练习</Link> },
     { key: '/feedback', icon: <CommentOutlined />, label: <Link to="/feedback">查看反馈</Link> },
     { key: '/progress', icon: <LineChartOutlined />, label: <Link to="/progress">进度报告</Link> },
+    { key: '/weaknesses', icon: <WarningOutlined />, label: <Link to="/weaknesses">弱点管理</Link> },
     { key: '/schools', icon: <BankOutlined />, label: <Link to="/schools">学校档案</Link> },
     { key: '/questions', icon: <DatabaseOutlined />, label: <Link to="/questions">题库管理</Link> },
     { key: '/memory', icon: <FileTextOutlined />, label: <Link to="/memory">面试回忆</Link> },

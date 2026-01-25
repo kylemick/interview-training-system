@@ -9,6 +9,7 @@ import InterviewMemory from './pages/InterviewMemory'
 import Schools from './pages/Schools'
 import Questions from './pages/Questions'
 import DataManagement from './pages/DataManagement'
+import Weaknesses from './pages/Weaknesses'
 import Layout from './components/Layout'
 
 function App() {
@@ -20,6 +21,8 @@ function App() {
         <Route path="/practice" element={<Practice />} />
         <Route path="/feedback" element={<Feedback />} />
         <Route path="/progress" element={<Progress />} />
+        <Route path="/weaknesses" element={<Weaknesses />} />
+        <Route path="/weaknesses/:id" element={<Weaknesses />} />
         <Route path="/schools" element={<Schools />} />
         <Route path="/questions" element={<Questions />} />
         <Route path="/data" element={<DataManagement />} />

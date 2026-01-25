@@ -151,18 +151,17 @@ const TrainingPlan = () => {
         return;
       }
 
-      // 验证学生姓名
-      const studentName = values.student_name || settings?.student_name;
-      if (!studentName) {
-        message.error('请输入学生姓名');
+      // 验证学生姓名（必须从设置获取）
+      if (!settings?.student_name) {
+        message.error('请先在设置页面配置学生姓名');
         return;
       }
 
       setLoading(true);
 
-      // 使用设置中的学生信息(如果表单中没有)
+      // 统一使用设置中的学生信息
       const response = await api.plans.create({
-        student_name: studentName,
+        // 不传递student_name，让后端从设置获取
         target_school: targetSchool,
         start_date: startDate.format('YYYY-MM-DD'),
         end_date: endDate.format('YYYY-MM-DD'),
@@ -366,7 +365,7 @@ const TrainingPlan = () => {
         try {
           await api.plans.skipTask(String(taskId));
           message.success('任务已跳过');
-          loadPlans(); // 重新加载数据
+          fetchPlans(); // 重新加载数据
         } catch (error: any) {
           message.error(error.response?.data?.message || '跳过任务失败');
         }
@@ -515,14 +514,19 @@ const TrainingPlan = () => {
         
         <Form form={form} layout="vertical">
           <Form.Item 
-            name="student_name" 
-            label="学生姓名" 
-            rules={[{ required: true, message: '请输入学生姓名' }]}
-            tooltip={settings?.student_name ? '此信息来自设置页面,如需修改请前往设置页面' : undefined}
+            label="学生姓名"
+            tooltip={settings?.student_name ? '此信息来自设置页面，如需修改请前往设置页面' : '请先在设置页面配置学生姓名'}
           >
             <Input 
-              placeholder={settings?.student_name || "输入学生姓名"} 
-              disabled={!!settings?.student_name}
+              value={settings?.student_name || '未设置'} 
+              disabled
+              suffix={
+                !settings?.student_name && (
+                  <Button type="link" size="small" onClick={() => navigate('/settings')}>
+                    前往设置
+                  </Button>
+                )
+              }
             />
           </Form.Item>
 

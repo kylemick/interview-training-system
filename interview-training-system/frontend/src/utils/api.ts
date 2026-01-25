@@ -279,6 +279,10 @@ export const api = {
       apiClient.patch(`/plans/tasks/${taskId}/complete`).then(res => res.data),
     skipTask: (taskId: string) => 
       apiClient.patch(`/plans/tasks/${taskId}/skip`).then(res => res.data),
+    createFromWeakness: (data: any) => {
+      clearCache('plans')
+      return apiClient.post('/plans/from-weakness', data, { timeout: 0 }).then(res => res.data)
+    },
   },
 
   // 练习会话相关

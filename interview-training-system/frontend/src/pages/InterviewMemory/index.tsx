@@ -192,6 +192,7 @@ export default function InterviewMemory() {
         await api.ai.saveWeaknesses({
           weaknesses: extractedData.weaknesses,
           source_text: inputText,
+          // 不传递student_name，让后端从设置获取
         })
         
         message.success(

@@ -4,16 +4,51 @@
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
 
 const router = Router();
 
 /**
+ * 从设置文件读取学生信息
+ */
+async function getStudentInfoFromSettings(): Promise<{ student_name: string; target_school?: string }> {
+  try {
+    const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
+    const settings = JSON.parse(data);
+    return {
+      student_name: settings.student_name || '学生',
+      target_school: settings.target_school,
+    };
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // 文件不存在，返回默认值
+      return { student_name: '学生' };
+    }
+    console.error('读取设置失败:', error);
+    return { student_name: '学生' };
+  }
+}
+
+/**
  * 获取学生弱点列表
  * GET /api/weaknesses?student_name=&category=&status=&severity=
+ * 注意：如果没有提供student_name，则从设置获取
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { student_name, category, status, severity } = req.query;
+    let { student_name, category, status, severity } = req.query;
+
+    // 如果没有提供student_name，从设置获取
+    if (!student_name) {
+      const settings = await getStudentInfoFromSettings();
+      student_name = settings.student_name;
+    }
 
     let sql = 'SELECT * FROM student_weaknesses WHERE 1=1';
     const params: any[] = [];
@@ -133,10 +168,17 @@ router.delete('/:id', async (req: Request, res: Response) => {
 /**
  * 获取弱点统计
  * GET /api/weaknesses/stats/summary
+ * 注意：如果没有提供student_name，则从设置获取
  */
 router.get('/stats/summary', async (req: Request, res: Response) => {
   try {
-    const { student_name } = req.query;
+    let { student_name } = req.query;
+
+    // 如果没有提供student_name，从设置获取
+    if (!student_name) {
+      const settings = await getStudentInfoFromSettings();
+      student_name = settings.student_name;
+    }
 
     let whereClause = '1=1';
     const params: any[] = [];
@@ -195,10 +237,17 @@ router.get('/stats/summary', async (req: Request, res: Response) => {
 /**
  * 获取弱点趋势分析
  * GET /api/weaknesses/stats/trends?student_name=&days=30
+ * 注意：如果没有提供student_name，则从设置获取
  */
 router.get('/stats/trends', async (req: Request, res: Response) => {
   try {
-    const { student_name, days = 30 } = req.query;
+    let { student_name, days = 30 } = req.query;
+
+    // 如果没有提供student_name，从设置获取
+    if (!student_name) {
+      const settings = await getStudentInfoFromSettings();
+      student_name = settings.student_name;
+    }
 
     let whereClause = '1=1';
     const params: any[] = [];

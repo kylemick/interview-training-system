@@ -12,6 +12,7 @@ import {
   Typography,
   Alert,
   Tabs,
+  Tag,
 } from 'antd'
 import {
   SaveOutlined,
@@ -248,7 +249,7 @@ export default function Settings() {
       
       const imported = response.data
       const summary = Object.entries(imported)
-        .filter(([_, count]) => count > 0)
+        .filter(([_, count]) => (count as number) > 0)
         .map(([key, count]) => `${key}: ${count}`)
         .join(', ')
       
@@ -433,7 +434,7 @@ export default function Settings() {
                     </Button>
                   </Card>
 
-                  <Card type="inner" title="清空数据" danger>
+                  <Card type="inner" title="清空数据" style={{ borderColor: '#ff4d4f' }}>
                     <Alert
                       message="危险操作"
                       description="此操作将删除所有训练记录、会话和进度数据，但保留题库和学校档案。操作不可恢复！"

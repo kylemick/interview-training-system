@@ -21,6 +21,7 @@
 - 弱点统计卡片：总弱点数、按状态分布、按严重程度分布、按类别分布
 - 弱点可视化：趋势图表、类型分布图、改善率分析
 - 快速操作：一键生成针对性题目、查看相关练习记录
+- **基于弱点创建训练计划**：根据单个弱点的类别、类型和严重程度，使用AI生成针对性的训练计划，重点加强相关专项类别，并自动生成提升相关的题目
 
 ### 用户体验增强
 - 在导航菜单中添加"弱点管理"入口（使用WarningOutlined图标）
@@ -34,6 +35,8 @@
 - 前端新增路由：`/weaknesses` 和 `/weaknesses/:id`
 - 复用现有API：`/api/weaknesses` 系列接口（无需新增后端接口）
 - 导航菜单更新：在Layout组件中添加弱点管理菜单项
+- 后端新增API：`POST /api/plans/from-weakness` - 基于弱点创建训练计划
+- AI服务增强：扩展训练计划生成函数，支持基于弱点的针对性计划生成
 
 **非BREAKING**：这是新增功能，不影响现有功能。现有页面的弱点展示功能保持不变。
 
@@ -47,8 +50,11 @@
   - `App.tsx`: 添加 `/weaknesses` 和 `/weaknesses/:id` 路由
   - `components/Layout.tsx`: 添加弱点管理菜单项
   - `pages/Weaknesses/index.tsx`: 新建弱点管理页面（列表+详情）
+  - `utils/api.ts`: 添加 `plans.createFromWeakness()` API方法
 - **后端**:
-  - 无需修改，复用现有 `/api/weaknesses` 接口
+  - `routes/plans.ts`: 新增 `POST /api/plans/from-weakness` 路由
+  - `ai/trainingPlanner.ts`: 新增 `generateTrainingPlanFromWeakness()` 函数
+  - 复用现有 `/api/weaknesses` 接口
 
 ### 实现状态
 - 📋 **待实现**: 所有功能待开发
@@ -60,3 +66,4 @@
 3. **数据驱动**: 统计和可视化帮助用户了解弱点改善趋势，制定针对性训练计划
 4. **操作便捷**: 批量操作和快速筛选提高管理效率
 5. **用户体验**: 统一的界面设计，与系统其他页面保持一致
+6. **针对性训练**: 基于弱点自动生成训练计划，帮助用户系统化地改善具体问题

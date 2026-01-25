@@ -385,7 +385,7 @@ export default function Feedback() {
                           <Text strong>
                             {CATEGORY_MAP[session.category] || session.category}
                           </Text>
-                          {session.task_id ? (
+                          {(session as any).task_id ? (
                             <Tag color="blue">任务练习</Tag>
                           ) : (
                             <Tag color="green">自由练习</Tag>

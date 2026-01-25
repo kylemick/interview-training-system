@@ -4,7 +4,35 @@
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { generateTrainingPlan } from '../ai/trainingPlanner.js';
+import { generateTrainingPlan, generateTrainingPlanFromWeakness } from '../ai/trainingPlanner.js';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
+
+/**
+ * 从设置文件读取学生信息
+ */
+async function getStudentInfoFromSettings(): Promise<{ student_name: string; target_school?: string }> {
+  try {
+    const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
+    const settings = JSON.parse(data);
+    return {
+      student_name: settings.student_name || '学生',
+      target_school: settings.target_school,
+    };
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      // 文件不存在，返回默认值
+      return { student_name: '学生' };
+    }
+    console.error('读取设置失败:', error);
+    return { student_name: '学生' };
+  }
+}
 
 const router = Router();
 
@@ -252,11 +280,22 @@ router.get('/:id', async (req: Request, res: Response) => {
 // 创建训练计划（AI 生成）
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { student_name, target_school, start_date, end_date, daily_duration } = req.body;
+    const { start_date, end_date, daily_duration, target_school: requestTargetSchool } = req.body;
+
+    // 从设置获取学生信息
+    const settings = await getStudentInfoFromSettings();
+    const student_name = settings.student_name;
+    const target_school = requestTargetSchool || settings.target_school;
 
     // 验证必填字段
-    if (!student_name || !target_school || !start_date || !end_date || !daily_duration) {
-      throw new AppError(400, '缺少必填字段');
+    if (!student_name) {
+      throw new AppError(400, '请先在设置页面配置学生姓名');
+    }
+    if (!target_school) {
+      throw new AppError(400, '请先在设置页面配置目标学校，或在创建计划时选择目标学校');
+    }
+    if (!start_date || !end_date || !daily_duration) {
+      throw new AppError(400, '缺少必填字段：start_date, end_date, daily_duration');
     }
 
     // 验证日期
@@ -324,6 +363,118 @@ router.post('/', async (req: Request, res: Response) => {
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error('创建训练计划失败:', error);
+    throw new AppError(500, '创建训练计划失败');
+  }
+});
+
+// 基于弱点创建训练计划
+router.post('/from-weakness', async (req: Request, res: Response) => {
+  try {
+    const { weakness_id, start_date, end_date, daily_duration, target_school: requestTargetSchool } = req.body;
+
+    // 验证必填字段
+    if (!weakness_id || !start_date || !end_date || !daily_duration) {
+      throw new AppError(400, '缺少必填字段：weakness_id, start_date, end_date, daily_duration');
+    }
+
+    // 从设置获取学生信息
+    const settings = await getStudentInfoFromSettings();
+    const student_name = settings.student_name;
+    const target_school = requestTargetSchool || settings.target_school;
+
+    if (!student_name) {
+      throw new AppError(400, '请先在设置页面配置学生姓名');
+    }
+
+    // 验证日期
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new AppError(400, '无效的日期格式');
+    }
+
+    if (endDate <= startDate) {
+      throw new AppError(400, '结束日期必须晚于开始日期');
+    }
+
+    // 计算总天数
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // 获取弱点信息
+    const weakness = await queryOne(
+      'SELECT * FROM student_weaknesses WHERE id = ?',
+      [weakness_id]
+    );
+
+    if (!weakness) {
+      throw new AppError(404, '弱点记录不存在');
+    }
+
+    console.log(`🤖 基于弱点生成训练计划: ${student_name} -> ${target_school || '未指定'}, 弱点ID=${weakness_id}, 类别=${weakness.category} (${totalDays}天)`);
+
+    // 调用 AI 生成针对性训练计划
+    const generatedPlan = await generateTrainingPlanFromWeakness(
+      {
+        weakness_id,
+        start_date,
+        end_date,
+        total_days: totalDays,
+        daily_duration,
+        target_school: target_school || null,
+        student_name: student_name,
+      },
+      weakness
+    );
+
+    // 保存计划
+    const planId = await insert(
+      `INSERT INTO training_plans (student_name, target_school, start_date, end_date, total_days, daily_duration, category_allocation, ai_suggestions, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        student_name,
+        target_school || null,
+        start_date,
+        end_date,
+        totalDays,
+        daily_duration,
+        JSON.stringify(generatedPlan.category_allocation),
+        generatedPlan.ai_suggestions,
+        'active',
+      ]
+    );
+
+    // 保存每日任务
+    for (const task of generatedPlan.daily_tasks) {
+      await insert(
+        `INSERT INTO daily_tasks (plan_id, task_date, category, duration, question_ids, status)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [planId, task.task_date, task.category, task.duration, JSON.stringify(task.question_ids || []), 'pending']
+      );
+    }
+
+    // 为每日任务生成相关题目（针对弱点类别）
+    const weaknessCategoryTasks = generatedPlan.daily_tasks.filter(t => t.category === weakness.category);
+    if (weaknessCategoryTasks.length > 0) {
+      console.log(`📝 为 ${weaknessCategoryTasks.length} 个弱点类别任务生成题目...`);
+      // TODO: 可以在这里调用题目生成API，为任务生成针对性题目
+      // 暂时留空，后续可以增强
+    }
+
+    console.log(`✅ 基于弱点的训练计划已创建: ID=${planId}, 包含 ${generatedPlan.daily_tasks.length} 个每日任务`);
+
+    res.status(201).json({
+      success: true,
+      message: '训练计划创建成功',
+      data: {
+        plan_id: planId,
+        total_tasks: generatedPlan.daily_tasks.length,
+        weakness_category: weakness.category,
+        weakness_category_tasks: weaknessCategoryTasks.length,
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('基于弱点创建训练计划失败:', error);
     throw new AppError(500, '创建训练计划失败');
   }
 });
