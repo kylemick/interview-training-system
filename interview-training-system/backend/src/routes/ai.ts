@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateSchoolProfile } from '../ai/schoolProfile.js';
 import { generateQuestions } from '../ai/questionGenerator.js';
-import { insert } from '../db/index.js';
+import { insert, query } from '../db/index.js';
 
 const router = Router();
 
@@ -123,18 +123,44 @@ router.post('/extract-interview-memory', async (req: Request, res: Response) => 
     const prompt = `你是一个面试题目提取和弱点分析专家。请从以下香港升中面试回忆文本中：
 1. 提取所有的面试问题
 2. 分析学生的表现弱点
+3. 对每个问题的分类进行置信度评估
 
 面试回忆文本：
 """
 ${text.trim()}
 """
 
+专项类别定义（七大类别）：
+- english-oral: 英文口语（自我介绍、日常对话、看图说话、即兴演讲）
+- chinese-oral: 中文表达（朗读、时事讨论、阅读理解、观点阐述）
+- logic-thinking: 逻辑思维（数学应用题、推理题、解难题、脑筋急转弯）
+- current-affairs: 时事常识（新闻热点、社会议题、香港本地事务、国际事件）
+- science-knowledge: 科学常识（科学原理、生活中的科学、环境保护、科技发展、STEM相关话题）
+- personal-growth: 个人成长（兴趣爱好、学习经历、志向抱负、自我认知）
+- group-discussion: 小组讨论（合作技巧、表达观点、倾听回应、领导协调）
+
+分类示例（正确分类）：
+- "Tell me about your favorite book." → english-oral (置信度: 0.95)
+- "你觉得什么是领导力？" → chinese-oral (置信度: 0.90)
+- "如果1+1=2，那么2+2等于多少？" → logic-thinking (置信度: 0.98)
+- "你对香港最近的新闻有什么看法？" → current-affairs (置信度: 0.85)
+- "为什么天空是蓝色的？" → science-knowledge (置信度: 0.92)
+- "你平时有什么兴趣爱好？" → personal-growth (置信度: 0.88)
+- "在小组讨论中，你如何表达不同意见？" → group-discussion (置信度: 0.90)
+
+常见误分类模式（避免）：
+- 不要将英文问题误分类为 chinese-oral
+- 不要将逻辑题误分类为 science-knowledge
+- 不要将个人成长问题误分类为 group-discussion
+- 注意区分 current-affairs 和 chinese-oral（时事讨论类）
+
 请按照以下JSON格式返回分析结果：
 {
   "questions": [
     {
       "question_text": "面试官问的问题",
-      "category": "专项类别（english-oral/chinese-oral/logic-thinking/current-affairs/science-knowledge/personal-growth/group-discussion）",
+      "category": "专项类别（必须从七大类别中选择一个）",
+      "classification_confidence": 0.85,
       "difficulty": "难度（easy/medium/hard）",
       "reference_answer": "建议答案要点",
       "tags": ["标签1", "标签2"],
@@ -157,16 +183,21 @@ ${text.trim()}
 
 注意：
 1. 问题提取：只提取明确的问题，不要臆造
-2. 弱点分析：基于学生的实际回答进行分析
-3. 弱点类型说明：
+2. 分类要求：
+   - 必须从七大类别中选择一个最合适的类别
+   - 每个分类必须提供置信度分数（0-1之间的小数）
+   - 置信度低于0.7的分类应标记为"待确认"
+   - 如果问题涉及多个类别，选择最主要的类别
+3. 弱点分析：基于学生的实际回答进行分析
+4. 弱点类型说明：
    - vocabulary: 词汇量不足
    - grammar: 语法错误
    - logic: 逻辑不清晰
    - knowledge_gap: 知识盲区
    - confidence: 信心不足、表达犹豫
    - expression: 表达能力弱
-4. 严重程度评估要客观合理
-5. 改进建议要具体可操作`;
+5. 严重程度评估要客观合理
+6. 改进建议要具体可操作`;
 
     const response = await deepseekClient.chat([
       { role: 'user', content: prompt }
@@ -195,6 +226,13 @@ ${text.trim()}
         ...(school_code && { school_code }),
       }));
     }
+
+    // 确保每个问题都有分类置信度，如果没有则设置为默认值
+    extractedData.questions = extractedData.questions.map((q: any) => ({
+      ...q,
+      classification_confidence: q.classification_confidence ?? 0.8,
+      classification_source: 'auto',
+    }));
 
     console.log(`✅ 成功提取 ${extractedData.questions.length} 个问题`);
 
@@ -277,21 +315,45 @@ router.post('/save-interview-questions', async (req: Request, res: Response) => 
     console.log(`💾 保存 ${questions.length} 道面试回忆题目...`);
     const savedIds: number[] = [];
 
+    // 检查新字段是否存在（只检查一次）
+    let hasNotes = false;
+    let hasClassificationFields = false;
+    try {
+      const columns = await query(`SHOW COLUMNS FROM questions`);
+      const columnNames = columns.map((col: any) => col.Field);
+      hasNotes = columnNames.includes('notes');
+      hasClassificationFields = columnNames.includes('classification_confidence');
+    } catch (e) {
+      console.warn('无法检查表结构，使用基础字段:', e);
+    }
+
     for (const q of questions) {
-      const id = await insert(
-        `INSERT INTO questions (category, question_text, difficulty, reference_answer, tags, school_code, source, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          q.category,
-          q.question_text,
-          q.difficulty || 'medium',
-          q.reference_answer || '',
-          JSON.stringify(q.tags || []),
-          q.school_code || null,
-          'interview_memory',
-          q.notes || source_text || null,
-        ]
-      );
+      let sql = `INSERT INTO questions (category, question_text, difficulty, reference_answer, tags, school_code, source`;
+      let values: any[] = [
+        q.category,
+        q.question_text,
+        q.difficulty || 'medium',
+        q.reference_answer || '',
+        JSON.stringify(q.tags || []),
+        q.school_code || null,
+        'interview_memory',
+      ];
+
+      if (hasNotes) {
+        sql += `, notes`;
+        values.push(q.notes || source_text || null);
+      }
+
+      if (hasClassificationFields) {
+        sql += `, classification_confidence, classification_source, last_classified_at`;
+        values.push(q.classification_confidence ?? 0.8);
+        values.push(q.classification_source || 'auto');
+        values.push(new Date());
+      }
+
+      sql += `) VALUES (${values.map(() => '?').join(', ')})`;
+
+      const id = await insert(sql, values);
       savedIds.push(id);
     }
 

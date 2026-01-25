@@ -25,12 +25,17 @@ CREATE TABLE IF NOT EXISTS questions (
   school_code VARCHAR(50) COMMENT '关联学校',
   source VARCHAR(100) DEFAULT 'seed' COMMENT '来源: seed, ai_generated, interview_memory',
   notes TEXT COMMENT '备注信息（如原始回答）',
+  classification_confidence DECIMAL(3,2) COMMENT '分类置信度 (0-1)',
+  classification_source VARCHAR(20) DEFAULT 'auto' COMMENT '分类来源: auto, manual',
+  last_classified_at TIMESTAMP NULL COMMENT '最后分类更新时间',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_category (category),
   INDEX idx_difficulty (difficulty),
   INDEX idx_school_code (school_code),
   INDEX idx_source (source),
+  INDEX idx_classification_confidence (classification_confidence),
+  INDEX idx_classification_source (classification_source),
   FOREIGN KEY (school_code) REFERENCES school_profiles(code) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库';
 
@@ -174,3 +179,31 @@ CREATE TABLE IF NOT EXISTS interview_memories (
   INDEX idx_interview_date (interview_date),
   FOREIGN KEY (school_code) REFERENCES school_profiles(code) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试回忆';
+
+-- 题目分类历史表
+CREATE TABLE IF NOT EXISTS question_category_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question_id INT NOT NULL COMMENT '关联题目',
+  old_category VARCHAR(50) NOT NULL COMMENT '旧分类',
+  new_category VARCHAR(50) NOT NULL COMMENT '新分类',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+  updated_by VARCHAR(50) DEFAULT 'system' COMMENT '更新者: system, user',
+  reason TEXT COMMENT '更新原因',
+  INDEX idx_question_id (question_id),
+  INDEX idx_updated_at (updated_at),
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目分类历史';
+
+-- 分类规则表
+CREATE TABLE IF NOT EXISTS category_classification_rules (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  version VARCHAR(20) NOT NULL COMMENT '规则版本号',
+  prompt_template TEXT NOT NULL COMMENT '提示词模板',
+  examples JSON COMMENT '分类示例数据',
+  accuracy DECIMAL(5,2) COMMENT '分类准确率 (0-100)',
+  is_active BOOLEAN DEFAULT FALSE COMMENT '是否激活',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_version (version),
+  INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分类规则';

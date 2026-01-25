@@ -40,7 +40,7 @@ const CATEGORIES = [
   { value: 'group-discussion', label: '小组讨论' },
 ]
 
-// SCHOOLS 列表将从API动态加载
+// 学校列表从API动态加载，存储在 schools 状态中
 
 interface ExtractedQuestion {
   question_text: string
@@ -574,10 +574,10 @@ export default function InterviewMemory() {
           </Form.Item>
 
           <Form.Item name="school_code" label="目标学校">
-            <Select allowClear placeholder="选择学校（可选）">
-              {SCHOOLS.map((school) => (
-                <Option key={school.value} value={school.value}>
-                  {school.label}
+            <Select allowClear placeholder="选择学校（可选）" loading={loadingSchools}>
+              {schools.map((school) => (
+                <Option key={school.code} value={school.code}>
+                  {school.name_zh} ({school.code})
                 </Option>
               ))}
             </Select>
