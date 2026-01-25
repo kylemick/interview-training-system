@@ -13,16 +13,12 @@ import {
   Col,
   Collapse,
   message,
-  Select,
   Modal,
 } from 'antd'
 import {
   CheckCircleOutlined,
-  ClockCircleOutlined,
-  TrophyOutlined,
   BookOutlined,
   ThunderboltOutlined,
-  RightOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api'
@@ -218,7 +214,7 @@ export default function Feedback() {
     
     try {
       setGeneratingFeedback(true)
-      const res = await api.feedback.generate({
+      await api.feedback.generate({
         session_id: selectedSession,
         record_id: recordId,
         question_text: questionText,

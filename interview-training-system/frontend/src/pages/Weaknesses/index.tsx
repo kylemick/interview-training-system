@@ -32,6 +32,7 @@ import {
   CalendarOutlined,
   HomeOutlined,
   EyeOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, cancelAllPendingRequests } from '../../utils/api';
@@ -248,7 +249,6 @@ export default function Weaknesses() {
     selectedRowKeys={selectedRowKeys}
     setSelectedRowKeys={setSelectedRowKeys}
     onRefresh={loadWeaknesses}
-    settings={settings}
   />;
 }
 
@@ -263,7 +263,6 @@ function WeaknessList({
   selectedRowKeys,
   setSelectedRowKeys,
   onRefresh,
-  settings,
 }: {
   weaknesses: Weakness[];
   stats: WeaknessStats | null;
@@ -274,7 +273,6 @@ function WeaknessList({
   selectedRowKeys: React.Key[];
   setSelectedRowKeys: (keys: React.Key[]) => void;
   onRefresh: () => void;
-  settings: { student_name?: string; target_school?: string } | null;
 }) {
   const navigate = useNavigate();
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -698,6 +696,9 @@ function WeaknessDetail({
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planForm] = Form.useForm();
   const [schools, setSchools] = useState<School[]>([]);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [materialType, setMaterialType] = useState<string>('text');
+  const [materials, setMaterials] = useState<any[]>([]);
 
   useEffect(() => {
     const loadSchools = async () => {
@@ -712,7 +713,22 @@ function WeaknessDetail({
       }
     };
     loadSchools();
-  }, []);
+
+    // 加载关联的学习素材
+    const loadMaterials = async () => {
+      if (weakness?.id) {
+        try {
+          const res = await api.learningMaterials.getByWeakness(weakness.id);
+          if (res.success) {
+            setMaterials(res.data || []);
+          }
+        } catch (error) {
+          console.error('加载学习素材失败:', error);
+        }
+      }
+    };
+    loadMaterials();
+  }, [weakness?.id]);
 
   if (loading) {
     return <Spin size="large" style={{ display: 'block', textAlign: 'center', padding: '50px' }} />;
@@ -746,17 +762,30 @@ function WeaknessDetail({
   };
 
   // 生成针对性题目
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const handleGenerateQuestions = async () => {
+    if (generatingQuestions) {
+      message.warning('正在生成题目，请勿重复点击');
+      return;
+    }
     try {
-      message.loading({ content: '正在生成题目...', key: 'generate' });
+      setGeneratingQuestions(true);
+      message.loading({ content: '正在生成题目...', key: 'generate', duration: 0 });
       await api.weaknesses.generateQuestions({
         weakness_ids: [weakness.id],
         count: 5,
       });
-      message.success({ content: '题目生成成功', key: 'generate' });
+      message.success({ content: '题目生成成功', key: 'generate', duration: 2 });
       navigate('/questions');
-    } catch (error) {
-      message.error({ content: '题目生成失败', key: 'generate' });
+    } catch (error: any) {
+      message.error({ 
+        content: error?.response?.data?.message || '题目生成失败', 
+        key: 'generate',
+        duration: 3
+      });
+    } finally {
+      setGeneratingQuestions(false);
+      message.destroy('generate');
     }
   };
 
@@ -786,6 +815,45 @@ function WeaknessDetail({
       }
     } catch (error: any) {
       message.error({ content: error?.response?.data?.message || error?.message || '训练计划创建失败', key: 'createPlan' });
+    }
+  };
+
+  // 生成学习素材
+  const [generatingMaterial, setGeneratingMaterial] = useState(false);
+  const handleGenerateMaterial = async () => {
+    if (generatingMaterial) {
+      message.warning('正在生成学习素材，请勿重复点击');
+      return;
+    }
+    try {
+      setGeneratingMaterial(true);
+      message.loading({ content: '正在生成学习素材...', key: 'generateMaterial', duration: 0 });
+      const res = await api.ai.generateLearningMaterial({
+        weakness_id: weakness.id,
+        material_type: materialType,
+      });
+      message.success({ content: '学习素材生成成功', key: 'generateMaterial', duration: 2 });
+      setMaterialModalOpen(false);
+      
+      // 重新加载素材列表
+      const materialsRes = await api.learningMaterials.getByWeakness(weakness.id);
+      if (materialsRes.success) {
+        setMaterials(materialsRes.data || []);
+      }
+      
+      // 跳转到素材详情
+      if (res.data?.id) {
+        navigate(`/learning-materials/${res.data.id}`);
+      }
+    } catch (error: any) {
+      message.error({ 
+        content: error?.response?.data?.message || error?.message || '学习素材生成失败', 
+        key: 'generateMaterial',
+        duration: 3
+      });
+    } finally {
+      setGeneratingMaterial(false);
+      message.destroy('generateMaterial');
     }
   };
 
@@ -875,13 +943,55 @@ function WeaknessDetail({
         <Divider />
 
         <Space>
-          <Button type="primary" icon={<RobotOutlined />} onClick={handleGenerateQuestions}>
+          <Button 
+            type="primary" 
+            icon={<RobotOutlined />} 
+            onClick={handleGenerateQuestions}
+            loading={generatingQuestions}
+            disabled={generatingQuestions}
+          >
             生成针对性题目
           </Button>
           <Button type="primary" icon={<CalendarOutlined />} onClick={() => setPlanModalOpen(true)}>
             创建训练计划
           </Button>
+          <Button 
+            type="primary" 
+            icon={<BookOutlined />} 
+            onClick={() => setMaterialModalOpen(true)}
+            disabled={generatingMaterial}
+          >
+            生成学习素材
+          </Button>
         </Space>
+
+        {/* 关联的学习素材 */}
+        {materials.length > 0 && (
+          <>
+            <Divider />
+            <Title level={5}>关联的学习素材 ({materials.length})</Title>
+            <Space direction="vertical" style={{ width: '100%' }} size="small">
+              {materials.map((material) => (
+                <Card
+                  key={material.id}
+                  size="small"
+                  hoverable
+                  onClick={() => navigate(`/learning-materials/${material.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Space>
+                    <BookOutlined />
+                    <strong>{material.title}</strong>
+                    <Tag>{material.material_type}</Tag>
+                    <span style={{ color: '#999', fontSize: '12px' }}>
+                      {dayjs(material.created_at).format('YYYY-MM-DD')}
+                    </span>
+                  </Space>
+                </Card>
+              ))}
+            </Space>
+          </>
+        )}
       </Card>
 
       {/* 状态更新对话框 */}
@@ -986,6 +1096,39 @@ function WeaknessDetail({
               </Paragraph>
             )}
           </Card>
+        </Form>
+      </Modal>
+
+      {/* 生成学习素材对话框 */}
+      <Modal
+        title="生成学习素材"
+        open={materialModalOpen}
+        onOk={handleGenerateMaterial}
+        onCancel={() => {
+          if (!generatingMaterial) {
+            setMaterialModalOpen(false);
+          }
+        }}
+        okText="生成"
+        cancelText="取消"
+        confirmLoading={generatingMaterial}
+        okButtonProps={{ disabled: generatingMaterial }}
+        cancelButtonProps={{ disabled: generatingMaterial }}
+      >
+        <Form layout="vertical">
+          <Form.Item label="素材类型" required>
+            <Radio.Group value={materialType} onChange={(e) => setMaterialType(e.target.value)}>
+              <Space direction="vertical">
+                <Radio value="text">知识点讲解</Radio>
+                <Radio value="example">常见错误示例</Radio>
+                <Radio value="tip">改进技巧</Radio>
+                <Radio value="practice">练习建议</Radio>
+              </Space>
+            </Radio.Group>
+          </Form.Item>
+          <Paragraph type="secondary" style={{ marginTop: 16 }}>
+            系统将基于当前弱点的类型、严重程度和相关话题，使用AI生成个性化的学习素材。
+          </Paragraph>
         </Form>
       </Modal>
     </div>

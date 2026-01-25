@@ -12,9 +12,7 @@ import {
   Form,
   message,
   Steps,
-  Divider,
   Typography,
-  Spin,
 } from 'antd'
 import {
   FileTextOutlined,
@@ -22,7 +20,6 @@ import {
   SaveOutlined,
   EditOutlined,
   DeleteOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/api'
 
@@ -77,7 +74,7 @@ export default function InterviewMemory() {
   const [saving, setSaving] = useState(false)
   const [extractedData, setExtractedData] = useState<ExtractionResult | null>(null)
   const [editModalVisible, setEditModalVisible] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState<ExtractedQuestion | null>(null)
+  const [, setEditingQuestion] = useState<ExtractedQuestion | null>(null)
   const [editingIndex, setEditingIndex] = useState<number>(-1)
   const [form] = Form.useForm()
   const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([])

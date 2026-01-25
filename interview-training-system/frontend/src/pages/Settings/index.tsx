@@ -29,7 +29,6 @@ import { api } from '../../utils/api'
 
 const { Title, Paragraph, Text } = Typography
 const { Option } = Select
-const { TextArea } = Input
 
 interface Settings {
   student_name: string
@@ -43,7 +42,7 @@ export default function Settings() {
   const navigate = useNavigate()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [, setSettings] = useState<Settings | null>(null)
   const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([])
   const [loadingSchools, setLoadingSchools] = useState(false)
 

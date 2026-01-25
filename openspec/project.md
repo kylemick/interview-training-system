@@ -120,6 +120,28 @@
 7. **英文题库语言规范**：英文口语（english-oral）类别的所有内容（题目、反馈、参考答案）必须强制使用英文，AI生成时在提示词开头明确限定语言
 8. **MySQL访问规范**：
    - 统一使用参数化查询防止SQL注入
+   - **⚠️ 重要：LIMIT 和 OFFSET 子句不能使用参数绑定（MySQL2驱动限制）**
+     - **禁止使用**：`LIMIT ?` 或 `OFFSET ?`（会导致SQL语法错误）
+     - **必须使用**：直接拼接数字，但必须确保安全性：
+       1. 使用 `parseInt()` 或 `Number()` 转换为数字
+       2. 使用 `Math.max()` 和 `Math.min()` 限制范围
+       3. 禁止直接拼接用户输入，必须先验证和转换
+       4. 设置合理的上限（如 LIMIT 限制在 1-1000，OFFSET 限制在 0-100000）
+     - **正确示例**：
+       ```typescript
+       const safeLimit = Math.max(1, Math.min(parseInt(count) || 10, 100));
+       const safeOffset = Math.max(0, parseInt(offset) || 0);
+       const sql = `SELECT * FROM table LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+       ```
+     - **错误示例**：
+       ```typescript
+       // ❌ 错误：LIMIT 不能使用参数绑定
+       const sql = `SELECT * FROM table LIMIT ?`;
+       await query(sql, [count]);
+       
+       // ❌ 错误：直接拼接用户输入，不安全
+       const sql = `SELECT * FROM table LIMIT ${count}`;
+       ```
    - JSON字段必须正确解析（处理字符串和对象两种情况）
    - 学校列表等下拉选项必须从数据库实时获取
    - 所有数据库操作通过封装的 `src/db/index.ts` 函数

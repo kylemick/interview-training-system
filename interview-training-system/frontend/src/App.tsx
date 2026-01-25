@@ -10,6 +10,7 @@ import Schools from './pages/Schools'
 import Questions from './pages/Questions'
 import DataManagement from './pages/DataManagement'
 import Weaknesses from './pages/Weaknesses'
+import LearningMaterials from './pages/LearningMaterials'
 import Layout from './components/Layout'
 
 function App() {
@@ -23,6 +24,8 @@ function App() {
         <Route path="/progress" element={<Progress />} />
         <Route path="/weaknesses" element={<Weaknesses />} />
         <Route path="/weaknesses/:id" element={<Weaknesses />} />
+        <Route path="/learning-materials" element={<LearningMaterials />} />
+        <Route path="/learning-materials/:id" element={<LearningMaterials />} />
         <Route path="/schools" element={<Schools />} />
         <Route path="/questions" element={<Questions />} />
         <Route path="/data" element={<DataManagement />} />

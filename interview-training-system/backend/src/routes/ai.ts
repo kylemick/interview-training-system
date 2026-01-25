@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateSchoolProfile } from '../ai/schoolProfile.js';
 import { generateQuestions } from '../ai/questionGenerator.js';
-import { insert, query } from '../db/index.js';
+import { insert, query, queryOne } from '../db/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -838,6 +838,79 @@ router.post('/test-connection', async (req: Request, res: Response) => {
     }
     
     throw new AppError(400, message);
+  }
+});
+
+/**
+ * AI生成学习素材
+ * POST /api/ai/generate-learning-material
+ * Body: { weakness_id, material_type? }
+ */
+router.post('/generate-learning-material', async (req: Request, res: Response) => {
+  try {
+    const { weakness_id, material_type = 'text' } = req.body;
+
+    if (!weakness_id) {
+      throw new AppError(400, '请提供弱点ID');
+    }
+
+    // 获取弱点信息
+    const weakness = await queryOne(
+      'SELECT * FROM student_weaknesses WHERE id = ?',
+      [weakness_id]
+    );
+
+    if (!weakness) {
+      throw new AppError(404, '弱点记录不存在');
+    }
+
+    console.log(`🤖 生成学习素材: 弱点ID=${weakness_id}, 类型=${material_type}`);
+
+    // 调用AI生成学习素材
+    const { generateLearningMaterial } = await import('../ai/materialGenerator.js');
+    const generatedMaterial = await generateLearningMaterial({
+      weakness_id,
+      material_type,
+      weakness,
+    });
+
+    // 保存素材到数据库
+    const materialId = await insert(
+      `INSERT INTO learning_materials 
+       (weakness_id, category, weakness_type, title, content, material_type, tags, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        weakness_id,
+        weakness.category,
+        weakness.weakness_type,
+        generatedMaterial.title,
+        generatedMaterial.content,
+        generatedMaterial.material_type,
+        JSON.stringify(generatedMaterial.tags || []),
+        'ai',
+      ]
+    );
+
+    // 获取保存的素材
+    const savedMaterial = await queryOne(
+      'SELECT * FROM learning_materials WHERE id = ?',
+      [materialId]
+    );
+
+    console.log(`✅ 学习素材已生成并保存: ID=${materialId}`);
+
+    res.json({
+      success: true,
+      message: '学习素材生成成功',
+      data: {
+        ...savedMaterial,
+        tags: savedMaterial.tags ? (typeof savedMaterial.tags === 'string' ? JSON.parse(savedMaterial.tags) : savedMaterial.tags) : [],
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('生成学习素材失败:', error);
+    throw new AppError(500, '生成学习素材失败，请重试');
   }
 });
 

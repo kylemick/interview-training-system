@@ -5,6 +5,7 @@ import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateTrainingPlan, generateTrainingPlanFromWeakness } from '../ai/trainingPlanner.js';
+import { ensureQuestionsAvailable } from '../utils/questionHelper.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -725,17 +726,19 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
       
       // 如果会话中没有题目或题目被删除了，从题库重新选择题目
       if (questions.length === 0) {
-        questions = await query(
-          `SELECT id, question_text, category, difficulty, reference_answer
-           FROM questions
-           WHERE category = ?
-           ORDER BY RAND()
-           LIMIT ${parseInt(question_count as string)}`,
-          [task.category]
+        const questionCount = question_count ? parseInt(question_count as string) : calculatedQuestionCount;
+        // 使用自动生成函数确保有可用题目
+        questions = await ensureQuestionsAvailable(
+          task.category,
+          questionCount,
+          task.target_school,
+          'medium'
         );
         
         if (questions.length === 0) {
-          throw new AppError(400, `该类别(${task.category})暂无可用题目,请先添加题目`);
+          // 如果自动生成也失败，返回友好错误但不导致服务崩溃
+          console.error(`❌ 无法为类别 ${task.category} 获取或生成题目`);
+          throw new AppError(500, `无法为类别(${task.category})生成题目，请稍后重试或手动添加题目`);
         }
         
         // 更新会话，保存新的题目ID列表
@@ -770,18 +773,18 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
     }
     
     // 如果没有现有会话，创建新会话
-    // 从题库选择题目（使用计算出的题目数量）
-    const questions = await query(
-      `SELECT id, question_text, category, difficulty, reference_answer
-       FROM questions
-       WHERE category = ?
-       ORDER BY RAND()
-       LIMIT ${calculatedQuestionCount}`,
-      [task.category]
+    // 使用自动生成函数确保有可用题目
+    const questions = await ensureQuestionsAvailable(
+      task.category,
+      calculatedQuestionCount,
+      task.target_school,
+      'medium'
     );
     
     if (questions.length === 0) {
-      throw new AppError(400, `该类别(${task.category})暂无可用题目,请先添加题目`);
+      // 如果自动生成也失败，返回友好错误但不导致服务崩溃
+      console.error(`❌ 无法为类别 ${task.category} 获取或生成题目`);
+      throw new AppError(500, `无法为类别(${task.category})生成题目，请稍后重试或手动添加题目`);
     }
     
     // 创建会话，保存题目ID列表

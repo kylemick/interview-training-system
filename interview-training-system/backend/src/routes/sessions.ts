@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { ensureQuestionsAvailable } from '../utils/questionHelper.js';
 
 const router = Router();
 
@@ -28,17 +29,19 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // 选择题目（注意：LIMIT不能使用参数绑定，需要直接拼接）
-    const questions = await query(
-      `SELECT id FROM questions
-       WHERE category = ?
-       ORDER BY RAND()
-       LIMIT ${parseInt(question_count as string)}`,
-      [category]
+    // 使用自动生成函数确保有可用题目
+    const questionCount = parseInt(question_count as string) || 10;
+    const questions = await ensureQuestionsAvailable(
+      category,
+      questionCount,
+      undefined, // 自由模式不指定学校
+      'medium'
     );
 
     if (questions.length === 0) {
-      throw new AppError(400, `该类别(${category})暂无可用题目,请先添加题目`);
+      // 如果自动生成也失败，返回友好错误但不导致服务崩溃
+      console.error(`❌ 无法为类别 ${category} 获取或生成题目`);
+      throw new AppError(500, `无法为类别(${category})生成题目，请稍后重试或手动添加题目`);
     }
 
     const questionIds = questions.map((q: any) => q.id);

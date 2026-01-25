@@ -43,6 +43,8 @@ import settingsRoutes from './routes/settings.js'
 app.use('/api/settings', settingsRoutes)
 import weaknessesRoutes from './routes/weaknesses.js'
 app.use('/api/weaknesses', weaknessesRoutes)
+import learningMaterialsRoutes from './routes/learningMaterials.js'
+app.use('/api/learning-materials', learningMaterialsRoutes)
 // Progress API: 前端Progress页面直接使用sessions、weaknesses等API获取数据，无需单独的progress路由
 
 // 错误处理

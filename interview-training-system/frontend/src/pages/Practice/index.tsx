@@ -26,6 +26,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api'
+import VoiceInput from '../../components/VoiceInput'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -80,12 +81,18 @@ export default function Practice() {
   const taskId = searchParams.get('taskId')
 
   // 状态管理
-  const [practiceMode] = useState<'task' | 'free'>(taskId ? 'task' : 'free')
+  const [practiceMode, setPracticeMode] = useState<'task' | 'free' | 'weakness'>(taskId ? 'task' : 'free')
   const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null)
   const [step, setStep] = useState<'select' | 'practice'>('select')
   const [category, setCategory] = useState<string>('')
   const [questionCount, setQuestionCount] = useState(10)
   const [mode, setMode] = useState<'text_qa' | 'ai_interview'>('text_qa')
+  // 弱点专项练习相关
+  const [selectedWeaknessId, setSelectedWeaknessId] = useState<number | null>(null)
+  const [selectedMaterialId, setSelectedMaterialId] = useState<number | null>(null)
+  const [weaknesses, setWeaknesses] = useState<any[]>([])
+  const [materials, setMaterials] = useState<any[]>([])
+  const [loadingWeaknesses, setLoadingWeaknesses] = useState(false)
 
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -96,8 +103,9 @@ export default function Practice() {
   const [submitting, setSubmitting] = useState(false)
   const [targetSchool, setTargetSchool] = useState<string>('SPCC') // 默认值，从设置中加载
 
-  // 继续现有会话（加载已提交的答案和反馈）
-  const continueExistingSession = async (sessionId: string) => {
+  // 继续现有会话（加载已提交的答案和反馈）- 保留以备将来使用
+  // @ts-expect-error - 保留此函数以备将来使用
+  const _continueExistingSession = async (sessionId: string) => {
     try {
       setLoading(true)
       message.loading({ content: '正在加载会话详情...', key: 'loading', duration: 0 })
@@ -410,11 +418,110 @@ export default function Practice() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId])
 
+  // 加载弱点列表
+  const loadWeaknesses = async () => {
+    try {
+      setLoadingWeaknesses(true);
+      const res = await api.weaknesses.list({ status: 'active' });
+      if (res.success) {
+        setWeaknesses(res.data || []);
+      }
+    } catch (error) {
+      console.error('加载弱点列表失败:', error);
+    } finally {
+      setLoadingWeaknesses(false);
+    }
+  };
+
+  // 加载弱点关联的素材
+  const loadMaterialsForWeakness = async (weaknessId: number) => {
+    try {
+      const res = await api.learningMaterials.getByWeakness(weaknessId);
+      if (res.success) {
+        setMaterials(res.data || []);
+      }
+    } catch (error) {
+      console.error('加载学习素材失败:', error);
+    }
+  };
+
+  // 开始弱点专项练习
+  const startWeaknessPractice = async () => {
+    if (!selectedWeaknessId) {
+      message.warning('请选择弱点');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      message.loading({ content: '正在生成针对性题目...', key: 'weaknessPractice' });
+
+      // 1. 基于弱点生成针对性题目
+      const generateRes = await api.weaknesses.generateQuestions({
+        weakness_ids: [selectedWeaknessId],
+        count: questionCount,
+      });
+
+      if (!generateRes.success || !generateRes.data?.questions || generateRes.data.questions.length === 0) {
+        message.error({ content: '生成题目失败，请重试', key: 'weaknessPractice' });
+        return;
+      }
+
+      const generatedQuestions = generateRes.data.questions;
+      const questionIds = generatedQuestions.map((q: any) => q.id);
+
+      // 2. 获取弱点信息以确定category
+      const weaknessRes = await api.weaknesses.get(selectedWeaknessId.toString());
+      const weakness = weaknessRes.success ? weaknessRes.data : null;
+      const weaknessCategory = weakness?.category || 'english-oral';
+
+      // 3. 创建会话
+      const sessionRes = await api.sessions.create({
+        category: weaknessCategory,
+        mode,
+        question_count: questionIds.length,
+        weakness_id: selectedWeaknessId,
+        material_id: selectedMaterialId || undefined,
+      });
+
+      const session = sessionRes.data;
+      setSessionData(session);
+      setCategory(weaknessCategory);
+
+      // 4. 设置题目
+      setQuestions(generatedQuestions);
+      setCurrentIndex(0);
+      setAnswers({});
+      setStep('practice');
+
+      message.success({ content: `弱点专项练习开始！共 ${generatedQuestions.length} 题`, key: 'weaknessPractice' });
+
+      // 5. 如果选择了素材，增加使用次数
+      if (selectedMaterialId) {
+        try {
+          await api.learningMaterials.incrementUsage(selectedMaterialId);
+        } catch (error) {
+          console.error('更新素材使用次数失败:', error);
+        }
+      }
+    } catch (error: any) {
+      console.error('开始弱点专项练习失败:', error);
+      message.error({ content: error.response?.data?.message || '开始练习失败', key: 'weaknessPractice' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 开始练习
   const startPractice = async () => {
+    if (practiceMode === 'weakness') {
+      await startWeaknessPractice();
+      return;
+    }
+
     if (!category) {
-      message.warning('请选择专项类别')
-      return
+      message.warning('请选择专项类别');
+      return;
     }
 
     try {
@@ -491,6 +598,9 @@ export default function Practice() {
           answer_text: answers[currentIndex],
           category,
           target_school: targetSchool,
+          // 弱点专项练习：传递弱点和素材信息
+          weakness_id: practiceMode === 'weakness' ? selectedWeaknessId : undefined,
+          material_id: practiceMode === 'weakness' ? selectedMaterialId : undefined,
         })
 
         const feedback = feedbackRes.data
@@ -645,20 +755,129 @@ export default function Practice() {
 
         <Card style={{ marginTop: 24 }}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* 选择类别 */}
+            {/* 练习类型选择 */}
             <div>
               <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
-                1. 选择专项类别
+                0. 选择练习类型
               </Text>
-              <Select
-                size="large"
-                style={{ width: '100%' }}
-                placeholder="请选择专项类别"
-                value={category}
-                onChange={setCategory}
-                options={CATEGORIES}
-              />
+              <Radio.Group 
+                value={practiceMode}
+                onChange={(e) => {
+                  const mode = e.target.value;
+                  setPracticeMode(mode);
+                  if (mode === 'weakness') {
+                    // 加载弱点列表
+                    loadWeaknesses();
+                  } else {
+                    // 切换到自由练习时清空弱点相关状态
+                    setSelectedWeaknessId(null);
+                    setSelectedMaterialId(null);
+                    setMaterials([]);
+                  }
+                }}
+              >
+                <Space>
+                  <Radio value="free">自由练习</Radio>
+                  <Radio value="weakness">弱点专项练习</Radio>
+                </Space>
+              </Radio.Group>
             </div>
+
+            <Divider />
+
+            {/* 弱点专项练习模式 */}
+            {practiceMode === 'weakness' && (
+              <>
+                <div>
+                  <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
+                    1. 选择弱点
+                  </Text>
+                  <Select
+                    size="large"
+                    style={{ width: '100%' }}
+                    placeholder="请选择要练习的弱点"
+                    value={selectedWeaknessId}
+                    onChange={(value) => {
+                      setSelectedWeaknessId(value);
+                      // 加载该弱点关联的素材
+                      if (value) {
+                        loadMaterialsForWeakness(value);
+                      }
+                    }}
+                    loading={loadingWeaknesses}
+                    showSearch
+                    optionFilterProp="children"
+                  >
+                    {weaknesses.map((w) => (
+                      <Select.Option key={w.id} value={w.id}>
+                        {w.description?.substring(0, 50)}... ({w.category})
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+
+                {selectedWeaknessId && materials.length > 0 && (
+                  <div>
+                    <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
+                      2. 选择学习素材（可选）
+                    </Text>
+                    <Select
+                      size="large"
+                      style={{ width: '100%' }}
+                      placeholder="选择相关学习素材（可选）"
+                      value={selectedMaterialId}
+                      onChange={setSelectedMaterialId}
+                      allowClear
+                    >
+                      {materials.map((m) => (
+                        <Select.Option key={m.id} value={m.id}>
+                          {m.title} ({m.material_type})
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+
+                {selectedMaterialId && (
+                  <Alert
+                    message="已选择学习素材"
+                    description={
+                      <div>
+                        <Text>
+                          {materials.find(m => m.id === selectedMaterialId)?.title}
+                        </Text>
+                        <Button 
+                          type="link" 
+                          size="small" 
+                          onClick={() => navigate(`/learning-materials/${selectedMaterialId}`)}
+                        >
+                          查看详情
+                        </Button>
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                  />
+                )}
+              </>
+            )}
+
+            {/* 自由练习模式 */}
+            {practiceMode === 'free' && (
+              <div>
+                <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
+                  1. 选择专项类别
+                </Text>
+                <Select
+                  size="large"
+                  style={{ width: '100%' }}
+                  placeholder="请选择专项类别"
+                  value={category}
+                  onChange={setCategory}
+                  options={CATEGORIES}
+                />
+              </div>
+            )}
 
             {/* 题目数量 */}
             <div>
@@ -711,9 +930,9 @@ export default function Practice() {
               icon={<FireOutlined />}
               onClick={startPractice}
               loading={loading}
-              disabled={!category}
+              disabled={practiceMode === 'free' ? !category : !selectedWeaknessId}
             >
-              开始练习
+              {practiceMode === 'weakness' ? '开始弱点专项练习' : '开始练习'}
             </Button>
           </Space>
         </Card>
@@ -782,6 +1001,31 @@ export default function Practice() {
         </Space>
       </Card>
 
+      {/* 弱点专项练习：显示相关素材提示 */}
+      {practiceMode === 'weakness' && selectedMaterialId && (
+        <Alert
+          message="相关学习素材"
+          description={
+            <div>
+              <Text>{materials.find(m => m.id === selectedMaterialId)?.title}</Text>
+              <Button 
+                type="link" 
+                size="small" 
+                onClick={() => {
+                  // 在新窗口打开素材详情
+                  window.open(`/learning-materials/${selectedMaterialId}`, '_blank');
+                }}
+              >
+                查看详情
+              </Button>
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       {/* 题目卡片 */}
       {currentQuestion ? (
         <Card
@@ -810,6 +1054,27 @@ export default function Practice() {
             <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
               你的回答：
             </Text>
+            
+            {/* 语音输入组件 */}
+            {!feedbacks[currentIndex] && (
+              <VoiceInput
+                onResult={(text) => {
+                  // 追加或替换现有答案
+                  const currentAnswer = answers[currentIndex] || ''
+                  const newAnswer = currentAnswer
+                    ? `${currentAnswer} ${text}`
+                    : text
+                  setAnswers({ ...answers, [currentIndex]: newAnswer })
+                }}
+                onError={(error) => {
+                  console.error('语音识别错误:', error)
+                  message.error(`语音识别失败: ${error.message}`)
+                }}
+                language={category === 'english-oral' ? 'en-US' : 'zh-CN'}
+                disabled={!!feedbacks[currentIndex]}
+              />
+            )}
+
             <TextArea
               rows={8}
               placeholder="请输入你的答案..."
@@ -823,7 +1088,7 @@ export default function Practice() {
             <Text type="secondary" style={{ fontSize: 12, marginTop: 8, display: 'block' }}>
               {feedbacks[currentIndex] 
                 ? '✅ 已提交并获得反馈' 
-                : '提示：尽量详细、有条理地回答问题'}
+                : '提示：可以使用语音输入或手动输入答案，尽量详细、有条理地回答问题'}
             </Text>
           </div>
 
@@ -876,6 +1141,29 @@ export default function Practice() {
                     <Paragraph style={{ marginTop: 4, marginLeft: 16, marginBottom: 8 }}>
                       {feedbacks[currentIndex].suggestions}
                     </Paragraph>
+                    {/* 弱点专项练习：显示素材相关建议 */}
+                    {practiceMode === 'weakness' && selectedMaterialId && (
+                      <Alert
+                        message="学习素材建议"
+                        description={
+                          <div>
+                            <Text>
+                              建议参考学习素材：{materials.find(m => m.id === selectedMaterialId)?.title}
+                            </Text>
+                            <Button 
+                              type="link" 
+                              size="small" 
+                              onClick={() => navigate(`/learning-materials/${selectedMaterialId}`)}
+                            >
+                              查看完整素材
+                            </Button>
+                          </div>
+                        }
+                        type="info"
+                        showIcon
+                        style={{ marginTop: 8 }}
+                      />
+                    )}
                   </div>
                 )}
 

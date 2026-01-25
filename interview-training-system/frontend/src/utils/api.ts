@@ -123,7 +123,7 @@ apiClient.interceptors.response.use(
       // 这里可以跳转到登录页
     } else if (error.response?.status === 404) {
       message.error('资源不存在')
-    } else if (error.response?.status >= 500) {
+    } else if (error.response?.status && error.response.status >= 500) {
       message.error('服务器错误，请稍后重试')
     } else {
       message.error(errorMessage)
@@ -348,6 +348,10 @@ export const api = {
     testConnection: (data: any) => {
       return apiClient.post('/ai/test-connection', data, { timeout: 0 }).then(res => res.data)
     },
+    generateLearningMaterial: (data: { weakness_id: number; material_type?: string }) => {
+      clearCache('learning-materials')
+      return apiClient.post('/ai/generate-learning-material', data, { timeout: 0 }).then(res => res.data)
+    },
   },
 
   // 数据管理相关
@@ -412,6 +416,37 @@ export const api = {
       return apiClient.post('/settings', data).then(res => res.data)
     },
   },
+
+  // 学习素材相关
+  learningMaterials: {
+    list: (params?: {
+      weakness_id?: number;
+      category?: string;
+      weakness_type?: string;
+      material_type?: string;
+      search?: string;
+      page?: number;
+      pageSize?: number;
+    }) => enhancedRequest({ method: 'get', url: '/learning-materials', params }),
+    get: (id: string | number) => enhancedRequest({ method: 'get', url: `/learning-materials/${id}` }),
+    create: (data: any) => {
+      clearCache('learning-materials')
+      return apiClient.post('/learning-materials', data).then(res => res.data)
+    },
+    update: (id: string | number, data: any) => {
+      clearCache('learning-materials')
+      return apiClient.put(`/learning-materials/${id}`, data).then(res => res.data)
+    },
+    delete: (id: string | number) => {
+      clearCache('learning-materials')
+      return apiClient.delete(`/learning-materials/${id}`).then(res => res.data)
+    },
+    getByWeakness: (weaknessId: string | number) => 
+      enhancedRequest({ method: 'get', url: `/learning-materials/by-weakness/${weaknessId}` }),
+    incrementUsage: (id: string | number) => 
+      apiClient.post(`/learning-materials/${id}/increment-usage`).then(res => res.data),
+  },
+
 }
 
 export default apiClient

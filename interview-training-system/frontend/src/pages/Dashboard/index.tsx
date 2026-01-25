@@ -8,7 +8,6 @@ import {
   BookOutlined,
   RightOutlined,
   WarningOutlined,
-  ExclamationCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -78,6 +77,37 @@ export default function Dashboard() {
     freeQuestions: 0,
   })
   const [weaknesses, setWeaknesses] = useState<Weakness[]>([])
+  const [generatingQuestionsId, setGeneratingQuestionsId] = useState<number | null>(null)
+
+  // 生成针对性题目
+  const handleGenerateQuestions = useCallback(async (weaknessId: number) => {
+    if (generatingQuestionsId) {
+      message.warning('正在生成题目，请勿重复点击');
+      return;
+    }
+
+    try {
+      setGeneratingQuestionsId(weaknessId);
+      message.loading({ content: '正在生成针对性题目...', key: 'generateQuestions', duration: 0 });
+
+      await api.weaknesses.generateQuestions({
+        weakness_ids: [weaknessId],
+        count: 5,
+      });
+
+      message.success({ content: '题目生成成功', key: 'generateQuestions', duration: 2 });
+      navigate('/questions');
+    } catch (error: any) {
+      message.error({
+        content: error?.response?.data?.message || '题目生成失败',
+        key: 'generateQuestions',
+        duration: 3,
+      });
+    } finally {
+      setGeneratingQuestionsId(null);
+      message.destroy('generateQuestions');
+    }
+  }, [generatingQuestionsId, navigate]);
 
   // 优化：使用 useCallback 缓存 loadDashboardData 函数
   const loadDashboardData = useCallback(async () => {
@@ -86,15 +116,24 @@ export default function Dashboard() {
 
       // 并行加载数据 - 使用新的 pendingTasks API
       const [tasksRes, sessionsRes, weaknessesRes] = await Promise.all([
-        api.plans.pendingTasks(),
-        api.sessions.recent(5),
-        api.weaknesses.list({ status: 'active', severity: 'high' }).catch(() => ({ data: [] })),
+        api.plans.pendingTasks().catch((err) => {
+          console.error('加载任务失败:', err);
+          return { data: [] };
+        }),
+        api.sessions.recent(5).catch((err) => {
+          console.error('加载会话失败:', err);
+          return { data: [] };
+        }),
+        api.weaknesses.list({ status: 'active', severity: 'high' }).catch((err) => {
+          console.error('加载弱点失败:', err);
+          return { data: [] };
+        }),
       ])
 
-      // 注意：enhancedRequest 返回的是 { data: ... } 格式
-      const tasks = tasksRes.data || []
-      const sessions = sessionsRes.data || []
-      const weaknesses = weaknessesRes.data || []
+      // 注意：enhancedRequest 返回的是 { data: ... } 格式，但有些API可能直接返回数据
+      const tasks = tasksRes?.data || tasksRes || []
+      const sessions = sessionsRes?.data || sessionsRes || []
+      const weaknesses = weaknessesRes?.data || weaknessesRes || []
 
       setTodayTasks(tasks)
       setRecentSessions(sessions)
@@ -143,7 +182,7 @@ export default function Dashboard() {
   }, [navigate])
 
   // 跳过任务
-  const handleSkipTask = useCallback(async (taskId: string, category: string) => {
+  const handleSkipTask = useCallback(async (taskId: string) => {
     Modal.confirm({
       title: '确认跳过任务',
       content: `确认跳过此任务?将不计入练习记录。`,
@@ -291,7 +330,7 @@ export default function Dashboard() {
                             type="default"
                             size="small"
                             icon={<CloseCircleOutlined />}
-                            onClick={() => handleSkipTask(task.id, task.category)}
+                            onClick={() => handleSkipTask(task.id)}
                           >
                             跳过
                           </Button>
@@ -433,14 +472,11 @@ export default function Dashboard() {
                         <Button
                           type="link"
                           size="small"
+                          loading={generatingQuestionsId === weakness.id}
+                          disabled={generatingQuestionsId === weakness.id}
                           onClick={() => {
                             // 根据弱点生成针对性题目
-                            api.weaknesses.generateQuestions({
-                              weakness_ids: [weakness.id],
-                              count: 5,
-                            }).then(() => {
-                              navigate('/questions')
-                            })
+                            handleGenerateQuestions(weakness.id);
                           }}
                         >
                           生成针对性题目

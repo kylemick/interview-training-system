@@ -27,7 +27,6 @@ import {
   PlayCircleFilled,
   CloseCircleOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { Alert } from 'antd';
@@ -354,7 +353,7 @@ const TrainingPlan = () => {
   };
 
   // 跳过任务
-  const handleSkipTask = async (taskId: number, category: string) => {
+  const handleSkipTask = async (taskId: number) => {
     Modal.confirm({
       title: '确认跳过任务',
       content: `确认跳过此任务?将不计入练习记录。`,
@@ -456,7 +455,7 @@ const TrainingPlan = () => {
               type="default"
               size="small"
               icon={<CloseCircleOutlined />}
-              onClick={() => handleSkipTask(record.id, record.category)}
+              onClick={() => handleSkipTask(record.id)}
             >
               跳过
             </Button>
