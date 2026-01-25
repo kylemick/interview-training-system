@@ -4,14 +4,15 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { Button, Select, Progress, message, Space, Typography } from 'antd'
-import { AudioOutlined, StopOutlined, LoadingOutlined } from '@ant-design/icons'
+import { Button, Select, Progress, message, Space, Typography, Alert } from 'antd'
+import { AudioOutlined, StopOutlined, LoadingOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   createVoskRecognizer,
   AudioRecorder,
   isWebAssemblySupported,
   SupportedLanguage,
   VoskError,
+  VoskErrorCode,
 } from '../utils/voskRecognition'
 
 const { Text } = Typography
@@ -45,6 +46,13 @@ export default function VoiceInput({
     useState<SupportedLanguage>(language)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [recordingDuration, setRecordingDuration] = useState(0)
+  const [errorInfo, setErrorInfo] = useState<{
+    message: string
+    code: string
+    canRetry: boolean
+  } | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const MAX_RETRY_COUNT = 3
 
   const recognizerRef = useRef<any>(null)
   const recorderRef = useRef<AudioRecorder | null>(null)
@@ -81,6 +89,8 @@ export default function VoiceInput({
     try {
       setState('loading')
       setLoadingProgress(0)
+      setErrorInfo(null)
+      console.log(`开始加载模型: ${selectedLanguage}`)
 
       const recognizer = await createVoskRecognizer(
         selectedLanguage,
@@ -92,17 +102,69 @@ export default function VoiceInput({
 
       recognizerRef.current = recognizer
       setState('ready')
+      setRetryCount(0) // 重置重试计数
+      console.log('模型加载成功')
       message.success('模型加载完成，可以开始录音')
     } catch (error) {
       console.error('模型加载失败:', error)
       setState('error')
-      const errorMessage =
-        error instanceof VoskError
-          ? error.message
-          : '模型加载失败，请检查网络连接或稍后重试'
-      message.error(errorMessage)
+      
+      let errorMessage = '模型加载失败，请检查网络连接或稍后重试'
+      let errorCode = 'UNKNOWN_ERROR'
+      let canRetry = true
+
+      if (error instanceof VoskError) {
+        errorMessage = error.message
+        errorCode = error.code
+        
+        // 某些错误不应该重试
+        if (
+          error.code === VoskErrorCode.WASM_NOT_SUPPORTED ||
+          error.code === VoskErrorCode.MODULE_NOT_FOUND
+        ) {
+          canRetry = false
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      setErrorInfo({
+        message: errorMessage,
+        code: errorCode,
+        canRetry: canRetry && retryCount < MAX_RETRY_COUNT,
+      })
+
+      // 显示错误提示
+      message.error(errorMessage, 8) // 显示8秒，让用户有时间阅读
       onError?.(error instanceof Error ? error : new Error(errorMessage))
     }
+  }
+
+  // 重试加载模型
+  const retryLoadModel = async () => {
+    if (retryCount >= MAX_RETRY_COUNT) {
+      message.warning('已达到最大重试次数，请检查配置后重试')
+      return
+    }
+
+    setRetryCount((prev) => prev + 1)
+    console.log(`重试加载模型 (${retryCount + 1}/${MAX_RETRY_COUNT})`)
+    
+    // 清除之前的错误状态
+    setErrorInfo(null)
+    
+    // 如果识别器已存在，先销毁
+    if (recognizerRef.current) {
+      try {
+        recognizerRef.current.destroy()
+      } catch (e) {
+        console.warn('清理识别器时出错:', e)
+      }
+      recognizerRef.current = null
+    }
+
+    // 重新加载
+    await loadModel()
   }
 
   // 开始录音
@@ -243,8 +305,9 @@ export default function VoiceInput({
     }
   }
 
-  // 如果浏览器不支持，不显示组件
+  // 如果浏览器不支持，不显示组件（优雅降级）
   if (!isWebAssemblySupported()) {
+    console.warn('浏览器不支持 WebAssembly，语音输入功能不可用')
     return null
   }
 
@@ -252,7 +315,20 @@ export default function VoiceInput({
   const isLoading = state === 'loading'
   const isProcessing = state === 'processing'
   const isReady = state === 'ready'
-  const canStart = state === 'idle' || state === 'ready' || state === 'error'
+  const canStart = state === 'idle' || state === 'ready' || (state === 'error' && errorInfo?.canRetry)
+  
+  // 如果错误不可恢复，隐藏组件（优雅降级）
+  const shouldHideComponent = 
+    state === 'error' && 
+    errorInfo && 
+    !errorInfo.canRetry && 
+    (errorInfo.code === VoskErrorCode.WASM_NOT_SUPPORTED || 
+     errorInfo.code === VoskErrorCode.MODULE_NOT_FOUND)
+  
+  if (shouldHideComponent) {
+    console.warn('语音输入功能不可用，已自动降级到文本输入')
+    return null
+  }
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -333,8 +409,45 @@ export default function VoiceInput({
           )}
         </Space>
 
+        {/* 错误提示 */}
+        {state === 'error' && errorInfo && (
+          <Alert
+            message="语音输入功能暂时不可用"
+            description={
+              <div>
+                <div style={{ marginBottom: 8 }}>{errorInfo.message}</div>
+                {errorInfo.code === VoskErrorCode.MODEL_FILE_NOT_FOUND && (
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    请参考 VOICE_INPUT_SETUP.md 文档配置模型文件
+                  </div>
+                )}
+                {errorInfo.code === VoskErrorCode.MODULE_NOT_FOUND && (
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    请在 frontend 目录下运行: npm install vosk-browser
+                  </div>
+                )}
+              </div>
+            }
+            type="error"
+            showIcon
+            action={
+              errorInfo.canRetry ? (
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  onClick={retryLoadModel}
+                  disabled={isLoading}
+                >
+                  重试
+                </Button>
+              ) : null
+            }
+            style={{ marginTop: 8 }}
+          />
+        )}
+
         {/* 使用提示 */}
-        {state === 'idle' && (
+        {state === 'idle' && !errorInfo && (
           <Text type="secondary" style={{ fontSize: 12 }}>
             提示：首次使用需要加载语音识别模型，请确保网络连接正常
           </Text>

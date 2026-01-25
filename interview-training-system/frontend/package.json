@@ -19,7 +19,8 @@
     "zustand": "^4.4.7",
     "echarts": "^5.4.3",
     "echarts-for-react": "^3.0.2",
-    "dayjs": "^1.11.10"
+    "dayjs": "^1.11.10",
+    "vosk-browser": "^0.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

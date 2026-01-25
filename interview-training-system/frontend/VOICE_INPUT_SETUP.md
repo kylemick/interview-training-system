@@ -9,6 +9,14 @@ cd interview-training-system/frontend
 npm install vosk-browser
 ```
 
+**注意**：
+- `vosk-browser` 已在 `package.json` 中声明为依赖
+- 如果安装失败，请检查网络连接或使用国内镜像：
+  ```bash
+  npm install vosk-browser --registry=https://registry.npmmirror.com
+  ```
+- 安装完成后需要重启开发服务器才能生效
+
 ## 模型文件配置
 
 Vosk 需要语言模型文件才能工作。每个语言模型约 50MB。
@@ -39,9 +47,9 @@ interview-training-system/frontend/public/models/
     └── ...
 ```
 
-### 3. 更新模型路径
+### 3. 模型路径配置
 
-在 `src/utils/voskRecognition.ts` 中，更新 `LANGUAGE_MODEL_PATHS`：
+模型路径已在 `src/utils/voskRecognition.ts` 中配置为解压后的目录路径：
 
 ```typescript
 export const LANGUAGE_MODEL_PATHS: Record<SupportedLanguage, string> = {
@@ -50,7 +58,10 @@ export const LANGUAGE_MODEL_PATHS: Record<SupportedLanguage, string> = {
 }
 ```
 
-注意：路径应该是解压后的目录路径，不是 .tar.gz 文件路径。
+**重要提示**：
+- 路径必须是解压后的目录路径，**不是** `.tar.gz` 压缩文件路径
+- 确保模型目录包含 `am/` 和 `graph/` 等子目录
+- 如果模型加载失败，请检查路径配置是否正确
 
 ## API 调整
 

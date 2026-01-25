@@ -27,8 +27,23 @@ export function isWebAssemblySupported(): boolean {
 export type SupportedLanguage = 'zh-CN' | 'en-US'
 
 export const LANGUAGE_MODEL_PATHS: Record<SupportedLanguage, string> = {
-  'zh-CN': '/models/vosk-model-small-cn-0.22.tar.gz',
-  'en-US': '/models/vosk-model-small-en-us-0.22.tar.gz',
+  'zh-CN': '/models/vosk-model-small-cn-0.22',
+  'en-US': '/models/vosk-model-small-en-us-0.22',
+}
+
+// 错误代码枚举
+export enum VoskErrorCode {
+  MODEL_FILE_NOT_FOUND = 'MODEL_FILE_NOT_FOUND',
+  MODEL_LOAD_NETWORK_ERROR = 'MODEL_LOAD_NETWORK_ERROR',
+  MODEL_LOAD_FORMAT_ERROR = 'MODEL_LOAD_FORMAT_ERROR',
+  MODEL_LOAD_PERMISSION_ERROR = 'MODEL_LOAD_PERMISSION_ERROR',
+  MODULE_NOT_FOUND = 'MODULE_NOT_FOUND',
+  WASM_NOT_SUPPORTED = 'WASM_NOT_SUPPORTED',
+  RECOGNITION_ERROR = 'RECOGNITION_ERROR',
+  RECOGNIZER_CREATE_ERROR = 'RECOGNIZER_CREATE_ERROR',
+  RECORDING_START_ERROR = 'RECORDING_START_ERROR',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  MODEL_LOAD_ERROR = 'MODEL_LOAD_ERROR',
 }
 
 // 错误类型
@@ -36,10 +51,61 @@ export class VoskError extends Error {
   constructor(
     message: string,
     public code: string,
-    public originalError?: Error
+    public originalError?: Error,
+    public helpUrl?: string
   ) {
     super(message)
     this.name = 'VoskError'
+  }
+}
+
+/**
+ * 检查模型文件是否存在
+ * 通过尝试访问模型目录下的关键文件来判断
+ */
+export async function checkModelFileExists(
+  language: SupportedLanguage
+): Promise<{ exists: boolean; error?: string }> {
+  const modelPath = LANGUAGE_MODEL_PATHS[language]
+  
+  // 尝试访问模型目录下的关键文件
+  // Vosk 模型通常包含 am/final.mdl 或 graph/HCLr.fst 等文件
+  const testFiles = [
+    `${modelPath}/am/final.mdl`,
+    `${modelPath}/graph/HCLr.fst`,
+    `${modelPath}/graph/words.txt`,
+  ]
+
+  for (const testFile of testFiles) {
+    try {
+      const response = await fetch(testFile, { method: 'HEAD' })
+      if (response.ok) {
+        console.log(`模型文件检查通过: ${testFile}`)
+        return { exists: true }
+      }
+    } catch (error) {
+      // 继续尝试下一个文件
+      continue
+    }
+  }
+
+  // 如果所有测试文件都访问失败，尝试访问模型目录本身
+  try {
+    const response = await fetch(modelPath, { method: 'HEAD' })
+    if (response.ok || response.status === 403 || response.status === 405) {
+      // 403/405 可能表示目录存在但无法直接访问，这是正常的
+      console.warn(`模型目录可能存在但无法直接访问: ${modelPath}`)
+      return { exists: true }
+    }
+  } catch (error) {
+    // 忽略错误，继续
+  }
+
+  const errorMessage = `模型文件不存在: ${modelPath}。请确保模型文件已正确解压并放置在 public/models/ 目录下。`
+  console.error(errorMessage)
+  return {
+    exists: false,
+    error: errorMessage,
   }
 }
 
@@ -65,10 +131,37 @@ export class VoskModelLoader {
   ): Promise<any> {
     // 检查是否已加载
     if (this.models.has(language)) {
+      console.log(`模型已加载，使用缓存: ${language}`)
       return this.models.get(language)!
     }
 
+    console.log(`开始加载模型: ${language}`)
+
     try {
+      // 首先检查模型文件是否存在
+      console.log('检查模型文件是否存在...')
+      const fileCheck = await checkModelFileExists(language)
+      if (!fileCheck.exists) {
+        const modelPath = LANGUAGE_MODEL_PATHS[language]
+        const helpMessage = `模型文件不存在。\n\n` +
+          `模型路径: ${modelPath}\n\n` +
+          `请按照以下步骤配置模型：\n` +
+          `1. 从 https://alphacephei.com/vosk/models 下载模型文件\n` +
+          `2. 解压模型文件（.tar.gz）\n` +
+          `3. 将解压后的目录放置到 public/models/ 目录下\n` +
+          `4. 确保目录结构为: public/models/vosk-model-small-cn-0.22/ (包含 am/ 和 graph/ 子目录)\n\n` +
+          `详细说明请参考: VOICE_INPUT_SETUP.md`
+        
+        throw new VoskError(
+          helpMessage,
+          VoskErrorCode.MODEL_FILE_NOT_FOUND,
+          new Error(fileCheck.error || '模型文件不存在'),
+          'VOICE_INPUT_SETUP.md'
+        )
+      }
+
+      console.log('模型文件检查通过，开始加载...')
+
       // 动态导入 vosk-browser（如果未安装则抛出错误）
       let voskBrowser: any;
       try {
@@ -77,6 +170,7 @@ export class VoskModelLoader {
         const voskModule = 'vosk-browser';
         const dynamicImport = new Function('module', 'return import(module)');
         voskBrowser = await dynamicImport(voskModule);
+        console.log('vosk-browser 模块加载成功')
       } catch (importError: any) {
         if (importError.code === 'ERR_MODULE_NOT_FOUND' || 
             importError.message?.includes('Failed to resolve') ||
@@ -84,8 +178,11 @@ export class VoskModelLoader {
             importError.message?.includes('does not exist') ||
             importError.message?.includes('Unknown variable dynamic import')) {
           throw new VoskError(
-            'vosk-browser 包未安装。语音识别功能暂时不可用。如需使用语音识别，请运行: npm install vosk-browser',
-            'MODULE_NOT_FOUND',
+            'vosk-browser 包未安装。语音识别功能暂时不可用。\n\n' +
+            '解决方案：\n' +
+            '1. 在 frontend 目录下运行: npm install vosk-browser\n' +
+            '2. 重启开发服务器',
+            VoskErrorCode.MODULE_NOT_FOUND,
             importError
           );
         }
@@ -94,22 +191,67 @@ export class VoskModelLoader {
       const { Model } = voskBrowser;
 
       const modelPath = LANGUAGE_MODEL_PATHS[language]
+      console.log(`加载模型路径: ${modelPath}`)
 
       // 加载模型（这里需要根据 vosk-browser 的实际 API 调整）
       // 注意：vosk-browser 需要模型文件路径或 URL
-      const model = await Model.load(modelPath, {
-        onProgress: (progress: number) => {
-          onProgress?.(progress)
-        },
-      })
+      try {
+        const model = await Model.load(modelPath, {
+          onProgress: (progress: number) => {
+            console.log(`模型加载进度: ${progress}%`)
+            onProgress?.(progress)
+          },
+        })
 
-      this.models.set(language, model)
-      return model
+        console.log(`模型加载成功: ${language}`)
+        this.models.set(language, model)
+        return model
+      } catch (loadError: any) {
+        // 区分不同类型的加载错误
+        const errorMessage = loadError.message || String(loadError)
+        let errorCode = VoskErrorCode.MODEL_LOAD_ERROR
+        let helpMessage = `模型加载失败: ${errorMessage}`
+
+        if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+          errorCode = VoskErrorCode.MODEL_FILE_NOT_FOUND
+          helpMessage = `模型文件未找到。请检查模型路径配置是否正确，模型文件是否已正确放置。\n\n模型路径: ${modelPath}`
+        } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+          errorCode = VoskErrorCode.MODEL_LOAD_NETWORK_ERROR
+          helpMessage = `网络错误，无法加载模型。请检查网络连接后重试。\n\n模型路径: ${modelPath}`
+        } else if (errorMessage.includes('permission') || errorMessage.includes('403')) {
+          errorCode = VoskErrorCode.MODEL_LOAD_PERMISSION_ERROR
+          helpMessage = `权限错误，无法访问模型文件。请检查文件权限设置。\n\n模型路径: ${modelPath}`
+        } else if (errorMessage.includes('format') || errorMessage.includes('parse')) {
+          errorCode = VoskErrorCode.MODEL_LOAD_FORMAT_ERROR
+          helpMessage = `模型格式错误。请确保模型文件已正确解压，目录结构完整。\n\n模型路径: ${modelPath}`
+        }
+
+        throw new VoskError(
+          helpMessage,
+          errorCode,
+          loadError as Error,
+          'VOICE_INPUT_SETUP.md'
+        )
+      }
     } catch (error) {
+      // 如果已经是 VoskError，直接抛出
+      if (error instanceof VoskError) {
+        console.error(`模型加载失败 [${error.code}]:`, error.message)
+        throw error
+      }
+      
+      // 否则包装为 VoskError
+      console.error('模型加载失败（未知错误）:', error)
       throw new VoskError(
-        `Failed to load model for ${language}`,
-        'MODEL_LOAD_ERROR',
-        error as Error
+        `模型加载失败: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `请检查：\n` +
+        `1. 模型文件是否存在\n` +
+        `2. 模型路径配置是否正确\n` +
+        `3. 网络连接是否正常\n` +
+        `4. 浏览器控制台是否有详细错误信息`,
+        VoskErrorCode.MODEL_LOAD_ERROR,
+        error as Error,
+        'VOICE_INPUT_SETUP.md'
       )
     }
   }
@@ -174,8 +316,8 @@ export async function createVoskRecognizer(
 ): Promise<VoskRecognizer> {
   if (!isWebAssemblySupported()) {
     throw new VoskError(
-      'WebAssembly is not supported in this browser',
-      'WASM_NOT_SUPPORTED'
+      '浏览器不支持 WebAssembly。语音识别功能需要支持 WebAssembly 的现代浏览器（Chrome、Edge、Firefox、Safari 等）。',
+      VoskErrorCode.WASM_NOT_SUPPORTED
     )
   }
 
@@ -224,8 +366,8 @@ export async function createVoskRecognizer(
           }
         } catch (error) {
           throw new VoskError(
-            'Recognition failed',
-            'RECOGNITION_ERROR',
+            `语音识别失败: ${error instanceof Error ? error.message : String(error)}`,
+            VoskErrorCode.RECOGNITION_ERROR,
             error as Error
           )
         }
@@ -239,8 +381,8 @@ export async function createVoskRecognizer(
       throw error
     }
     throw new VoskError(
-      'Failed to create recognizer',
-      'RECOGNIZER_CREATE_ERROR',
+      `创建识别器失败: ${error instanceof Error ? error.message : String(error)}`,
+      VoskErrorCode.RECOGNIZER_CREATE_ERROR,
       error as Error
     )
   }
@@ -304,14 +446,14 @@ export class AudioRecorder {
     } catch (error) {
       if ((error as Error).name === 'NotAllowedError') {
         throw new VoskError(
-          'Microphone permission denied',
-          'PERMISSION_DENIED',
+          '麦克风权限被拒绝。请在浏览器设置中允许网站访问麦克风，然后刷新页面重试。',
+          VoskErrorCode.PERMISSION_DENIED,
           error as Error
         )
       }
       throw new VoskError(
-        'Failed to start recording',
-        'RECORDING_START_ERROR',
+        `启动录音失败: ${error instanceof Error ? error.message : String(error)}`,
+        VoskErrorCode.RECORDING_START_ERROR,
         error as Error
       )
     }
@@ -350,4 +492,72 @@ export class AudioRecorder {
   isRecording(): boolean {
     return this.mediaStream !== null && this.mediaStream.active
   }
+}
+
+/**
+ * 检查语音输入功能的配置状态
+ * 用于调试和诊断问题
+ */
+export interface VoiceInputSetupStatus {
+  webAssemblySupported: boolean
+  voskBrowserInstalled: boolean
+  modelFilesExist: {
+    'zh-CN': boolean
+    'en-US': boolean
+  }
+  microphonePermission: 'granted' | 'denied' | 'prompt' | 'unknown'
+  errors: string[]
+}
+
+export async function checkVoiceInputSetup(): Promise<VoiceInputSetupStatus> {
+  const status: VoiceInputSetupStatus = {
+    webAssemblySupported: isWebAssemblySupported(),
+    voskBrowserInstalled: false,
+    modelFilesExist: {
+      'zh-CN': false,
+      'en-US': false,
+    },
+    microphonePermission: 'unknown',
+    errors: [],
+  }
+
+  // 检查 vosk-browser 是否安装
+  try {
+    const voskModule = 'vosk-browser'
+    const dynamicImport = new Function('module', 'return import(module)')
+    await dynamicImport(voskModule)
+    status.voskBrowserInstalled = true
+  } catch (error) {
+    status.voskBrowserInstalled = false
+    status.errors.push('vosk-browser 包未安装')
+  }
+
+  // 检查模型文件
+  for (const lang of ['zh-CN', 'en-US'] as SupportedLanguage[]) {
+    try {
+      const check = await checkModelFileExists(lang)
+      status.modelFilesExist[lang] = check.exists
+      if (!check.exists && check.error) {
+        status.errors.push(`模型文件不存在 (${lang}): ${check.error}`)
+      }
+    } catch (error) {
+      status.modelFilesExist[lang] = false
+      status.errors.push(`检查模型文件失败 (${lang}): ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // 检查麦克风权限
+  try {
+    if (navigator.permissions) {
+      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      status.microphonePermission = result.state as 'granted' | 'denied' | 'prompt'
+    } else {
+      status.microphonePermission = 'unknown'
+    }
+  } catch (error) {
+    status.microphonePermission = 'unknown'
+    status.errors.push(`检查麦克风权限失败: ${error instanceof Error ? error.message : String(error)}`)
+  }
+
+  return status
 }
