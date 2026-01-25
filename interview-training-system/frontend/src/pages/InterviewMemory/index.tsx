@@ -22,6 +22,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons'
 import { api } from '../../utils/api'
+import { useAiThinking } from '../../hooks/useAiThinking'
 
 const { TextArea } = Input
 const { Option } = Select
@@ -99,6 +100,8 @@ export default function InterviewMemory() {
     loadSchools()
   }, [])
 
+  const { executeWithThinking } = useAiThinking()
+
   // AI 分析文本
   const handleExtract = async () => {
     if (!inputText.trim()) {
@@ -108,18 +111,28 @@ export default function InterviewMemory() {
 
     setExtracting(true)
     try {
-      const response = await api.ai.extractInterviewMemory({
-        text: inputText,
-        category,
-        school_code: schoolCode,
-        interview_round: interviewRound,
-      })
-
-      setExtractedData(response.data)
-      setCurrentStep(1)
-      message.success(response.message || 'AI 分析成功')
-    } catch (error: any) {
-      message.error(error.response?.data?.message || 'AI 分析失败')
+      await executeWithThinking(
+        'extract-interview-memory',
+        async () => {
+          return await api.ai.extractInterviewMemory({
+            text: inputText,
+            category,
+            school_code: schoolCode,
+            interview_round: interviewRound,
+          });
+        },
+        {
+          taskName: '提取面试回忆',
+          onSuccess: (response) => {
+            setExtractedData(response.data)
+            setCurrentStep(1)
+            message.success(response.message || 'AI 分析成功')
+          },
+          onError: (error: any) => {
+            message.error(error.response?.data?.message || 'AI 分析失败')
+          },
+        }
+      );
     } finally {
       setExtracting(false)
     }
@@ -181,34 +194,56 @@ export default function InterviewMemory() {
     setSaving(true)
     try {
       // 保存问题
-      const questionsResponse = await api.ai.saveInterviewQuestions({
-        questions: extractedData.questions,
-        source_text: inputText,
-      })
-
-      // 保存弱点分析（如果有）
-      if (extractedData.weaknesses && extractedData.weaknesses.length > 0) {
-        await api.ai.saveWeaknesses({
-          weaknesses: extractedData.weaknesses,
-          source_text: inputText,
-          // 不传递student_name，让后端从设置获取
-        })
-        
-        message.success(
-          `${questionsResponse.message || '问题已保存'}，同时保存了 ${extractedData.weaknesses.length} 条弱点分析`
-        )
-      } else {
-        message.success(questionsResponse.message || '问题已保存')
-      }
-      
-      // 重置表单
-      setCurrentStep(0)
-      setInputText('')
-      setCategory(undefined)
-      setSchoolCode(undefined)
-      setExtractedData(null)
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '保存失败')
+      await executeWithThinking(
+        'save-interview-questions',
+        async () => {
+          return await api.ai.saveInterviewQuestions({
+            questions: extractedData.questions,
+            source_text: inputText,
+          });
+        },
+        {
+          taskName: '保存面试题目',
+          onSuccess: async (questionsResponse) => {
+            // 保存弱点分析（如果有）
+            if (extractedData?.weaknesses && extractedData.weaknesses.length > 0) {
+              await executeWithThinking(
+                'save-weaknesses',
+                async () => {
+                  return await api.ai.saveWeaknesses({
+                    weaknesses: extractedData.weaknesses!,
+                    source_text: inputText,
+                    // 不传递student_name，让后端从设置获取
+                  });
+                },
+                {
+                  taskName: '保存弱点分析',
+                  onSuccess: () => {
+                    message.success(
+                      `${questionsResponse.message || '问题已保存'}，同时保存了 ${extractedData?.weaknesses?.length || 0} 条弱点分析`
+                    );
+                  },
+                  onError: (error: any) => {
+                    message.warning('问题已保存，但弱点分析保存失败：' + (error.response?.data?.message || '保存失败'));
+                  },
+                }
+              );
+            } else {
+              message.success(questionsResponse.message || '问题已保存');
+            }
+            
+            // 重置表单
+            setCurrentStep(0)
+            setInputText('')
+            setCategory(undefined)
+            setSchoolCode(undefined)
+            setExtractedData(null)
+          },
+          onError: (error: any) => {
+            message.error(error.response?.data?.message || '保存失败');
+          },
+        }
+      );
     } finally {
       setSaving(false)
     }

@@ -37,6 +37,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, cancelAllPendingRequests } from '../../utils/api';
 import dayjs from 'dayjs';
+import { useAiThinking } from '../../hooks/useAiThinking';
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
@@ -692,6 +693,7 @@ function WeaknessDetail({
   settings: { student_name?: string; target_school?: string } | null;
 }) {
   const navigate = useNavigate();
+  const { executeWithThinking } = useAiThinking();
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [planForm] = Form.useForm();
@@ -770,22 +772,27 @@ function WeaknessDetail({
     }
     try {
       setGeneratingQuestions(true);
-      message.loading({ content: '正在生成题目...', key: 'generate', duration: 0 });
-      await api.weaknesses.generateQuestions({
-        weakness_ids: [weakness.id],
-        count: 5,
-      });
-      message.success({ content: '题目生成成功', key: 'generate', duration: 2 });
-      navigate('/questions');
-    } catch (error: any) {
-      message.error({ 
-        content: error?.response?.data?.message || '题目生成失败', 
-        key: 'generate',
-        duration: 3
-      });
+      await executeWithThinking(
+        'generate-questions',
+        async () => {
+          return await api.weaknesses.generateQuestions({
+            weakness_ids: [weakness.id],
+            count: 5,
+          });
+        },
+        {
+          taskName: '生成针对性题目',
+          onSuccess: () => {
+            message.success('题目生成成功');
+            navigate('/questions');
+          },
+          onError: (error: any) => {
+            message.error(error?.response?.data?.message || '题目生成失败');
+          },
+        }
+      );
     } finally {
       setGeneratingQuestions(false);
-      message.destroy('generate');
     }
   };
 
@@ -798,23 +805,35 @@ function WeaknessDetail({
         return;
       }
 
-      message.loading({ content: '正在创建训练计划...', key: 'createPlan' });
       const [startDate, endDate] = values.dateRange;
-      const res = await api.plans.createFromWeakness({
-        weakness_id: weakness.id,
-        start_date: startDate.format('YYYY-MM-DD'),
-        end_date: endDate.format('YYYY-MM-DD'),
-        daily_duration: parseInt(values.daily_duration),
-        target_school: values.target_school || settings?.target_school || null,
-        // 不传递student_name，让后端从设置获取
-      });
-      message.success({ content: '训练计划创建成功', key: 'createPlan' });
-      setPlanModalOpen(false);
-      if (res.data?.plan_id) {
-        navigate(`/plan`);
-      }
+      await executeWithThinking(
+        'generate-plan',
+        async () => {
+          return await api.plans.createFromWeakness({
+            weakness_id: weakness.id,
+            start_date: startDate.format('YYYY-MM-DD'),
+            end_date: endDate.format('YYYY-MM-DD'),
+            daily_duration: parseInt(values.daily_duration),
+            target_school: values.target_school || settings?.target_school || null,
+            // 不传递student_name，让后端从设置获取
+          });
+        },
+        {
+          taskName: '生成训练计划',
+          onSuccess: (res) => {
+            message.success('训练计划创建成功');
+            setPlanModalOpen(false);
+            if (res.data?.plan_id) {
+              navigate(`/plan`);
+            }
+          },
+          onError: (error: any) => {
+            message.error(error?.response?.data?.message || error?.message || '训练计划创建失败');
+          },
+        }
+      );
     } catch (error: any) {
-      message.error({ content: error?.response?.data?.message || error?.message || '训练计划创建失败', key: 'createPlan' });
+      message.error(error?.response?.data?.message || error?.message || '训练计划创建失败');
     }
   };
 
@@ -827,33 +846,38 @@ function WeaknessDetail({
     }
     try {
       setGeneratingMaterial(true);
-      message.loading({ content: '正在生成学习素材...', key: 'generateMaterial', duration: 0 });
-      const res = await api.ai.generateLearningMaterial({
-        weakness_id: weakness.id,
-        material_type: materialType,
-      });
-      message.success({ content: '学习素材生成成功', key: 'generateMaterial', duration: 2 });
-      setMaterialModalOpen(false);
-      
-      // 重新加载素材列表
-      const materialsRes = await api.learningMaterials.getByWeakness(weakness.id);
-      if (materialsRes.success) {
-        setMaterials(materialsRes.data || []);
-      }
-      
-      // 跳转到素材详情
-      if (res.data?.id) {
-        navigate(`/learning-materials/${res.data.id}`);
-      }
-    } catch (error: any) {
-      message.error({ 
-        content: error?.response?.data?.message || error?.message || '学习素材生成失败', 
-        key: 'generateMaterial',
-        duration: 3
-      });
+      await executeWithThinking(
+        'generate-learning-material',
+        async () => {
+          return await api.ai.generateLearningMaterial({
+            weakness_id: weakness.id,
+            material_type: materialType,
+          });
+        },
+        {
+          taskName: '生成学习素材',
+          onSuccess: async (res) => {
+            message.success('学习素材生成成功');
+            setMaterialModalOpen(false);
+            
+            // 重新加载素材列表
+            const materialsRes = await api.learningMaterials.getByWeakness(weakness.id);
+            if (materialsRes.success) {
+              setMaterials(materialsRes.data || []);
+            }
+            
+            // 跳转到素材详情
+            if (res.data?.id) {
+              navigate(`/learning-materials/${res.data.id}`);
+            }
+          },
+          onError: (error: any) => {
+            message.error(error?.response?.data?.message || error?.message || '学习素材生成失败');
+          },
+        }
+      );
     } finally {
       setGeneratingMaterial(false);
-      message.destroy('generateMaterial');
     }
   };
 

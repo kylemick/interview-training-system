@@ -23,6 +23,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { api, cancelAllPendingRequests } from '../../utils/api';
+import { useAiThinking } from '../../hooks/useAiThinking';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -179,26 +180,42 @@ const Questions = () => {
     }
   }, [editingQuestion, form, loadData]);
 
+  const { executeWithThinking } = useAiThinking();
+
   const handleAiGenerate = useCallback(async () => {
     try {
       const values = await aiForm.validateFields();
       setLoading(true);
 
-      const response = await api.ai.generateQuestions({
-        ...values,
-        save: true,
-      });
+      const categoryLabel = CATEGORIES.find(c => c.value === values.category)?.label || values.category;
 
-      message.success(response.message || '题目生成成功');
-      setAiModalOpen(false);
-      aiForm.resetFields();
-      loadData();
+      await executeWithThinking(
+        'generate-questions',
+        async () => {
+          return await api.ai.generateQuestions({
+            ...values,
+            save: true,
+          });
+        },
+        {
+          taskName: `生成${categoryLabel}题目`,
+          onSuccess: (response) => {
+            message.success(response.message || '题目生成成功');
+            setAiModalOpen(false);
+            aiForm.resetFields();
+            loadData();
+          },
+          onError: (error: any) => {
+            message.error(error.response?.data?.error?.message || 'AI 生成失败');
+          },
+        }
+      );
     } catch (error: any) {
       message.error(error.response?.data?.error?.message || 'AI 生成失败');
     } finally {
       setLoading(false);
     }
-  }, [aiForm, loadData]);
+  }, [aiForm, loadData, executeWithThinking]);
 
   // 优化：使用 useMemo 缓存计算结果
   const getCategoryLabel = useCallback((value: string) => {

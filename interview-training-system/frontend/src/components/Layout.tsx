@@ -15,6 +15,7 @@ import {
   BookOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
+import AiThinkingDisplay from './AiThinkingDisplay'
 
 const { Header, Sider, Content } = AntLayout
 
@@ -70,6 +71,7 @@ export default function Layout({ children }: LayoutProps) {
           </Content>
         </AntLayout>
       </AntLayout>
+      <AiThinkingDisplay />
     </AntLayout>
   )
 }

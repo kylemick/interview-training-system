@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, RobotOutlined } from '@ant-design/icons';
 import { api } from '../../utils/api';
+import { useAiThinking } from '../../hooks/useAiThinking';
 
 const { TextArea } = Input;
 
@@ -32,6 +33,7 @@ export default function SchoolsPage() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [form] = Form.useForm();
+  const { executeWithThinking } = useAiThinking();
 
   // 加载学校列表
   const loadSchools = async () => {
@@ -74,38 +76,44 @@ export default function SchoolsPage() {
       }
 
       setAiGenerating(true);
-      message.loading('AI 正在生成学校档案...', 0);
 
-      const response = await api.ai.generateSchool({
-        schoolName: schoolName.trim(),
-      });
+      await executeWithThinking(
+        'generate-school',
+        async () => {
+          return await api.ai.generateSchool({
+            schoolName: schoolName.trim(),
+          });
+        },
+        {
+          taskName: `生成${schoolName.trim()}学校档案`,
+          onSuccess: (response) => {
+            if (response.success) {
+              const profile = response.data;
+              
+              // 自动填充表单
+              form.setFieldsValue({
+                code: profile.code,
+                name: profile.name,
+                name_zh: profile.name_zh,
+                focus_areas: profile.focus_areas,
+                interview_style: profile.interview_style,
+                notes: profile.notes,
+              });
 
-      message.destroy();
-
-      if (response.success) {
-        const profile = response.data;
-        
-        // 自动填充表单
-        form.setFieldsValue({
-          code: profile.code,
-          name: profile.name,
-          name_zh: profile.name_zh,
-          focus_areas: profile.focus_areas,
-          interview_style: profile.interview_style,
-          notes: profile.notes,
-        });
-
-        message.success('AI 已生成学校档案，请检查并修改');
-      }
-    } catch (error: any) {
-      message.destroy();
-      console.error('AI 生成失败:', error);
-      
-      if (error.response?.data?.message) {
-        message.error(error.response.data.message);
-      } else {
-        message.error('AI 生成失败，请检查 DeepSeek API Key 配置');
-      }
+              message.success('AI 已生成学校档案，请检查并修改');
+            }
+          },
+          onError: (error: any) => {
+            console.error('AI 生成失败:', error);
+            
+            if (error.response?.data?.message) {
+              message.error(error.response.data.message);
+            } else {
+              message.error('AI 生成失败，请检查 DeepSeek API Key 配置');
+            }
+          },
+        }
+      );
     } finally {
       setAiGenerating(false);
     }

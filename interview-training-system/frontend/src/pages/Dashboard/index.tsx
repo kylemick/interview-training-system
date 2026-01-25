@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api, cancelAllPendingRequests } from '../../utils/api'
+import { useAiThinking } from '../../hooks/useAiThinking'
 
 const { Title, Text } = Typography
 
@@ -64,6 +65,7 @@ interface Weakness {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { executeWithThinking } = useAiThinking()
   const [loading, setLoading] = useState(true)
   const [todayTasks, setTodayTasks] = useState<DailyTask[]>([])
   const [recentSessions, setRecentSessions] = useState<Session[]>([])
@@ -88,26 +90,30 @@ export default function Dashboard() {
 
     try {
       setGeneratingQuestionsId(weaknessId);
-      message.loading({ content: '正在生成针对性题目...', key: 'generateQuestions', duration: 0 });
 
-      await api.weaknesses.generateQuestions({
-        weakness_ids: [weaknessId],
-        count: 5,
-      });
-
-      message.success({ content: '题目生成成功', key: 'generateQuestions', duration: 2 });
-      navigate('/questions');
-    } catch (error: any) {
-      message.error({
-        content: error?.response?.data?.message || '题目生成失败',
-        key: 'generateQuestions',
-        duration: 3,
-      });
+      await executeWithThinking(
+        'generate-questions',
+        async () => {
+          return await api.weaknesses.generateQuestions({
+            weakness_ids: [weaknessId],
+            count: 5,
+          });
+        },
+        {
+          taskName: '生成针对性题目',
+          onSuccess: () => {
+            message.success('题目生成成功');
+            navigate('/questions');
+          },
+          onError: (error: any) => {
+            message.error(error?.response?.data?.message || '题目生成失败');
+          },
+        }
+      );
     } finally {
       setGeneratingQuestionsId(null);
-      message.destroy('generateQuestions');
     }
-  }, [generatingQuestionsId, navigate]);
+  }, [generatingQuestionsId, navigate, executeWithThinking]);
 
   // 优化：使用 useCallback 缓存 loadDashboardData 函数
   const loadDashboardData = useCallback(async () => {

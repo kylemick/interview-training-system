@@ -32,6 +32,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../utils/api';
 import dayjs from 'dayjs';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -524,9 +525,7 @@ function MaterialDetail({
 
         <Title level={4}>内容</Title>
         <Card>
-          <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8' }}>
-            {material.content}
-          </div>
+          <MarkdownRenderer content={material.content} />
         </Card>
       </Card>
 

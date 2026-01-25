@@ -27,10 +27,35 @@ const DataManagement = () => {
 
   const fetchStats = async () => {
     try {
+      setLoading(true);
       const response = await api.data.stats();
-      setStats(response.data);
-    } catch (error) {
+      console.log('统计信息响应:', response);
+      if (response.success && response.data) {
+        // 确保数据格式正确
+        const statsData: DataStats = {
+          schools: Number(response.data.schools) || 0,
+          questions: Number(response.data.questions) || 0,
+          plans: Number(response.data.plans) || 0,
+          sessions: Number(response.data.sessions) || 0,
+          seedSchools: Number(response.data.seedSchools) || 0,
+          questionsBySource: Array.isArray(response.data.questionsBySource) 
+            ? response.data.questionsBySource.map((item: any) => ({
+                source: String(item.source || 'unknown'),
+                count: Number(item.count) || 0,
+              }))
+            : [],
+        };
+        setStats(statsData);
+      } else {
+        console.error('获取统计信息失败: 响应格式不正确', response);
+        message.error(`获取统计信息失败: ${response.message || '响应格式不正确'}`);
+      }
+    } catch (error: any) {
       console.error('获取统计信息失败:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || '获取统计信息失败';
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 

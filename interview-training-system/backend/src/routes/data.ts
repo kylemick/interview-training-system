@@ -7,6 +7,52 @@ import { AppError } from '../middleware/errorHandler.js';
 const router = Router();
 
 /**
+ * 获取数据库统计信息
+ * GET /api/data/stats
+ */
+router.get('/stats', async (req: Request, res: Response) => {
+  try {
+    const { query } = await import('../db/index.js');
+    
+    // 统计各表数据量
+    const schoolsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
+    const questionsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
+    const plansResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM training_plans');
+    const sessionsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM sessions');
+    
+    // 统计种子学校数量（school_profiles表没有source字段，所以统计所有学校）
+    const seedSchoolsCount = schoolsResult[0]?.count || 0;
+    
+    // 统计题目来源分布
+    const questionsBySourceRaw = await query<{ source: string; count: number }>(
+      'SELECT COALESCE(source, "unknown") as source, COUNT(*) as count FROM questions GROUP BY COALESCE(source, "unknown")'
+    );
+    
+    // 确保返回格式正确
+    const questionsBySource = questionsBySourceRaw.map((item: any) => ({
+      source: item.source || 'unknown',
+      count: typeof item.count === 'bigint' ? Number(item.count) : item.count,
+    }));
+    
+    res.json({
+      success: true,
+      data: {
+        schools: typeof schoolsResult[0]?.count === 'bigint' ? Number(schoolsResult[0].count) : (schoolsResult[0]?.count || 0),
+        questions: typeof questionsResult[0]?.count === 'bigint' ? Number(questionsResult[0].count) : (questionsResult[0]?.count || 0),
+        plans: typeof plansResult[0]?.count === 'bigint' ? Number(plansResult[0].count) : (plansResult[0]?.count || 0),
+        sessions: typeof sessionsResult[0]?.count === 'bigint' ? Number(sessionsResult[0].count) : (sessionsResult[0]?.count || 0),
+        seedSchools: seedSchoolsCount,
+        questionsBySource: questionsBySource,
+      },
+    });
+  } catch (error: any) {
+    console.error('获取统计信息失败:', error);
+    console.error('错误详情:', error.message, error.stack);
+    throw new AppError(500, `获取统计信息失败: ${error.message}`);
+  }
+});
+
+/**
  * 导入学校种子数据
  * POST /api/data/seed-schools
  */

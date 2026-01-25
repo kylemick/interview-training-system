@@ -30,6 +30,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../utils/api';
 import { Alert } from 'antd';
+import { useAiThinking } from '../../hooks/useAiThinking';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -69,6 +70,7 @@ interface Settings {
 
 const TrainingPlan = () => {
   const navigate = useNavigate();
+  const { executeWithThinking } = useAiThinking();
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -162,26 +164,36 @@ const TrainingPlan = () => {
 
       setLoading(true);
 
-      // 统一使用设置中的学生信息
-      const response = await api.plans.create({
-        // 不传递student_name，让后端从设置获取
-        target_school: targetSchool,
-        start_date: startDate.format('YYYY-MM-DD'),
-        end_date: endDate.format('YYYY-MM-DD'),
-        daily_duration: values.daily_duration || settings?.daily_duration || 30,
-      });
-
-      message.success(response.message || '训练计划创建成功');
-      setModalOpen(false);
-      form.resetFields();
-      fetchPlans();
-    } catch (error: any) {
-      console.error('创建训练计划失败:', error);
-      const errorMessage = error.response?.data?.error?.message 
-        || error.response?.data?.message 
-        || error.message 
-        || '创建训练计划失败';
-      message.error(errorMessage);
+      // 使用思考展示
+      await executeWithThinking(
+        'generate-plan',
+        async () => {
+          return await api.plans.create({
+            // 不传递student_name，让后端从设置获取
+            target_school: targetSchool,
+            start_date: startDate.format('YYYY-MM-DD'),
+            end_date: endDate.format('YYYY-MM-DD'),
+            daily_duration: values.daily_duration || settings?.daily_duration || 30,
+          });
+        },
+        {
+          taskName: '生成训练计划',
+          onSuccess: (response) => {
+            message.success(response.message || '训练计划创建成功');
+            setModalOpen(false);
+            form.resetFields();
+            fetchPlans();
+          },
+          onError: (error: any) => {
+            console.error('创建训练计划失败:', error);
+            const errorMessage = error.response?.data?.error?.message 
+              || error.response?.data?.message 
+              || error.message 
+              || '创建训练计划失败';
+            message.error(errorMessage);
+          },
+        }
+      );
     } finally {
       setLoading(false);
     }

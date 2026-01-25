@@ -22,6 +22,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api'
+import { useAiThinking } from '../../hooks/useAiThinking'
 
 const { Title, Text, Paragraph } = Typography
 const { Panel } = Collapse
@@ -71,6 +72,7 @@ export default function Feedback() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const sessionIdFromUrl = searchParams.get('session')
+  const { executeWithThinking } = useAiThinking()
 
   const [loading, setLoading] = useState(false)
   const [sessions, setSessions] = useState<Session[]>([])
@@ -377,23 +379,33 @@ export default function Feedback() {
     
     try {
       setGeneratingFeedback(true)
-      await api.feedback.generate({
-        session_id: selectedSession,
-        record_id: recordId,
-        question_text: questionText,
-        answer_text: answerText,
-        category: sessionDetail.session.category, // 从会话中获取类别
-        target_school: targetSchool,
-      })
-
-      message.success('反馈生成成功')
-      // 重新加载会话详情
-      if (selectedSession) {
-        await loadSessionDetail(selectedSession)
-      }
-    } catch (error: any) {
-      console.error('生成反馈失败:', error)
-      message.error(error.response?.data?.message || '生成反馈失败')
+      await executeWithThinking(
+        'generate-feedback',
+        async () => {
+          return await api.feedback.generate({
+            session_id: selectedSession,
+            record_id: recordId,
+            question_text: questionText,
+            answer_text: answerText,
+            category: sessionDetail.session.category, // 从会话中获取类别
+            target_school: targetSchool,
+          });
+        },
+        {
+          taskName: '生成AI反馈',
+          onSuccess: async () => {
+            message.success('反馈生成成功')
+            // 重新加载会话详情
+            if (selectedSession) {
+              await loadSessionDetail(selectedSession)
+            }
+          },
+          onError: (error: any) => {
+            console.error('生成反馈失败:', error)
+            message.error(error.response?.data?.message || '生成反馈失败')
+          },
+        }
+      );
     } finally {
       setGeneratingFeedback(false)
     }

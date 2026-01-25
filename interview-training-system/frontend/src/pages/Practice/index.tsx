@@ -28,6 +28,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api'
 import VoiceInput from '../../components/VoiceInput'
+import { useAiThinking } from '../../hooks/useAiThinking'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -81,6 +82,7 @@ export default function Practice() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const taskId = searchParams.get('taskId')
+  const { executeWithThinking } = useAiThinking()
 
   // 状态管理
   const [practiceMode, setPracticeMode] = useState<'task' | 'free' | 'weakness' | 'school-round'>(taskId ? 'task' : 'free')
@@ -646,59 +648,71 @@ export default function Practice() {
 
     try {
       setLoading(true);
-      message.loading({ content: '正在生成针对性题目...', key: 'weaknessPractice' });
 
       // 1. 基于弱点生成针对性题目
-      const generateRes = await api.weaknesses.generateQuestions({
-        weakness_ids: [selectedWeaknessId],
-        count: questionCount,
-      });
+      await executeWithThinking(
+        'generate-questions',
+        async () => {
+          return await api.weaknesses.generateQuestions({
+            weakness_ids: [selectedWeaknessId],
+            count: questionCount,
+          });
+        },
+        {
+          taskName: '生成针对性题目',
+          onSuccess: async (generateRes) => {
+            if (!generateRes.success || !generateRes.data?.questions || generateRes.data.questions.length === 0) {
+              message.error('生成题目失败，请重试');
+              return;
+            }
 
-      if (!generateRes.success || !generateRes.data?.questions || generateRes.data.questions.length === 0) {
-        message.error({ content: '生成题目失败，请重试', key: 'weaknessPractice' });
-        return;
-      }
+            const generatedQuestions = generateRes.data.questions;
+            const questionIds = generatedQuestions.map((q: any) => q.id);
 
-      const generatedQuestions = generateRes.data.questions;
-      const questionIds = generatedQuestions.map((q: any) => q.id);
+            // 2. 获取弱点信息以确定category
+            const weaknessRes = await api.weaknesses.get(selectedWeaknessId.toString());
+            const weakness = weaknessRes.success ? weaknessRes.data : null;
+            const weaknessCategory = weakness?.category || 'english-oral';
 
-      // 2. 获取弱点信息以确定category
-      const weaknessRes = await api.weaknesses.get(selectedWeaknessId.toString());
-      const weakness = weaknessRes.success ? weaknessRes.data : null;
-      const weaknessCategory = weakness?.category || 'english-oral';
+            // 3. 创建会话
+            const sessionRes = await api.sessions.create({
+              category: weaknessCategory,
+              mode,
+              question_count: questionIds.length,
+              weakness_id: selectedWeaknessId,
+              material_id: selectedMaterialId || undefined,
+            });
 
-      // 3. 创建会话
-      const sessionRes = await api.sessions.create({
-        category: weaknessCategory,
-        mode,
-        question_count: questionIds.length,
-        weakness_id: selectedWeaknessId,
-        material_id: selectedMaterialId || undefined,
-      });
+            const session = sessionRes.data;
+            setSessionData(session);
+            setCategory(weaknessCategory);
 
-      const session = sessionRes.data;
-      setSessionData(session);
-      setCategory(weaknessCategory);
+            // 4. 设置题目
+            setQuestions(generatedQuestions);
+            setCurrentIndex(0);
+            setAnswers({});
+            setStep('practice');
 
-      // 4. 设置题目
-      setQuestions(generatedQuestions);
-      setCurrentIndex(0);
-      setAnswers({});
-      setStep('practice');
+            message.success(`弱点专项练习开始！共 ${generatedQuestions.length} 题`);
 
-      message.success({ content: `弱点专项练习开始！共 ${generatedQuestions.length} 题`, key: 'weaknessPractice' });
-
-      // 5. 如果选择了素材，增加使用次数
-      if (selectedMaterialId) {
-        try {
-          await api.learningMaterials.incrementUsage(selectedMaterialId);
-        } catch (error) {
-          console.error('更新素材使用次数失败:', error);
+            // 5. 如果选择了素材，增加使用次数
+            if (selectedMaterialId) {
+              try {
+                await api.learningMaterials.incrementUsage(selectedMaterialId);
+              } catch (error) {
+                console.error('更新素材使用次数失败:', error);
+              }
+            }
+          },
+          onError: (error: any) => {
+            console.error('开始弱点专项练习失败:', error);
+            message.error(error.response?.data?.message || '开始练习失败');
+          },
         }
-      }
+      );
     } catch (error: any) {
       console.error('开始弱点专项练习失败:', error);
-      message.error({ content: error.response?.data?.message || '开始练习失败', key: 'weaknessPractice' });
+      message.error(error.response?.data?.message || '开始练习失败');
     } finally {
       setLoading(false);
     }
@@ -877,29 +891,38 @@ export default function Practice() {
       message.success('答案已保存，正在生成AI反馈...')
 
       // 2. 立即生成AI反馈并保存到数据库
-      try {
-        const feedbackRes = await api.feedback.generate({
-          session_id: sessionData.session_id,
-          record_id: recordId,
-          question_id: currentQuestion.id,
-          question_text: currentQuestion.question_text,
-          answer_text: answers[currentIndex],
-          category,
-          target_school: targetSchool,
-          // 弱点专项练习：传递弱点和素材信息
-          weakness_id: practiceMode === 'weakness' ? selectedWeaknessId : undefined,
-          material_id: practiceMode === 'weakness' ? selectedMaterialId : undefined,
-        })
-
-        const feedback = feedbackRes.data
-        setFeedbacks({ ...feedbacks, [currentIndex]: feedback })
-        message.success('AI反馈已生成并保存！', 2)
-      } catch (feedbackError: any) {
-        console.error('生成反馈失败:', feedbackError)
-        message.warning(
-          feedbackError.response?.data?.message || '反馈生成失败，可以稍后在反馈页面查看'
-        )
-      }
+      await executeWithThinking(
+        'generate-feedback',
+        async () => {
+          const feedbackRes = await api.feedback.generate({
+            session_id: sessionData.session_id,
+            record_id: recordId,
+            question_id: currentQuestion.id,
+            question_text: currentQuestion.question_text,
+            answer_text: answers[currentIndex],
+            category,
+            target_school: targetSchool,
+            // 弱点专项练习：传递弱点和素材信息
+            weakness_id: practiceMode === 'weakness' ? selectedWeaknessId : undefined,
+            material_id: practiceMode === 'weakness' ? selectedMaterialId : undefined,
+          })
+          return feedbackRes
+        },
+        {
+          taskName: '生成AI反馈',
+          onSuccess: (feedbackRes) => {
+            const feedback = feedbackRes.data
+            setFeedbacks({ ...feedbacks, [currentIndex]: feedback })
+            message.success('AI反馈已生成并保存！', 2)
+          },
+          onError: (feedbackError: any) => {
+            console.error('生成反馈失败:', feedbackError)
+            message.warning(
+              feedbackError.response?.data?.message || '反馈生成失败，可以稍后在反馈页面查看'
+            )
+          },
+        }
+      )
 
       // 3. 如果是最后一题，提示完成
       if (currentIndex === questions.length - 1) {
