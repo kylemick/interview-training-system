@@ -44,6 +44,10 @@
   - [x] 4.2.1 轉換 `backend/src/db/seeds/questions.ts` 中的簡體中文為繁體中文
   - [x] 4.2.2 轉換 `backend/src/db/seeds/schools.ts` 中的簡體中文為繁體中文
   - [x] 4.2.3 注意：英文專項（english-oral）的內容保持英文，不轉換
+- [x] 4.3 執行數據庫遷移腳本，更新現有數據庫中的簡體中文
+  - [x] 4.3.1 執行 `npm run db:migrate:traditional` 遷移腳本
+  - [x] 4.3.2 驗證遷移結果，確認已更新 72 道題目
+  - [x] 4.3.3 確認所有表的簡體中文內容已轉換為繁體中文
 
 ## 5. 更新 AI 提示詞語言規範
 

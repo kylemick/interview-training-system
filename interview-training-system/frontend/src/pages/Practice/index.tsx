@@ -796,61 +796,78 @@ export default function Practice() {
 
     try {
       setLoading(true);
-      message.loading({ content: '正在生成模拟面試題目...', key: 'schoolRound', duration: 0 });
 
-      // 調用新的API創建學校-輪次模拟面試會話
-      const sessionRes = await api.sessions.createSchoolRoundMock({
-        school_code: selectedSchoolCode,
-        interview_round: selectedInterviewRound || undefined,
-        question_count: questionCount,
-      });
-
-      if (!sessionRes.success || !sessionRes.data) {
-        throw new Error('創建模拟面試會話失敗');
-      }
-
-      const session = sessionRes.data;
-      setSessionData({
-        session_id: session.session_id,
-        question_ids: session.question_ids || [],
-        status: 'in_progress',
-      });
-
-      // 如果API返回了題目列表，直接使用；否則通過question_ids获取
-      let loadedQuestions: Question[] = [];
-      if (session.questions && Array.isArray(session.questions)) {
-        loadedQuestions = session.questions.map((q: any) => ({
-          id: String(q.id),
-          question_text: q.question_text,
-          category: q.category || 'mixed',
-          difficulty: q.difficulty,
-        }));
-      } else {
-        const questionIds = session.question_ids || [];
-        if (questionIds.length > 0) {
-          const questionsRes = await api.questions.list({
-            ids: questionIds.join(','),
-            limit: questionIds.length,
+      // 使用浮窗展示 AI 思考過程
+      await executeWithThinking(
+        'generate-questions',
+        async () => {
+          // 調用新的API創建學校-輪次模拟面試會話
+          return await api.sessions.createSchoolRoundMock({
+            school_code: selectedSchoolCode,
+            interview_round: selectedInterviewRound || undefined,
+            question_count: questionCount,
           });
-          loadedQuestions = questionsRes.success ? questionsRes.data : [];
+        },
+        {
+          taskName: '生成學校輪次模擬面試題目',
+          onSuccess: async (sessionRes) => {
+            if (!sessionRes.success || !sessionRes.data) {
+              throw new Error('創建模拟面試會話失敗');
+            }
+
+            const session = sessionRes.data;
+            setSessionData({
+              session_id: session.session_id,
+              question_ids: session.question_ids || [],
+              status: 'in_progress',
+            });
+
+            // 如果API返回了題目列表，直接使用；否則通過question_ids获取
+            let loadedQuestions: Question[] = [];
+            if (session.questions && Array.isArray(session.questions)) {
+              loadedQuestions = session.questions.map((q: any) => ({
+                id: String(q.id),
+                question_text: q.question_text,
+                category: q.category || 'mixed',
+                difficulty: q.difficulty,
+              }));
+            } else {
+              const questionIds = session.question_ids || [];
+              if (questionIds.length > 0) {
+                const questionsRes = await api.questions.list({
+                  ids: questionIds.join(','),
+                  limit: questionIds.length,
+                });
+                loadedQuestions = questionsRes.success ? questionsRes.data : [];
+              }
+            }
+
+            if (loadedQuestions.length === 0) {
+              message.error('无法生成模拟面試題目，请稍後重試');
+              return;
+            }
+
+            setQuestions(loadedQuestions);
+            setCurrentIndex(0);
+            setAnswers({});
+            setStep('practice');
+            
+            message.success({
+              content: `模拟面試開始！共 ${loadedQuestions.length} 題${selectedInterviewRound ? `（${selectedInterviewRound}）` : ''}`,
+              key: 'schoolRound',
+              duration: 3,
+            });
+          },
+          onError: (error: any) => {
+            console.error('開始學校-輪次模拟面試失敗:', error);
+            message.error({
+              content: error.response?.data?.message || '開始模拟面試失敗',
+              key: 'schoolRound',
+              duration: 5,
+            });
+          },
         }
-      }
-
-      if (loadedQuestions.length === 0) {
-        message.error('无法生成模拟面試題目，请稍後重試');
-        return;
-      }
-
-      setQuestions(loadedQuestions);
-      setCurrentIndex(0);
-      setAnswers({});
-      setStep('practice');
-      
-      message.success({
-        content: `模拟面試開始！共 ${loadedQuestions.length} 題${selectedInterviewRound ? `（${selectedInterviewRound}）` : ''}`,
-        key: 'schoolRound',
-        duration: 3,
-      });
+      );
     } catch (error: any) {
       console.error('開始學校-輪次模拟面試失敗:', error);
       message.error({
