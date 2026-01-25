@@ -70,6 +70,7 @@ export default function InterviewMemory() {
   const [inputText, setInputText] = useState('')
   const [category, setCategory] = useState<string>()
   const [schoolCode, setSchoolCode] = useState<string>()
+  const [interviewRound, setInterviewRound] = useState<string>()
   const [extracting, setExtracting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [extractedData, setExtractedData] = useState<ExtractionResult | null>(null)
@@ -111,6 +112,7 @@ export default function InterviewMemory() {
         text: inputText,
         category,
         school_code: schoolCode,
+        interview_round: interviewRound,
       })
 
       setExtractedData(response.data)
@@ -409,6 +411,20 @@ export default function InterviewMemory() {
                       {school.name_zh} ({school.code})
                     </Option>
                   ))}
+                </Select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8 }}>面试轮次（可选）</label>
+                <Select
+                  placeholder="选择轮次"
+                  allowClear
+                  style={{ width: 150 }}
+                  value={interviewRound}
+                  onChange={setInterviewRound}
+                >
+                  <Option value="first-round">第一轮</Option>
+                  <Option value="second-round">第二轮</Option>
+                  <Option value="final-round">最终轮</Option>
                 </Select>
               </div>
             </Space>

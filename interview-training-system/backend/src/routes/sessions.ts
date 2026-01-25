@@ -4,7 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { ensureQuestionsAvailable } from '../utils/questionHelper.js';
+import { ensureQuestionsAvailable, generateSchoolRoundQuestions } from '../utils/questionHelper.js';
 
 const router = Router();
 
@@ -70,6 +70,70 @@ router.post('/', async (req: Request, res: Response) => {
     if (error instanceof AppError) throw error;
     console.error('创建练习会话失败:', error);
     throw new AppError(500, '创建练习会话失败');
+  }
+});
+
+// 创建学校-轮次模拟面试会话
+router.post('/school-round-mock', async (req: Request, res: Response) => {
+  try {
+    const { school_code, interview_round, question_count = 10 } = req.body;
+
+    if (!school_code) {
+      throw new AppError(400, '缺少必填字段：school_code');
+    }
+
+    const questionCount = parseInt(question_count as string) || 10;
+    const safeCount = Math.max(1, Math.min(questionCount, 50)); // 限制在1-50之间
+
+    console.log(`🎯 创建学校-轮次模拟面试会话: 学校=${school_code}, 轮次=${interview_round || '未指定'}, 题目数=${safeCount}`);
+
+    // 使用基于轮次的题目生成函数
+    const questions = await generateSchoolRoundQuestions(
+      school_code,
+      interview_round,
+      safeCount
+    );
+
+    if (questions.length === 0) {
+      throw new AppError(500, `无法为学校(${school_code})${interview_round ? `轮次(${interview_round})` : ''}生成题目，请稍后重试`);
+    }
+
+    const questionIds = questions.map((q: any) => q.id);
+
+    // 创建会话，使用特殊的mode标识这是学校-轮次模拟面试
+    // category设置为mixed，因为可能包含多个类别
+    const sessionId = await insert(
+      `INSERT INTO sessions (task_id, category, mode, status, question_ids)
+       VALUES (?, ?, ?, ?, ?)`,
+      [null, 'mixed', 'school_round_mock', 'in_progress', JSON.stringify(questionIds)]
+    );
+
+    // 在question_ids的JSON中存储额外的元数据（通过扩展字段或注释）
+    // 这里我们通过返回数据传递元数据
+    console.log(`✅ 创建学校-轮次模拟面试会话: ID=${sessionId}, 题目数=${questionIds.length}`);
+
+    res.status(201).json({
+      success: true,
+      message: '学校-轮次模拟面试会话创建成功',
+      data: {
+        session_id: sessionId,
+        school_code,
+        interview_round: interview_round || null,
+        mode: 'school_round_mock',
+        question_ids: questionIds,
+        total_questions: questionIds.length,
+        questions: questions.map((q: any) => ({
+          id: q.id,
+          question_text: q.question_text,
+          category: q.category,
+          difficulty: q.difficulty,
+        })),
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('创建学校-轮次模拟面试会话失败:', error);
+    throw new AppError(500, '创建学校-轮次模拟面试会话失败');
   }
 });
 

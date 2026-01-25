@@ -83,7 +83,7 @@ export default function Practice() {
   const taskId = searchParams.get('taskId')
 
   // 状态管理
-  const [practiceMode, setPracticeMode] = useState<'task' | 'free' | 'weakness'>(taskId ? 'task' : 'free')
+  const [practiceMode, setPracticeMode] = useState<'task' | 'free' | 'weakness' | 'school-round'>(taskId ? 'task' : 'free')
   const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null)
   const [step, setStep] = useState<'select' | 'practice'>('select')
   const [category, setCategory] = useState<string>('')
@@ -95,6 +95,11 @@ export default function Practice() {
   const [weaknesses, setWeaknesses] = useState<any[]>([])
   const [materials, setMaterials] = useState<any[]>([])
   const [loadingWeaknesses, setLoadingWeaknesses] = useState(false)
+  // 学校-轮次模拟面试相关
+  const [selectedSchoolCode, setSelectedSchoolCode] = useState<string>('')
+  const [selectedInterviewRound, setSelectedInterviewRound] = useState<string>('')
+  const [schools, setSchools] = useState<any[]>([])
+  const [loadingSchools, setLoadingSchools] = useState(false)
 
   const [sessionData, setSessionData] = useState<SessionData | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -605,6 +610,21 @@ export default function Practice() {
     }
   };
 
+  // 加载学校列表
+  const loadSchools = async () => {
+    try {
+      setLoadingSchools(true);
+      const res = await api.schools.list();
+      if (res.success) {
+        setSchools(res.data || []);
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '加载学校列表失败');
+    } finally {
+      setLoadingSchools(false);
+    }
+  };
+
   // 加载弱点关联的素材
   const loadMaterialsForWeakness = async (weaknessId: number) => {
     try {
@@ -691,6 +711,11 @@ export default function Practice() {
       return;
     }
 
+    if (practiceMode === 'school-round') {
+      await startSchoolRoundPractice();
+      return;
+    }
+
     if (!category) {
       message.warning('请选择专项类别');
       return;
@@ -734,6 +759,82 @@ export default function Practice() {
       setLoading(false)
     }
   }
+
+  // 开始学校-轮次模拟面试
+  const startSchoolRoundPractice = async () => {
+    if (!selectedSchoolCode) {
+      message.warning('请选择目标学校');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      message.loading({ content: '正在生成模拟面试题目...', key: 'schoolRound', duration: 0 });
+
+      // 调用新的API创建学校-轮次模拟面试会话
+      const sessionRes = await api.sessions.createSchoolRoundMock({
+        school_code: selectedSchoolCode,
+        interview_round: selectedInterviewRound || undefined,
+        question_count: questionCount,
+      });
+
+      if (!sessionRes.success || !sessionRes.data) {
+        throw new Error('创建模拟面试会话失败');
+      }
+
+      const session = sessionRes.data;
+      setSessionData({
+        session_id: session.session_id,
+        question_ids: session.question_ids || [],
+        status: 'in_progress',
+      });
+
+      // 如果API返回了题目列表，直接使用；否则通过question_ids获取
+      let loadedQuestions: Question[] = [];
+      if (session.questions && Array.isArray(session.questions)) {
+        loadedQuestions = session.questions.map((q: any) => ({
+          id: String(q.id),
+          question_text: q.question_text,
+          category: q.category || 'mixed',
+          difficulty: q.difficulty,
+        }));
+      } else {
+        const questionIds = session.question_ids || [];
+        if (questionIds.length > 0) {
+          const questionsRes = await api.questions.list({
+            ids: questionIds.join(','),
+            limit: questionIds.length,
+          });
+          loadedQuestions = questionsRes.success ? questionsRes.data : [];
+        }
+      }
+
+      if (loadedQuestions.length === 0) {
+        message.error('无法生成模拟面试题目，请稍后重试');
+        return;
+      }
+
+      setQuestions(loadedQuestions);
+      setCurrentIndex(0);
+      setAnswers({});
+      setStep('practice');
+      
+      message.success({
+        content: `模拟面试开始！共 ${loadedQuestions.length} 题${selectedInterviewRound ? `（${selectedInterviewRound}）` : ''}`,
+        key: 'schoolRound',
+        duration: 3,
+      });
+    } catch (error: any) {
+      console.error('开始学校-轮次模拟面试失败:', error);
+      message.error({
+        content: error.response?.data?.message || '开始模拟面试失败',
+        key: 'schoolRound',
+        duration: 5,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 提交答案并获取即时反馈
   const submitAnswer = async () => {
@@ -955,6 +1056,9 @@ export default function Practice() {
                   if (mode === 'weakness') {
                     // 加载弱点列表
                     loadWeaknesses();
+                  } else if (mode === 'school-round') {
+                    // 加载学校列表
+                    loadSchools();
                   } else {
                     // 切换到自由练习时清空弱点相关状态
                     setSelectedWeaknessId(null);
@@ -966,6 +1070,7 @@ export default function Practice() {
                 <Space>
                   <Radio value="free">自由练习</Radio>
                   <Radio value="weakness">弱点专项练习</Radio>
+                  <Radio value="school-round">学校-轮次模拟面试</Radio>
                 </Space>
               </Radio.Group>
             </div>
@@ -1049,6 +1154,54 @@ export default function Practice() {
               </>
             )}
 
+            {/* 学校-轮次模拟面试模式 */}
+            {practiceMode === 'school-round' && (
+              <>
+                <div>
+                  <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
+                    1. 选择目标学校
+                  </Text>
+                  <Select
+                    size="large"
+                    style={{ width: '100%' }}
+                    placeholder="请选择目标学校"
+                    value={selectedSchoolCode}
+                    onChange={setSelectedSchoolCode}
+                    loading={loadingSchools}
+                    showSearch
+                    optionFilterProp="children"
+                  >
+                    {schools.map((school) => (
+                      <Select.Option key={school.code} value={school.code}>
+                        {school.name_zh} ({school.code})
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <Text strong style={{ fontSize: 16, marginBottom: 8, display: 'block' }}>
+                    2. 选择面试轮次
+                  </Text>
+                  <Select
+                    size="large"
+                    style={{ width: '100%' }}
+                    placeholder="请选择面试轮次"
+                    value={selectedInterviewRound}
+                    onChange={setSelectedInterviewRound}
+                    allowClear
+                  >
+                    <Select.Option value="first-round">第一轮</Select.Option>
+                    <Select.Option value="second-round">第二轮</Select.Option>
+                    <Select.Option value="final-round">最终轮</Select.Option>
+                  </Select>
+                  <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                    如果不选择轮次，将基于该学校的所有历史数据生成题目
+                  </Text>
+                </div>
+              </>
+            )}
+
             {/* 自由练习模式 */}
             {practiceMode === 'free' && (
               <div>
@@ -1117,9 +1270,16 @@ export default function Practice() {
               icon={<FireOutlined />}
               onClick={startPractice}
               loading={loading}
-              disabled={practiceMode === 'free' ? !category : !selectedWeaknessId}
+              disabled={
+                practiceMode === 'free' ? !category :
+                practiceMode === 'weakness' ? !selectedWeaknessId :
+                practiceMode === 'school-round' ? !selectedSchoolCode :
+                false
+              }
             >
-              {practiceMode === 'weakness' ? '开始弱点专项练习' : '开始练习'}
+              {practiceMode === 'weakness' ? '开始弱点专项练习' :
+               practiceMode === 'school-round' ? '开始模拟面试' :
+               '开始练习'}
             </Button>
           </Space>
         </Card>

@@ -133,11 +133,11 @@ router.post('/generate-questions', async (req: Request, res: Response) => {
 /**
  * AI 分析面试回忆文本并提取问答对
  * POST /api/ai/extract-interview-memory
- * Body: { text, category?, school_code? }
+ * Body: { text, category?, school_code?, interview_round? }
  */
 router.post('/extract-interview-memory', async (req: Request, res: Response) => {
   try {
-    const { text, category, school_code } = req.body;
+    const { text, category, school_code, interview_round } = req.body;
 
     if (!text || !text.trim()) {
       throw new AppError(400, '请提供面试回忆文本');
@@ -148,10 +148,19 @@ router.post('/extract-interview-memory', async (req: Request, res: Response) => 
     // 调用 DeepSeek API 分析文本
     const { deepseekClient } = await import('../ai/deepseek.js');
     
+    // 构建轮次相关的提示
+    let roundContext = '';
+    if (interview_round) {
+      roundContext = `\n面试轮次：${interview_round}（用户已指定）`;
+    } else {
+      roundContext = `\n请尝试从文本中识别面试轮次信息（如"第一轮"、"第二轮"、"最终轮"等），如果无法识别则返回null。`;
+    }
+    
     const prompt = `你是一个面试题目提取和弱点分析专家。请从以下香港升中面试回忆文本中：
 1. 提取所有的面试问题
 2. 分析学生的表现弱点
 3. 对每个问题的分类进行置信度评估
+4. 识别面试轮次信息（如果文本中包含）${roundContext}
 
 面试回忆文本：
 """
@@ -206,7 +215,8 @@ ${text.trim()}
       "related_topics": ["相关话题1", "相关话题2"]
     }
   ],
-  "summary": "对这次面试的整体分析和特点总结"
+  "summary": "对这次面试的整体分析和特点总结",
+  "interview_round": "面试轮次（如：first-round, second-round, final-round，如果无法识别则返回null）"
 }
 
 注意：
@@ -503,6 +513,21 @@ ${text.trim()}
       }));
     }
 
+    // 处理轮次信息：优先使用用户指定的，否则使用AI识别的
+    if (interview_round) {
+      extractedData.interview_round = interview_round;
+    } else if (extractedData.interview_round) {
+      // AI识别的轮次，转换为标准格式
+      const round = extractedData.interview_round.toLowerCase();
+      if (round.includes('第一轮') || round.includes('1') || round.includes('first')) {
+        extractedData.interview_round = 'first-round';
+      } else if (round.includes('第二轮') || round.includes('2') || round.includes('second')) {
+        extractedData.interview_round = 'second-round';
+      } else if (round.includes('最终') || round.includes('final') || round.includes('最后')) {
+        extractedData.interview_round = 'final-round';
+      }
+    }
+
     // 确保每个问题都有分类置信度，如果没有则设置为默认值
     extractedData.questions = extractedData.questions.map((q: any) => ({
       ...q,
@@ -510,7 +535,7 @@ ${text.trim()}
       classification_source: 'auto',
     }));
 
-    console.log(`✅ 成功提取 ${extractedData.questions.length} 个问题`);
+    console.log(`✅ 成功提取 ${extractedData.questions.length} 个问题${extractedData.interview_round ? `，轮次：${extractedData.interview_round}` : ''}`);
 
     res.json({
       success: true,
@@ -648,6 +673,74 @@ router.post('/save-interview-questions', async (req: Request, res: Response) => 
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error('保存面试回忆题目失败:', error);
+    throw new AppError(500, '保存失败，请重试');
+  }
+});
+
+/**
+ * 保存完整的面试回忆到interview_memories表
+ * POST /api/ai/save-interview-memory
+ * Body: { memory_text, school_code?, interview_date?, interview_round?, extracted_questions?, feedback?, tags? }
+ */
+router.post('/save-interview-memory', async (req: Request, res: Response) => {
+  try {
+    const { memory_text, school_code, interview_date, interview_round, extracted_questions, feedback, tags } = req.body;
+
+    if (!memory_text || !memory_text.trim()) {
+      throw new AppError(400, '请提供面试回忆文本');
+    }
+
+    console.log(`💾 保存面试回忆到数据库... (学校: ${school_code || '未指定'}, 轮次: ${interview_round || '未指定'})`);
+
+    const { insert } = await import('../db/index.js');
+
+    // 检查interview_round字段是否存在
+    let hasRoundField = false;
+    try {
+      const columns = await query(`SHOW COLUMNS FROM interview_memories`);
+      const columnNames = columns.map((col: any) => col.Field);
+      hasRoundField = columnNames.includes('interview_round');
+    } catch (e) {
+      console.warn('无法检查表结构，假设字段不存在:', e);
+    }
+
+    let sql = `INSERT INTO interview_memories (memory_text, school_code, interview_date`;
+    let values: any[] = [memory_text.trim(), school_code || null, interview_date || null];
+
+    if (hasRoundField) {
+      sql += `, interview_round`;
+      values.push(interview_round || null);
+    }
+
+    if (extracted_questions) {
+      sql += `, extracted_questions`;
+      values.push(JSON.stringify(extracted_questions));
+    }
+
+    if (feedback) {
+      sql += `, feedback`;
+      values.push(JSON.stringify(feedback));
+    }
+
+    if (tags) {
+      sql += `, tags`;
+      values.push(JSON.stringify(tags));
+    }
+
+    sql += `) VALUES (${values.map(() => '?').join(', ')})`;
+
+    const memoryId = await insert(sql, values);
+
+    console.log(`✅ 已保存面试回忆，ID: ${memoryId}`);
+
+    res.json({
+      success: true,
+      message: '成功保存面试回忆',
+      data: { id: memoryId },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('保存面试回忆失败:', error);
     throw new AppError(500, '保存失败，请重试');
   }
 });

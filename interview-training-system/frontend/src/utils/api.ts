@@ -288,6 +288,8 @@ export const api = {
   // 练习会话相关
   sessions: {
     create: (data: any) => apiClient.post('/sessions', data).then(res => res.data),
+    createSchoolRoundMock: (data: any) => 
+      apiClient.post('/sessions/school-round-mock', data, { timeout: 0 }).then(res => res.data),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/sessions/${id}` }),
     recent: (limit = 10) => 
       enhancedRequest({ method: 'get', url: '/sessions/recent/list', params: { limit } }),

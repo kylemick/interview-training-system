@@ -66,7 +66,15 @@ Requirements:
     }
 
     if (topic) {
-      prompt += `\n- Topic: ${topic}`;
+      // 如果topic包含外部搜索信息，则作为重要参考信息
+      if (topic.includes('===') || topic.includes('历史真实') || topic.includes('外部搜索') || topic.includes('历史真实面试题目')) {
+        prompt += `\n\n=== IMPORTANT REFERENCE INFORMATION ===
+${topic}
+
+Please strictly base your questions on the above reference information, ensuring the question style and content are consistent with the real historical interview questions mentioned.`;
+      } else {
+        prompt += `\n- Topic: ${topic}`;
+      }
     }
 
     prompt += `
@@ -95,7 +103,15 @@ Now generate ${count} questions:`;
     }
 
     if (topic) {
-      prompt += `\n- 围绕主题：${topic}`;
+      // 如果topic包含外部搜索信息（以"==="开头），则作为重要参考信息
+      if (topic.includes('===') || topic.includes('历史真实') || topic.includes('外部搜索')) {
+        prompt += `\n\n=== 重要参考信息 ===
+${topic}
+
+请严格基于以上参考信息生成题目，确保题目风格和内容与参考信息中的历史真实题目保持一致。`;
+      } else {
+        prompt += `\n- 围绕主题：${topic}`;
+      }
     }
 
     // 根据类别添加特定要求

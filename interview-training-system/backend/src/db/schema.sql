@@ -194,6 +194,7 @@ CREATE TABLE IF NOT EXISTS interview_memories (
   id INT AUTO_INCREMENT PRIMARY KEY,
   school_code VARCHAR(50) COMMENT '关联学校',
   interview_date DATE COMMENT '面试日期',
+  interview_round VARCHAR(50) COMMENT '面试轮次（如：first-round, second-round, final-round）',
   memory_text TEXT NOT NULL COMMENT '回忆内容(文字)',
   extracted_questions JSON COMMENT 'AI提取的题目数组',
   feedback JSON COMMENT 'AI反馈分析',
@@ -202,6 +203,7 @@ CREATE TABLE IF NOT EXISTS interview_memories (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_school_code (school_code),
   INDEX idx_interview_date (interview_date),
+  INDEX idx_school_round (school_code, interview_round),
   FOREIGN KEY (school_code) REFERENCES school_profiles(code) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='面试回忆';
 
