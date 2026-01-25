@@ -39,6 +39,10 @@ import sessionRoutes from './routes/sessions.js'
 app.use('/api/sessions', sessionRoutes)
 import feedbackRoutes from './routes/feedback.js'
 app.use('/api/feedback', feedbackRoutes)
+import settingsRoutes from './routes/settings.js'
+app.use('/api/settings', settingsRoutes)
+import weaknessesRoutes from './routes/weaknesses.js'
+app.use('/api/weaknesses', weaknessesRoutes)
 app.use('/api/progress', (req, res) => res.json({ message: 'Progress API - TODO' }))
 
 // 错误处理

@@ -2,7 +2,7 @@
  * 题库管理路由
  */
 import { Router, Request, Response } from 'express';
-import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
+import { query, queryOne, insert, execute, queryWithPagination, parseJsonField } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -73,17 +73,11 @@ router.get('/', async (req: Request, res: Response) => {
       offsetNum
     );
 
-    // 解析 JSON 字段（添加错误处理）
-    const formattedQuestions = questions.map((q: any) => {
-      let tags = [];
-      try {
-        tags = q.tags ? (typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags) : [];
-      } catch (error) {
-        console.warn(`解析题目 ${q.id} 的 tags 字段失败:`, error);
-        tags = [];
-      }
-      return { ...q, tags };
-    });
+    // 统一解析 JSON 字段
+    const formattedQuestions = questions.map((q: any) => ({
+      ...q,
+      tags: parseJsonField(q.tags, 'tags'),
+    }));
 
     res.json({
       success: true,
@@ -113,16 +107,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       throw new AppError(404, '题目不存在');
     }
 
-    // 解析 JSON 字段（添加错误处理）
-    let tags = [];
-    try {
-      tags = question.tags ? (typeof question.tags === 'string' ? JSON.parse(question.tags) : question.tags) : [];
-    } catch (error) {
-      console.warn(`解析题目 ${question.id} 的 tags 字段失败:`, error);
-      tags = [];
-    }
-
-    const formattedQuestion = { ...question, tags };
+    // 统一解析 JSON 字段
+    const formattedQuestion = {
+      ...question,
+      tags: parseJsonField(question.tags, 'tags'),
+    };
 
     res.json({
       success: true,
@@ -268,29 +257,30 @@ router.delete('/:id', async (req: Request, res: Response) => {
 // 获取题库统计
 router.get('/stats/summary', async (req: Request, res: Response) => {
   try {
+    // 使用缓存（统计信息变化不频繁）
     // 按类别统计
     const categoryStats = await query(`
       SELECT category, COUNT(*) as count
       FROM questions
       GROUP BY category
-    `);
+    `, [], true); // 启用缓存
 
     // 按难度统计
     const difficultyStats = await query(`
       SELECT difficulty, COUNT(*) as count
       FROM questions
       GROUP BY difficulty
-    `);
+    `, [], true); // 启用缓存
 
     // 按来源统计
     const sourceStats = await query(`
       SELECT source, COUNT(*) as count
       FROM questions
       GROUP BY source
-    `);
+    `, [], true); // 启用缓存
 
     // 总数
-    const totalResult = await queryOne<{ total: number }>('SELECT COUNT(*) as total FROM questions');
+    const totalResult = await queryOne<{ total: number }>('SELECT COUNT(*) as total FROM questions', [], true);
     const total = totalResult?.total || 0;
 
     res.json({

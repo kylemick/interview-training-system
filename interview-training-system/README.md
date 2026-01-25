@@ -9,6 +9,7 @@
 - 📊 **进度追踪**：可视化学习进度，识别弱点并自适应调整
 - 🏫 **学校针对性**：根据目标学校特点定制训练内容
 - 🔒 **数据隐私**：本地运行，所有数据存储在本地
+- ⚡ **高性能**：页面加载 < 1 秒，API 响应 < 500ms（简单查询）
 
 ## 技术栈
 
@@ -145,6 +146,8 @@ interview-training-system/
 - [快速开始](./QUICKSTART.md)
 - [API文档](./docs/API.md)
 - [开发指南](./docs/DEVELOPMENT.md)
+- [开发规范](./docs/DEVELOPMENT_GUIDE.md) - **开发必读**
+- [性能优化](./docs/PERFORMANCE.md) - 性能要求和优化指南
 - [测试指南](./docs/TESTING.md)
 
 ## 🎯 功能模块

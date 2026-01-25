@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE_URL = 'http://localhost:3001'
+const BASE_URL = 'http://127.0.0.1:3001'
 
 async function testBackend() {
   console.log('🧪 开始测试后端API...\n')

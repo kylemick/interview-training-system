@@ -29,6 +29,56 @@ const dbConfig = {
 // 创建连接池
 let pool: mysql.Pool;
 
+// 查询缓存：简单的内存缓存，5分钟TTL
+interface CacheEntry {
+  data: any
+  timestamp: number
+  expiresAt: number
+}
+
+const queryCache = new Map<string, CacheEntry>()
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+
+// 慢查询阈值（毫秒）
+const SLOW_QUERY_THRESHOLD = 100
+
+/**
+ * 生成查询的缓存key
+ */
+function getCacheKey(sql: string, params?: any[]): string {
+  const paramsStr = params ? JSON.stringify(params) : ''
+  return `${sql}:${paramsStr}`
+}
+
+/**
+ * 清除查询缓存
+ */
+export function clearQueryCache(pattern?: string) {
+  if (!pattern) {
+    queryCache.clear()
+    return
+  }
+  // 清除匹配模式的缓存
+  for (const key of queryCache.keys()) {
+    if (key.includes(pattern)) {
+      queryCache.delete(key)
+    }
+  }
+}
+
+/**
+ * 解析 JSON 字段（统一处理）
+ */
+export function parseJsonField(value: any, fieldName: string): any {
+  if (!value) return []
+  try {
+    return typeof value === 'string' ? JSON.parse(value) : value
+  } catch (error) {
+    console.warn(`解析 ${fieldName} JSON 字段失败:`, error)
+    return []
+  }
+}
+
 /**
  * 获取数据库连接池
  */
@@ -77,12 +127,34 @@ function normalizeParams(params: any[]): any[] {
  * 
  * 注意：对于包含 LIMIT/OFFSET 的分页查询，请使用 queryWithPagination() 函数
  * 
+ * @param sql SQL 语句
+ * @param params 查询参数
+ * @param useCache 是否使用缓存（默认 false，仅用于读多写少的查询）
+ * 
  * @example
  * // 基本查询
  * const users = await query<User>('SELECT * FROM users WHERE id = ?', [1]);
+ * 
+ * // 使用缓存的查询
+ * const schools = await query('SELECT * FROM school_profiles', [], true);
  */
-export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> {
+export async function query<T = any>(sql: string, params?: any[], useCache = false): Promise<T[]> {
   const finalParams = params ? normalizeParams(params) : [];
+  const cacheKey = getCacheKey(sql, finalParams);
+  
+  // 检查缓存（仅用于读查询且启用缓存）
+  if (useCache && sql.trim().toUpperCase().startsWith('SELECT')) {
+    const cached = queryCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ 缓存命中:', sql.substring(0, 50));
+      }
+      return cached.data as T[];
+    }
+  }
+  
+  // 记录查询开始时间
+  const startTime = Date.now();
   
   // 开发环境下记录详细日志
   if (process.env.NODE_ENV === 'development') {
@@ -90,8 +162,32 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> 
     console.log('参数:', finalParams, '类型:', finalParams.map(p => typeof p));
   }
   
-  const [rows] = await getPool().execute(sql, finalParams);
-  return rows as T[];
+  try {
+    const [rows] = await getPool().execute(sql, finalParams);
+    const duration = Date.now() - startTime;
+    
+    // 记录慢查询
+    if (duration > SLOW_QUERY_THRESHOLD) {
+      console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
+      console.warn('   参数:', finalParams);
+    }
+    
+    // 缓存结果（仅用于读查询且启用缓存）
+    if (useCache && sql.trim().toUpperCase().startsWith('SELECT')) {
+      queryCache.set(cacheKey, {
+        data: rows,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + CACHE_TTL,
+      });
+    }
+    
+    return rows as T[];
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ 查询失败 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   参数:', finalParams);
+    throw error;
+  }
 }
 
 /**
@@ -104,6 +200,7 @@ export async function query<T = any>(sql: string, params?: any[]): Promise<T[]> 
  * @param params SQL 参数
  * @param limit 限制数量（已验证为正整数）
  * @param offset 偏移量（已验证为非负整数）
+ * @param useCache 是否使用缓存（默认 false）
  * 
  * @example
  * const questions = await queryWithPagination(
@@ -117,7 +214,8 @@ export async function queryWithPagination<T = any>(
   sql: string, 
   params: any[], 
   limit: number, 
-  offset: number
+  offset: number,
+  useCache = false
 ): Promise<T[]> {
   // 验证分页参数（防止 SQL 注入）
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 1000));
@@ -127,17 +225,39 @@ export async function queryWithPagination<T = any>(
   const finalParams = params ? normalizeParams(params) : [];
   const fullSql = `${sql} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
   
+  // 记录查询开始时间
+  const startTime = Date.now();
+  
   if (process.env.NODE_ENV === 'development') {
     console.log('执行分页查询 - SQL:', fullSql.substring(0, 150));
     console.log('参数:', finalParams);
   }
   
-  const [rows] = await getPool().query(fullSql, finalParams);
-  return rows as T[];
+  try {
+    const [rows] = await getPool().query(fullSql, finalParams);
+    const duration = Date.now() - startTime;
+    
+    // 记录慢查询
+    if (duration > SLOW_QUERY_THRESHOLD) {
+      console.warn(`⚠️  慢查询 (${duration}ms):`, fullSql.substring(0, 150));
+      console.warn('   参数:', finalParams);
+    }
+    
+    return rows as T[];
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ 分页查询失败 (${duration}ms):`, fullSql.substring(0, 100));
+    console.error('   参数:', finalParams);
+    throw error;
+  }
 }
 
 /**
  * 执行单条查询
+ * 
+ * @param sql SQL 语句
+ * @param params 查询参数
+ * @param useCache 是否使用缓存（默认 false）
  * 
  * @example
  * const user = await queryOne<User>('SELECT * FROM users WHERE id = ?', [1]);
@@ -145,13 +265,15 @@ export async function queryWithPagination<T = any>(
  *   console.log(user.name);
  * }
  */
-export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T | null> {
-  const rows = await query<T>(sql, params);
+export async function queryOne<T = any>(sql: string, params?: any[], useCache = false): Promise<T | null> {
+  const rows = await query<T>(sql, params, useCache);
   return rows.length > 0 ? rows[0] : null;
 }
 
 /**
  * 执行插入并返回插入的 ID
+ * 
+ * 注意：执行插入操作后会自动清除相关缓存
  * 
  * @example
  * const id = await insert(
@@ -161,12 +283,39 @@ export async function queryOne<T = any>(sql: string, params?: any[]): Promise<T 
  */
 export async function insert(sql: string, params?: any[]): Promise<number> {
   const finalParams = params ? normalizeParams(params) : [];
-  const [result] = await getPool().execute(sql, finalParams);
-  return (result as mysql.ResultSetHeader).insertId;
+  const startTime = Date.now();
+  
+  try {
+    const [result] = await getPool().execute(sql, finalParams);
+    const duration = Date.now() - startTime;
+    const insertId = (result as mysql.ResultSetHeader).insertId;
+    
+    // 记录慢查询
+    if (duration > SLOW_QUERY_THRESHOLD) {
+      console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
+      console.warn('   参数:', finalParams);
+    }
+    
+    // 清除相关缓存（插入操作会影响数据）
+    const tableMatch = sql.match(/INTO\s+(\w+)/i);
+    if (tableMatch) {
+      const tableName = tableMatch[1];
+      clearQueryCache(tableName);
+    }
+    
+    return insertId;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ 插入失败 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   参数:', finalParams);
+    throw error;
+  }
 }
 
 /**
  * 执行更新/删除并返回影响的行数
+ * 
+ * 注意：执行更新/删除操作后会自动清除相关缓存
  * 
  * @example
  * const affected = await execute(
@@ -176,8 +325,36 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
  */
 export async function execute(sql: string, params?: any[]): Promise<number> {
   const finalParams = params ? normalizeParams(params) : [];
-  const [result] = await getPool().execute(sql, finalParams);
-  return (result as mysql.ResultSetHeader).affectedRows;
+  const startTime = Date.now();
+  
+  try {
+    const [result] = await getPool().execute(sql, finalParams);
+    const duration = Date.now() - startTime;
+    const affectedRows = (result as mysql.ResultSetHeader).affectedRows;
+    
+    // 记录慢查询
+    if (duration > SLOW_QUERY_THRESHOLD) {
+      console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
+      console.warn('   参数:', finalParams);
+    }
+    
+    // 清除相关缓存（更新/删除操作会影响数据）
+    if (affectedRows > 0) {
+      // 根据表名清除缓存
+      const tableMatch = sql.match(/FROM\s+(\w+)|UPDATE\s+(\w+)|INTO\s+(\w+)/i);
+      if (tableMatch) {
+        const tableName = tableMatch[1] || tableMatch[2] || tableMatch[3];
+        clearQueryCache(tableName);
+      }
+    }
+    
+    return affectedRows;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`❌ 执行失败 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   参数:', finalParams);
+    throw error;
+  }
 }
 
 /**

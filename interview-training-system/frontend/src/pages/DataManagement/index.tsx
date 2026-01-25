@@ -6,9 +6,7 @@ import {
   ReloadOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import axios from 'axios';
-
-const API_BASE = 'http://localhost:3001/api';
+import { api } from '../../utils/api';
 
 interface DataStats {
   schools: number;
@@ -29,8 +27,8 @@ const DataManagement = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/data/stats`);
-      setStats(response.data.data);
+      const response = await api.data.stats();
+      setStats(response.data);
     } catch (error) {
       console.error('获取统计信息失败:', error);
     }
@@ -46,8 +44,8 @@ const DataManagement = () => {
       onOk: async () => {
         setLoading(true);
         try {
-          const response = await axios.post(`${API_BASE}/data/seed-schools`);
-          message.success(response.data.message);
+          const response = await api.data.seedSchools();
+          message.success(response.message || '学校种子数据导入成功');
           await fetchStats();
         } catch (error: any) {
           message.error(error.response?.data?.error?.message || '导入失败');
@@ -68,8 +66,8 @@ const DataManagement = () => {
       onOk: async () => {
         setLoading(true);
         try {
-          const response = await axios.post(`${API_BASE}/data/seed-questions`);
-          message.success(response.data.message);
+          const response = await api.data.seedQuestions();
+          message.success(response.message || '题目种子数据导入成功');
           await fetchStats();
         } catch (error: any) {
           message.error(error.response?.data?.error?.message || '导入失败');
@@ -90,8 +88,8 @@ const DataManagement = () => {
       onOk: async () => {
         setLoading(true);
         try {
-          const response = await axios.post(`${API_BASE}/data/seed-all`);
-          message.success(response.data.message);
+          const response = await api.data.seedAll();
+          message.success(response.message || '所有种子数据导入成功');
           await fetchStats();
         } catch (error: any) {
           message.error(error.response?.data?.error?.message || '导入失败');

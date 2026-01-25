@@ -133,5 +133,12 @@ echo ""
 echo "================================"
 echo ""
 
+# 清理之前可能残留的进程
+echo -e "${BLUE}🧹 清理残留进程...${NC}"
+pkill -f "tsx watch src/index.ts" 2>/dev/null || true
+pkill -f "vite.*frontend" 2>/dev/null || true
+sleep 1
+
 # 启动前后端（使用 concurrently 同时显示日志）
+echo -e "${GREEN}🚀 启动前后端服务...${NC}"
 npm run dev

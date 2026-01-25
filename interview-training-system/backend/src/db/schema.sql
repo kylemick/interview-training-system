@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS questions (
   tags JSON COMMENT '标签数组',
   school_code VARCHAR(50) COMMENT '关联学校',
   source VARCHAR(100) DEFAULT 'seed' COMMENT '来源: seed, ai_generated, interview_memory',
+  notes TEXT COMMENT '备注信息（如原始回答）',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_category (category),
@@ -32,6 +33,30 @@ CREATE TABLE IF NOT EXISTS questions (
   INDEX idx_source (source),
   FOREIGN KEY (school_code) REFERENCES school_profiles(code) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库';
+
+-- 学生弱点分析表（从面试回忆中提取）
+CREATE TABLE IF NOT EXISTS student_weaknesses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_name VARCHAR(100) COMMENT '学生姓名（可选）',
+  category VARCHAR(50) NOT NULL COMMENT '专项类别',
+  weakness_type VARCHAR(50) NOT NULL COMMENT '弱点类型: vocabulary, grammar, logic, knowledge_gap, confidence, expression',
+  description TEXT NOT NULL COMMENT '弱点描述',
+  example_text TEXT COMMENT '示例文本（从面试回忆中提取）',
+  severity VARCHAR(20) DEFAULT 'medium' COMMENT '严重程度: low, medium, high',
+  improvement_suggestions TEXT COMMENT '改进建议',
+  related_topics JSON COMMENT '相关话题标签',
+  source_text TEXT COMMENT '来源面试回忆全文',
+  identified_by VARCHAR(50) DEFAULT 'ai' COMMENT '识别方式: ai, manual',
+  status VARCHAR(20) DEFAULT 'active' COMMENT '状态: active, improved, resolved',
+  practice_count INT DEFAULT 0 COMMENT '已针对性练习次数',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_student (student_name),
+  INDEX idx_category (category),
+  INDEX idx_weakness_type (weakness_type),
+  INDEX idx_severity (severity),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学生弱点分析';
 
 -- 训练计划表
 CREATE TABLE IF NOT EXISTS training_plans (
@@ -80,6 +105,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '开始时间',
   end_time TIMESTAMP NULL COMMENT '结束时间',
   status VARCHAR(20) DEFAULT 'in_progress' COMMENT '状态: in_progress, completed',
+  question_ids JSON COMMENT '题目ID数组（会话创建时选择的完整题目列表）',
   INDEX idx_task_id (task_id),
   INDEX idx_category (category),
   INDEX idx_start_time (start_time),

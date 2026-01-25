@@ -2,7 +2,7 @@
  * 学校档案管理路由
  */
 import { Router, Request, Response } from 'express';
-import { query, queryOne, insert, execute } from '../db/index.js';
+import { query, queryOne, insert, execute, parseJsonField } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -10,25 +10,18 @@ const router = Router();
 // 获取所有学校
 router.get('/', async (req: Request, res: Response) => {
   try {
+    // 使用缓存（学校列表变化不频繁）
     const schools = await query(`
       SELECT id, code, name, name_zh, focus_areas, interview_style, notes, created_at, updated_at
       FROM school_profiles
       ORDER BY name
-    `);
+    `, [], true); // 启用缓存
 
-    // 解析 JSON 字段（添加错误处理）
-    const formattedSchools = schools.map((school: any) => {
-      let focus_areas = [];
-      try {
-        focus_areas = school.focus_areas 
-          ? (typeof school.focus_areas === 'string' ? JSON.parse(school.focus_areas) : school.focus_areas)
-          : [];
-      } catch (error) {
-        console.warn(`解析学校 ${school.code} 的 focus_areas 字段失败:`, error);
-        focus_areas = [];
-      }
-      return { ...school, focus_areas };
-    });
+    // 统一解析 JSON 字段
+    const formattedSchools = schools.map((school: any) => ({
+      ...school,
+      focus_areas: parseJsonField(school.focus_areas, 'focus_areas'),
+    }));
 
     res.json({
       success: true,
@@ -50,24 +43,17 @@ router.get('/:code', async (req: Request, res: Response) => {
       SELECT id, code, name, name_zh, focus_areas, interview_style, notes, created_at, updated_at
       FROM school_profiles
       WHERE code = ?
-    `, [code]);
+    `, [code], true); // 启用缓存
 
     if (!school) {
       throw new AppError(404, '学校不存在');
     }
 
-    // 解析 JSON 字段（添加错误处理）
-    let focus_areas = [];
-    try {
-      focus_areas = school.focus_areas 
-        ? (typeof school.focus_areas === 'string' ? JSON.parse(school.focus_areas) : school.focus_areas)
-        : [];
-    } catch (error) {
-      console.warn(`解析学校 ${school.code} 的 focus_areas 字段失败:`, error);
-      focus_areas = [];
-    }
-
-    const formattedSchool = { ...school, focus_areas };
+    // 统一解析 JSON 字段
+    const formattedSchool = {
+      ...school,
+      focus_areas: parseJsonField(school.focus_areas, 'focus_areas'),
+    };
 
     res.json({
       success: true,

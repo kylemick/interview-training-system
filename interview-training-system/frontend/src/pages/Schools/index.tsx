@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, message, Tag, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, RobotOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { api } from '../../utils/api';
 
 const { TextArea } = Input;
 
@@ -37,8 +37,8 @@ export default function SchoolsPage() {
   const loadSchools = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('http://localhost:3001/api/schools');
-      setSchools(response.data.data);
+      const response = await api.schools.list();
+      setSchools(response.data || []);
     } catch (error) {
       message.error('加载学校列表失败');
       console.error(error);
@@ -76,14 +76,14 @@ export default function SchoolsPage() {
       setAiGenerating(true);
       message.loading('AI 正在生成学校档案...', 0);
 
-      const response = await axios.post('http://localhost:3001/api/ai/generate-school', {
+      const response = await api.ai.generateSchool({
         schoolName: schoolName.trim(),
       });
 
       message.destroy();
 
-      if (response.data.success) {
-        const profile = response.data.data;
+      if (response.success) {
+        const profile = response.data;
         
         // 自动填充表单
         form.setFieldsValue({
@@ -118,11 +118,11 @@ export default function SchoolsPage() {
       
       if (editingSchool) {
         // 更新
-        await axios.put(`http://localhost:3001/api/schools/${editingSchool.code}`, values);
+        await api.schools.update(editingSchool.code, values);
         message.success('学校信息已更新');
       } else {
         // 新增
-        await axios.post('http://localhost:3001/api/schools', values);
+        await api.schools.create(values);
         message.success('学校已添加');
       }
       
@@ -144,7 +144,7 @@ export default function SchoolsPage() {
       cancelText: '取消',
       onOk: async () => {
         try {
-          await axios.delete(`http://localhost:3001/api/schools/${school.code}`);
+          await api.schools.delete(school.code);
           message.success('学校已删除');
           loadSchools();
         } catch (error) {

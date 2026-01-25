@@ -6,6 +6,7 @@ import {
   BookOutlined,
   ClockCircleOutlined,
   RiseOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import ReactECharts from 'echarts-for-react'
 import { api } from '../../utils/api'
@@ -36,6 +37,30 @@ interface StatsData {
   dateStats: Record<string, number>
 }
 
+interface WeaknessStats {
+  total: number
+  by_category: Array<{ category: string; count: number }>
+  by_type: Array<{ weakness_type: string; count: number }>
+  by_severity: Array<{ severity: string; count: number }>
+  by_status: Array<{ status: string; count: number }>
+}
+
+interface WeaknessTrend {
+  period_days: number
+  total_weaknesses: number
+  trends: {
+    weekly_new_weaknesses: Array<{ week: string; count: number }>
+    improvement_by_type: Array<{ weakness_type: string; total: number; improved: number; resolved: number; improvement_rate: string }>
+    high_severity_trend: Array<{ week: string; count: number }>
+    practice_effectiveness: Array<{ practice_range: string; total: number; improved: number; improvement_rate: string }>
+  }
+  insights: {
+    most_common_weakness: string
+    best_improved_type: string
+    high_severity_count: number
+  }
+}
+
 export default function Progress() {
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
@@ -50,6 +75,8 @@ export default function Progress() {
     categoryStats: {},
     dateStats: {},
   })
+  const [weaknessStats, setWeaknessStats] = useState<WeaknessStats | null>(null)
+  const [weaknessTrend, setWeaknessTrend] = useState<WeaknessTrend | null>(null)
 
   useEffect(() => {
     loadProgressData()
@@ -61,7 +88,7 @@ export default function Progress() {
 
       // 获取会话列表
       const sessionsRes = await api.sessions.recent(100)
-      const sessions = sessionsRes.data.data || []
+      const sessions = sessionsRes.success ? sessionsRes.data : []
 
       // 过滤日期范围
       const filteredSessions = sessions.filter((s: any) => {
@@ -106,6 +133,18 @@ export default function Progress() {
         categoryStats,
         dateStats,
       })
+
+      // 加载弱点统计和趋势
+      try {
+        const [statsRes, trendsRes] = await Promise.all([
+          api.weaknesses.stats(),
+          api.weaknesses.trends({ days: dateRange[1].diff(dateRange[0], 'day') }),
+        ])
+        setWeaknessStats(statsRes.success ? statsRes.data : null)
+        setWeaknessTrend(trendsRes.success ? trendsRes.data : null)
+      } catch (error) {
+        console.error('加载弱点数据失败:', error)
+      }
     } catch (error) {
       console.error('加载进度数据失败:', error)
     } finally {
@@ -335,6 +374,116 @@ export default function Progress() {
               ))}
             </Row>
           </Card>
+
+          {/* 弱点追踪 */}
+          {weaknessStats && weaknessStats.total > 0 && (
+            <Card
+              title={
+                <Space>
+                  <WarningOutlined style={{ color: '#ff4d4f' }} />
+                  弱点追踪
+                </Space>
+              }
+              style={{ marginTop: 24 }}
+            >
+              <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} md={6}>
+                  <Statistic
+                    title="总弱点数"
+                    value={weaknessStats.total}
+                    prefix={<WarningOutlined />}
+                    valueStyle={{ color: '#ff4d4f' }}
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Statistic
+                    title="高严重度"
+                    value={weaknessStats.by_severity.find((s) => s.severity === 'high')?.count || 0}
+                    valueStyle={{ color: '#ff4d4f' }}
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Statistic
+                    title="已改善"
+                    value={
+                      (weaknessStats.by_status.find((s) => s.status === 'improved')?.count || 0) +
+                      (weaknessStats.by_status.find((s) => s.status === 'resolved')?.count || 0)
+                    }
+                    valueStyle={{ color: '#52c41a' }}
+                  />
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Statistic
+                    title="活跃弱点"
+                    value={weaknessStats.by_status.find((s) => s.status === 'active')?.count || 0}
+                    valueStyle={{ color: '#faad14' }}
+                  />
+                </Col>
+              </Row>
+
+              {/* 弱点趋势图表 */}
+              {weaknessTrend && weaknessTrend.trends.weekly_new_weaknesses.length > 0 && (
+                <Card type="inner" title="弱点趋势" style={{ marginTop: 16 }}>
+                  <ReactECharts
+                    option={{
+                      tooltip: { trigger: 'axis' },
+                      xAxis: {
+                        type: 'category',
+                        data: weaknessTrend.trends.weekly_new_weaknesses.map((t) => t.week),
+                      },
+                      yAxis: { type: 'value', name: '新增弱点数' },
+                      series: [
+                        {
+                          name: '新增弱点',
+                          type: 'line',
+                          data: weaknessTrend.trends.weekly_new_weaknesses.map((t) => t.count),
+                          smooth: true,
+                          itemStyle: { color: '#ff4d4f' },
+                        },
+                      ],
+                    }}
+                    style={{ height: 250 }}
+                  />
+                </Card>
+              )}
+
+              {/* 按类型统计 */}
+              {weaknessStats.by_type.length > 0 && (
+                <Card type="inner" title="弱点类型分布" style={{ marginTop: 16 }}>
+                  <Row gutter={[16, 16]}>
+                    {weaknessStats.by_type.map((item) => (
+                      <Col xs={12} sm={8} md={6} key={item.weakness_type}>
+                        <Space direction="vertical" size="small">
+                          <Text strong>{item.weakness_type}</Text>
+                          <Tag color="red">{item.count}个</Tag>
+                        </Space>
+                      </Col>
+                    ))}
+                  </Row>
+                </Card>
+              )}
+
+              {/* 改善洞察 */}
+              {weaknessTrend && weaknessTrend.insights && (
+                <Card type="inner" title="改善洞察" style={{ marginTop: 16 }}>
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <div>
+                      <Text strong>最常见弱点：</Text>
+                      <Tag color="orange">{weaknessTrend.insights.most_common_weakness}</Tag>
+                    </div>
+                    <div>
+                      <Text strong>改善最好的类型：</Text>
+                      <Tag color="green">{weaknessTrend.insights.best_improved_type}</Tag>
+                    </div>
+                    <div>
+                      <Text strong>高严重度弱点：</Text>
+                      <Tag color="red">{weaknessTrend.insights.high_severity_count}个</Tag>
+                    </div>
+                  </Space>
+                </Card>
+              )}
+            </Card>
+          )}
         </>
       )}
     </div>

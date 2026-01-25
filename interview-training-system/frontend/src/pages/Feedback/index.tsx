@@ -92,7 +92,7 @@ export default function Feedback() {
     try {
       setLoading(true)
       const res = await api.sessions.recent(50)
-      const data = res.data.data || []
+      const data = res.success ? res.data : []
       setSessions(data)
 
       // 如果URL中有session参数且没有选中，则选中它
@@ -114,7 +114,7 @@ export default function Feedback() {
     try {
       setLoading(true)
       const res = await api.sessions.get(sessionId)
-      setSessionDetail(res.data.data)
+      setSessionDetail(res.success ? res.data : null)
     } catch (error) {
       console.error('加载会话详情失败:', error)
       message.error('加载会话详情失败')
@@ -222,7 +222,7 @@ export default function Feedback() {
       onOk: async () => {
         try {
           const res = await api.feedback.deleteSession(selectedSession)
-          const deletedCount = res.data.data.deleted_count
+          const deletedCount = res.data.deleted_count || 0
           message.success(`已删除 ${deletedCount} 条反馈`)
           // 重新加载会话详情
           await loadSessionDetail(selectedSession)

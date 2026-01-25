@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, Row, Col, Typography, List, Tag, Progress, Statistic, Empty, Button, Space } from 'antd'
 import {
   CheckCircleOutlined,
@@ -7,9 +7,11 @@ import {
   TrophyOutlined,
   BookOutlined,
   RightOutlined,
+  WarningOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../utils/api'
+import { api, cancelAllPendingRequests } from '../../utils/api'
 
 const { Title, Text } = Typography
 
@@ -49,6 +51,16 @@ interface Session {
   question_count: number
 }
 
+interface Weakness {
+  id: number
+  category: string
+  weakness_type: string
+  description: string
+  severity: string
+  status: string
+  practice_count: number
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -59,27 +71,28 @@ export default function Dashboard() {
     completedToday: 0,
     totalQuestions: 0,
   })
+  const [weaknesses, setWeaknesses] = useState<Weakness[]>([])
 
-  // 加载仪表盘数据
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  const loadDashboardData = async () => {
+  // 优化：使用 useCallback 缓存 loadDashboardData 函数
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true)
 
-      // 并行加载数据
-      const [tasksRes, sessionsRes] = await Promise.all([
-        api.plans.todayTasks(),
+      // 并行加载数据 - 使用新的 pendingTasks API
+      const [tasksRes, sessionsRes, weaknessesRes] = await Promise.all([
+        api.plans.pendingTasks(),
         api.sessions.recent(5),
+        api.weaknesses.list({ status: 'active', severity: 'high' }).catch(() => ({ data: [] })),
       ])
 
-      const tasks = tasksRes.data.data || []
-      const sessions = sessionsRes.data.data || []
+      // 注意：enhancedRequest 返回的是 { data: ... } 格式
+      const tasks = tasksRes.data || []
+      const sessions = sessionsRes.data || []
+      const weaknesses = weaknessesRes.data || []
 
       setTodayTasks(tasks)
       setRecentSessions(sessions)
+      setWeaknesses(weaknesses.slice(0, 5)) // 只显示前5个高严重度弱点
 
       // 计算统计数据
       const completedToday = tasks.filter((t: DailyTask) => t.status === 'completed').length
@@ -95,12 +108,29 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  // 计算今日完成进度
-  const todayProgress = todayTasks.length > 0 
-    ? Math.round((stats.completedToday / todayTasks.length) * 100) 
-    : 0
+  // 加载仪表盘数据
+  useEffect(() => {
+    loadDashboardData()
+    
+    // 清理函数：组件卸载时取消所有pending请求
+    return () => {
+      cancelAllPendingRequests()
+    }
+  }, [loadDashboardData])
+
+  // 优化：使用 useCallback 缓存 handleStartTask
+  const handleStartTask = useCallback((taskId: string) => {
+    navigate(`/practice?taskId=${taskId}`)
+  }, [navigate])
+
+  // 优化：使用 useMemo 缓存计算结果
+  const todayProgress = useMemo(() => {
+    return todayTasks.length > 0 
+      ? Math.round((stats.completedToday / todayTasks.length) * 100) 
+      : 0
+  }, [todayTasks.length, stats.completedToday])
 
   return (
     <div style={{ padding: '24px' }}>
@@ -191,11 +221,27 @@ export default function Dashboard() {
                 renderItem={(task) => (
                   <List.Item
                     actions={[
-                      <Tag color={STATUS_COLOR[task.status]}>
-                        {task.status === 'pending' && '待完成'}
-                        {task.status === 'in_progress' && '进行中'}
-                        {task.status === 'completed' && '已完成'}
-                      </Tag>,
+                      task.status === 'completed' ? (
+                        <Tag icon={<CheckCircleOutlined />} color="success">
+                          已完成
+                        </Tag>
+                      ) : task.status === 'in_progress' ? (
+                        <Button
+                          type="primary"
+                          size="small"
+                          onClick={() => handleStartTask(task.id)}
+                        >
+                          继续练习
+                        </Button>
+                      ) : (
+                        <Button
+                          type="primary"
+                          size="small"
+                          onClick={() => handleStartTask(task.id)}
+                        >
+                          开始练习
+                        </Button>
+                      ),
                     ]}
                   >
                     <List.Item.Meta
@@ -289,6 +335,70 @@ export default function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      {/* 弱点提醒 */}
+      {weaknesses.length > 0 && (
+        <Card
+          title={
+            <Space>
+              <WarningOutlined style={{ color: '#ff4d4f' }} />
+              需要关注的弱点
+            </Space>
+          }
+          extra={
+            <Button type="link" onClick={() => navigate('/progress')}>
+              查看详情 <RightOutlined />
+            </Button>
+          }
+          style={{ marginTop: 24 }}
+        >
+          <List
+            dataSource={weaknesses}
+            renderItem={(weakness) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Tag color={
+                        weakness.severity === 'high' ? 'red' :
+                        weakness.severity === 'medium' ? 'orange' : 'blue'
+                      }>
+                        {weakness.severity === 'high' ? '高' :
+                         weakness.severity === 'medium' ? '中' : '低'}严重
+                      </Tag>
+                      <Text strong>{CATEGORY_MAP[weakness.category] || weakness.category}</Text>
+                      <Tag>{weakness.weakness_type}</Tag>
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Text>{weakness.description}</Text>
+                      <Space>
+                        <Text type="secondary">已练习: {weakness.practice_count}次</Text>
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={() => {
+                            // 根据弱点生成针对性题目
+                            api.weaknesses.generateQuestions({
+                              weakness_ids: [weakness.id],
+                              count: 5,
+                            }).then(() => {
+                              navigate('/questions')
+                            })
+                          }}
+                        >
+                          生成针对性题目
+                        </Button>
+                      </Space>
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
+      )}
 
       {/* 快速操作 */}
       <Card title="快速操作" style={{ marginTop: 24 }}>

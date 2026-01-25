@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -22,12 +22,10 @@ import {
   RobotOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import axios from 'axios';
+import { api, cancelAllPendingRequests } from '../../utils/api';
 
 const { TextArea } = Input;
 const { Option } = Select;
-
-const API_BASE = 'http://localhost:3001/api';
 
 // 七大专项类别
 const CATEGORIES = [
@@ -95,50 +93,50 @@ const Questions = () => {
     source?: string;
   }>({});
 
-  useEffect(() => {
-    fetchQuestions();
-    fetchStats();
-    fetchSchools();
-  }, [filters]);
-
-  const fetchQuestions = async () => {
-    setLoading(true);
+  // 优化：并行加载数据，使用 useCallback 避免重复创建函数
+  const loadData = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (filters.category) params.append('category', filters.category);
-      if (filters.difficulty) params.append('difficulty', filters.difficulty);
-      if (filters.source) params.append('source', filters.source);
+      setLoading(true);
+      setLoadingSchools(true);
 
-      const response = await axios.get(`${API_BASE}/questions?${params}`);
-      setQuestions(response.data.data);
+      // 并行请求所有数据
+      const [questionsRes, statsRes, schoolsRes] = await Promise.all([
+        api.questions.list(filters).catch(err => {
+          console.error('获取题目列表失败:', err);
+          message.error('获取题目列表失败');
+          return { success: false, data: [] };
+        }),
+        api.questions.stats().catch(err => {
+          console.error('获取统计信息失败:', err);
+          return { success: false, data: null };
+        }),
+        api.schools.list().catch(err => {
+          console.error('获取学校列表失败:', err);
+          message.error('获取学校列表失败');
+          return { success: false, data: [] };
+        }),
+      ]);
+
+      // enhancedRequest 返回格式：{ success: true, data: ... }
+      setQuestions(questionsRes.success ? questionsRes.data : []);
+      setStats(statsRes.success ? statsRes.data : null);
+      setSchools(schoolsRes.success ? schoolsRes.data : []);
     } catch (error) {
-      message.error('获取题目列表失败');
+      console.error('加载数据失败:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/questions/stats/summary`);
-      setStats(response.data.data);
-    } catch (error) {
-      console.error('获取统计信息失败:', error);
-    }
-  };
-
-  const fetchSchools = async () => {
-    setLoadingSchools(true);
-    try {
-      const response = await axios.get(`${API_BASE}/schools`);
-      setSchools(response.data.data);
-    } catch (error) {
-      console.error('获取学校列表失败:', error);
-      message.error('获取学校列表失败');
-    } finally {
       setLoadingSchools(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    loadData();
+    
+    // 清理函数：组件卸载时取消所有pending请求
+    return () => {
+      cancelAllPendingRequests();
+    };
+  }, [loadData]);
 
   const handleAdd = () => {
     setEditingQuestion(null);
@@ -146,82 +144,81 @@ const Questions = () => {
     setModalOpen(true);
   };
 
-  const handleEdit = (record: Question) => {
+  const handleEdit = useCallback((record: Question) => {
     setEditingQuestion(record);
     form.setFieldsValue(record);
     setModalOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     try {
-      await axios.delete(`${API_BASE}/questions/${id}`);
+      await api.questions.delete(id.toString());
       message.success('题目已删除');
-      fetchQuestions();
-      fetchStats();
+      loadData();
     } catch (error) {
       message.error('删除失败');
     }
-  };
+  }, [loadData]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
 
       if (editingQuestion) {
-        await axios.put(`${API_BASE}/questions/${editingQuestion.id}`, values);
+        await api.questions.update(editingQuestion.id.toString(), values);
         message.success('题目已更新');
       } else {
-        await axios.post(`${API_BASE}/questions`, values);
+        await api.questions.create(values);
         message.success('题目已创建');
       }
 
       setModalOpen(false);
-      fetchQuestions();
-      fetchStats();
+      loadData();
     } catch (error) {
       message.error('操作失败');
     }
-  };
+  }, [editingQuestion, form, loadData]);
 
-  const handleAiGenerate = async () => {
+  const handleAiGenerate = useCallback(async () => {
     try {
       const values = await aiForm.validateFields();
       setLoading(true);
 
-      const response = await axios.post(`${API_BASE}/ai/generate-questions`, {
+      const response = await api.ai.generateQuestions({
         ...values,
         save: true,
       });
 
-      message.success(response.data.message);
+      message.success(response.message || '题目生成成功');
       setAiModalOpen(false);
       aiForm.resetFields();
-      fetchQuestions();
-      fetchStats();
+      loadData();
     } catch (error: any) {
       message.error(error.response?.data?.error?.message || 'AI 生成失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, [aiForm, loadData]);
 
-  const getCategoryLabel = (value: string) => {
+  // 优化：使用 useMemo 缓存计算结果
+  const getCategoryLabel = useCallback((value: string) => {
     return CATEGORIES.find((c) => c.value === value)?.label || value;
-  };
+  }, []);
 
-  const getCategoryColor = (value: string) => {
+  const getCategoryColor = useCallback((value: string) => {
     return CATEGORIES.find((c) => c.value === value)?.color || 'default';
-  };
+  }, []);
 
-  const getDifficultyLabel = (value: string) => {
+  const getDifficultyLabel = useCallback((value: string) => {
     return DIFFICULTIES.find((d) => d.value === value)?.label || value;
-  };
+  }, []);
 
-  const getDifficultyColor = (value: string) => {
+  const getDifficultyColor = useCallback((value: string) => {
     return DIFFICULTIES.find((d) => d.value === value)?.color || 'default';
-  };
+  }, []);
 
-  const columns = [
+  // 优化：使用 useMemo 缓存 columns 定义
+  const columns = useMemo(() => [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -259,7 +256,7 @@ const Questions = () => {
       width: 180,
       render: (tags: string[]) => (
         <>
-          {tags.map((tag) => (
+          {tags?.map((tag) => (
             <Tag key={tag} style={{ marginBottom: 4 }}>
               {tag}
             </Tag>
@@ -307,7 +304,7 @@ const Questions = () => {
         </Space>
       ),
     },
-  ];
+  ], [getCategoryColor, getCategoryLabel, getDifficultyColor, getDifficultyLabel, handleEdit, handleDelete]);
 
   return (
     <div style={{ padding: 24 }}>
@@ -318,10 +315,10 @@ const Questions = () => {
         <Row gutter={16} style={{ marginBottom: 24 }}>
           <Col span={6}>
             <Card>
-              <Statistic title="题目总数" value={stats.total} />
+              <Statistic title="题目总数" value={stats.total || 0} />
             </Card>
           </Col>
-          {stats.by_category.slice(0, 3).map((item) => (
+          {stats.by_category && stats.by_category.slice(0, 3).map((item) => (
             <Col span={6} key={item.category}>
               <Card>
                 <Statistic title={getCategoryLabel(item.category)} value={item.count} />
@@ -374,7 +371,7 @@ const Questions = () => {
           <Option value="interview_memory">面试回忆</Option>
         </Select>
 
-        <Button icon={<ReloadOutlined />} onClick={fetchQuestions}>
+        <Button icon={<ReloadOutlined />} onClick={loadData}>
           刷新
         </Button>
 

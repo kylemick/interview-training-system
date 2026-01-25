@@ -16,13 +16,6 @@ router.post('/', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category');
     }
 
-    // 创建会话
-    const sessionId = await insert(
-      `INSERT INTO sessions (task_id, category, mode, status)
-       VALUES (?, ?, ?, ?)`,
-      [task_id || null, category, mode, 'in_progress']
-    );
-
     // 选择题目（注意：LIMIT不能使用参数绑定，需要直接拼接）
     const questions = await query(
       `SELECT id FROM questions
@@ -33,6 +26,13 @@ router.post('/', async (req: Request, res: Response) => {
     );
 
     const questionIds = questions.map((q: any) => q.id);
+
+    // 创建会话，保存题目ID列表
+    const sessionId = await insert(
+      `INSERT INTO sessions (task_id, category, mode, status, question_ids)
+       VALUES (?, ?, ?, ?, ?)`,
+      [task_id || null, category, mode, 'in_progress', JSON.stringify(questionIds)]
+    );
 
     console.log(`✅ 创建练习会话: ID=${sessionId}, 类别=${category}, 题目数=${questionIds.length}`);
 
@@ -60,8 +60,13 @@ router.get('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const session = await queryOne(
-      `SELECT id, task_id, category, mode, start_time, end_time, status
-       FROM sessions WHERE id = ?`,
+      `SELECT s.id, s.task_id, s.category, s.mode, s.start_time, s.end_time, s.status, s.question_ids,
+              dt.duration, dt.task_date,
+              tp.id as plan_id, tp.student_name, tp.target_school
+       FROM sessions s
+       LEFT JOIN daily_tasks dt ON s.task_id = dt.id
+       LEFT JOIN training_plans tp ON dt.plan_id = tp.id
+       WHERE s.id = ?`,
       [id]
     );
 
@@ -91,12 +96,44 @@ router.get('/:id', async (req: Request, res: Response) => {
       return { ...record, ai_feedback };
     });
 
+    // 组织任务信息
+    const taskInfo = session.task_id ? {
+      task_id: session.task_id,
+      duration: session.duration,
+      task_date: session.task_date,
+      plan_id: session.plan_id,
+      student_name: session.student_name,
+      target_school: session.target_school,
+    } : null;
+
+    // 解析 question_ids JSON 字段
+    let questionIds: number[] = [];
+    if (session.question_ids) {
+      try {
+        questionIds = typeof session.question_ids === 'string'
+          ? JSON.parse(session.question_ids)
+          : session.question_ids;
+      } catch (e) {
+        console.warn(`解析会话 ${session.id} 的 question_ids 失败:`, e);
+      }
+    }
+
     res.json({
       success: true,
       data: {
-        session,
+        session: {
+          id: session.id,
+          task_id: session.task_id,
+          category: session.category,
+          mode: session.mode,
+          start_time: session.start_time,
+          end_time: session.end_time,
+          status: session.status,
+        },
+        task_info: taskInfo,
         qa_records: formattedRecords,
         total_answered: formattedRecords.length,
+        question_ids: questionIds, // 返回题目ID列表
       },
     });
   } catch (error) {
@@ -154,8 +191,11 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // 验证会话存在
-    const session = await queryOne('SELECT id, status FROM sessions WHERE id = ?', [id]);
+    // 验证会话存在并获取关联的任务ID
+    const session = await queryOne(
+      'SELECT id, status, task_id, category FROM sessions WHERE id = ?', 
+      [id]
+    );
     if (!session) {
       throw new AppError(404, '会话不存在');
     }
@@ -170,11 +210,30 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
       ['completed', id]
     );
 
-    console.log(`✅ 会话完成: ID=${id}`);
+    // 如果会话关联了任务,自动标记任务完成
+    let taskCompleted = false;
+    if (session.task_id) {
+      const affectedRows = await execute(
+        'UPDATE daily_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+        ['completed', session.task_id]
+      );
+      taskCompleted = affectedRows > 0;
+      
+      if (taskCompleted) {
+        console.log(`✅ 任务自动完成: 任务ID=${session.task_id}`);
+      }
+    }
+
+    console.log(`✅ 会话完成: ID=${id}, 类别=${session.category}, 关联任务=${session.task_id || '无'}`);
 
     res.json({
       success: true,
-      message: '会话已完成',
+      message: taskCompleted ? '会话已完成,任务已标记为完成' : '会话已完成',
+      data: {
+        session_id: id,
+        task_id: session.task_id,
+        task_completed: taskCompleted,
+      },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;

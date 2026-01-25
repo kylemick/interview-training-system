@@ -24,14 +24,15 @@ import {
   CheckCircleOutlined,
   PauseCircleOutlined,
   PlayCircleOutlined,
+  PlayCircleFilled,
 } from '@ant-design/icons';
-import axios from 'axios';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../../utils/api';
+import { Alert } from 'antd';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
-
-const API_BASE = 'http://localhost:3001/api';
 
 interface TrainingPlan {
   id: number;
@@ -56,29 +57,60 @@ interface DailyTask {
   completed_at?: string;
 }
 
+interface Settings {
+  student_name?: string;
+  target_school?: string;
+  daily_duration?: number;
+}
+
 const TrainingPlan = () => {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TrainingPlan | null>(null);
   const [dailyTasks, setDailyTasks] = useState<DailyTask[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
     fetchPlans();
+    loadSettings();
   }, []);
+
+  // 加载设置信息
+  const loadSettings = async () => {
+    try {
+      const response = await api.settings.get();
+      const settingsData = response.data;
+      setSettings(settingsData);
+    } catch (error) {
+      console.error('加载设置失败:', error);
+    }
+  };
 
   const fetchPlans = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE}/plans`);
-      setPlans(response.data.data);
+      const response = await api.plans.list();
+      setPlans(response.success ? response.data : []);
     } catch (error) {
       message.error('获取训练计划列表失败');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 打开创建弹窗时,自动填充设置中的学生信息
+  const handleOpenCreateModal = () => {
+    // 自动填充学生信息(如果有)
+    form.setFieldsValue({
+      student_name: settings?.student_name || '',
+      target_school: settings?.target_school || '',
+      daily_duration: settings?.daily_duration || 30,
+    });
+    setModalOpen(true);
   };
 
   const handleCreate = async () => {
@@ -88,12 +120,13 @@ const TrainingPlan = () => {
 
       const [startDate, endDate] = values.dateRange;
 
-      const response = await axios.post(`${API_BASE}/plans`, {
-        student_name: values.student_name,
-        target_school: values.target_school,
+      // 使用设置中的学生信息(如果表单中没有)
+      const response = await api.plans.create({
+        student_name: values.student_name || settings?.student_name,
+        target_school: values.target_school || settings?.target_school,
         start_date: startDate.format('YYYY-MM-DD'),
         end_date: endDate.format('YYYY-MM-DD'),
-        daily_duration: values.daily_duration,
+        daily_duration: values.daily_duration || settings?.daily_duration || 30,
       });
 
       message.success(response.data.message);
@@ -111,8 +144,8 @@ const TrainingPlan = () => {
     setSelectedPlan(plan);
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE}/plans/${plan.id}`);
-      setDailyTasks(response.data.data.tasks);
+      const response = await api.plans.get(String(plan.id));
+      setDailyTasks(response.success ? response.data.tasks : []);
       setDetailModalOpen(true);
     } catch (error) {
       message.error('获取计划详情失败');
@@ -123,9 +156,13 @@ const TrainingPlan = () => {
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
-      await axios.patch(`${API_BASE}/plans/${id}/status`, { status });
+      await api.plans.updateStatus(String(id), status);
       message.success('状态已更新');
       fetchPlans();
+      // 如果详情弹窗打开,刷新任务列表
+      if (detailModalOpen && selectedPlan) {
+        handleViewDetails(selectedPlan);
+      }
     } catch (error) {
       message.error('更新状态失败');
     }
@@ -133,9 +170,12 @@ const TrainingPlan = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`${API_BASE}/plans/${id}`);
+      await api.plans.delete(String(id));
       message.success('训练计划已删除');
       fetchPlans();
+      if (detailModalOpen) {
+        setDetailModalOpen(false);
+      }
     } catch (error) {
       message.error('删除失败');
     }
@@ -264,6 +304,11 @@ const TrainingPlan = () => {
     },
   ];
 
+  // 开始任务练习
+  const handleStartTask = (taskId: number) => {
+    navigate(`/practice?taskId=${taskId}`);
+  };
+
   const taskColumns = [
     {
       title: '日期',
@@ -293,8 +338,8 @@ const TrainingPlan = () => {
       render: (status: string) => {
         const map: Record<string, { label: string; color: string }> = {
           pending: { label: '待完成', color: 'default' },
-          in_progress: { label: '进行中', color: 'blue' },
-          completed: { label: '已完成', color: 'green' },
+          in_progress: { label: '进行中', color: 'processing' },
+          completed: { label: '已完成', color: 'success' },
         };
         const config = map[status] || { label: status, color: 'default' };
         return <Tag color={config.color}>{config.label}</Tag>;
@@ -304,7 +349,46 @@ const TrainingPlan = () => {
       title: '完成时间',
       dataIndex: 'completed_at',
       key: 'completed_at',
+      width: 180,
       render: (date: string) => (date ? new Date(date).toLocaleString('zh-CN') : '-'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 150,
+      render: (_: any, record: DailyTask) => {
+        if (record.status === 'completed') {
+          return (
+            <Space size="small">
+              <Tag icon={<CheckCircleOutlined />} color="success">
+                已完成
+              </Tag>
+            </Space>
+          );
+        }
+        if (record.status === 'in_progress') {
+          return (
+            <Button
+              type="primary"
+              size="small"
+              icon={<PlayCircleFilled />}
+              onClick={() => handleStartTask(record.id)}
+            >
+              继续练习
+            </Button>
+          );
+        }
+        return (
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlayCircleOutlined />}
+            onClick={() => handleStartTask(record.id)}
+          >
+            开始练习
+          </Button>
+        );
+      },
     },
   ];
 
@@ -313,7 +397,7 @@ const TrainingPlan = () => {
       <h1>训练计划</h1>
 
       <Space style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateModal}>
           创建训练计划
         </Button>
       </Space>
@@ -339,13 +423,44 @@ const TrainingPlan = () => {
         cancelText="取消"
         confirmLoading={loading}
       >
+        {(!settings?.student_name || !settings?.target_school) && (
+          <Alert
+            message="请先配置学生信息"
+            description="在创建训练计划前,请先在「设置」页面配置学生姓名和目标学校。"
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            action={
+              <Button size="small" onClick={() => navigate('/settings')}>
+                前往设置
+              </Button>
+            }
+          />
+        )}
+        
         <Form form={form} layout="vertical">
-          <Form.Item name="student_name" label="学生姓名" rules={[{ required: true, message: '请输入学生姓名' }]}>
-            <Input placeholder="输入学生姓名" />
+          <Form.Item 
+            name="student_name" 
+            label="学生姓名" 
+            rules={[{ required: true, message: '请输入学生姓名' }]}
+            tooltip={settings?.student_name ? '此信息来自设置页面,如需修改请前往设置页面' : undefined}
+          >
+            <Input 
+              placeholder={settings?.student_name || "输入学生姓名"} 
+              disabled={!!settings?.student_name}
+            />
           </Form.Item>
 
-          <Form.Item name="target_school" label="目标学校" rules={[{ required: true, message: '请选择目标学校' }]}>
-            <Select placeholder="选择目标学校">
+          <Form.Item 
+            name="target_school" 
+            label="目标学校" 
+            rules={[{ required: true, message: '请选择目标学校' }]}
+            tooltip={settings?.target_school ? '此信息来自设置页面,如需修改请前往设置页面' : undefined}
+          >
+            <Select 
+              placeholder={settings?.target_school ? `当前: ${settings.target_school}` : "选择目标学校"}
+              disabled={!!settings?.target_school}
+            >
               <Option value="SPCC">圣保罗男女中学 (SPCC)</Option>
               <Option value="QC">皇仁书院 (QC)</Option>
               <Option value="LSC">喇沙书院 (LSC)</Option>

@@ -64,7 +64,122 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
-// 获取单个训练计划详情
+// ⚠️ 重要：特定路由必须在参数化路由之前定义
+// 获取今日任务
+router.get('/today/tasks', async (req: Request, res: Response) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    const tasks = await query(
+      `SELECT dt.id, dt.plan_id, dt.task_date, dt.category, dt.duration, 
+              dt.question_ids, dt.status, dt.completed_at,
+              tp.student_name, tp.target_school
+       FROM daily_tasks dt
+       INNER JOIN training_plans tp ON dt.plan_id = tp.id
+       WHERE dt.task_date = ? AND tp.status = ?
+       ORDER BY dt.category`,
+      [today, 'active']
+    );
+
+    // 解析 JSON 字段（添加错误处理）
+    const formattedTasks = tasks.map((task: any) => {
+      let question_ids = [];
+      try {
+        question_ids = task.question_ids
+          ? (typeof task.question_ids === 'string'
+              ? JSON.parse(task.question_ids)
+              : task.question_ids)
+          : [];
+      } catch (error) {
+        console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
+        question_ids = [];
+      }
+      return { ...task, question_ids };
+    });
+
+    res.json({
+      success: true,
+      data: formattedTasks,
+      total: formattedTasks.length,
+    });
+  } catch (error) {
+    console.error('获取今日任务失败:', error);
+    throw new AppError(500, '获取今日任务失败');
+  }
+});
+
+// 获取未完成任务列表 (支持指定日期和状态筛选)
+router.get('/pending-tasks', async (req: Request, res: Response) => {
+  try {
+    const { date, status } = req.query;
+    
+    // 默认使用今天的日期
+    const targetDate = date ? String(date) : new Date().toISOString().split('T')[0];
+    
+    const conditions: string[] = ['dt.task_date = ?', 'tp.status = ?'];
+    const params: any[] = [targetDate, 'active'];
+    
+    // 如果指定了状态,添加状态筛选
+    if (status) {
+      conditions.push('dt.status = ?');
+      params.push(status);
+    } else {
+      // 默认只返回未完成的任务
+      conditions.push("dt.status IN ('pending', 'in_progress')");
+    }
+    
+    const tasks = await query(
+      `SELECT dt.id, dt.plan_id, dt.task_date, dt.category, dt.duration, 
+              dt.question_ids, dt.status, dt.completed_at,
+              tp.student_name, tp.target_school,
+              (SELECT COUNT(*) FROM sessions WHERE task_id = dt.id AND status = 'in_progress') as has_active_session
+       FROM daily_tasks dt
+       INNER JOIN training_plans tp ON dt.plan_id = tp.id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY 
+         CASE dt.status
+           WHEN 'pending' THEN 1
+           WHEN 'in_progress' THEN 2
+           WHEN 'completed' THEN 3
+           ELSE 4
+         END,
+         dt.id ASC`,
+      params
+    );
+    
+    // 解析 JSON 字段
+    const formattedTasks = tasks.map((task: any) => {
+      let question_ids = [];
+      try {
+        question_ids = task.question_ids
+          ? (typeof task.question_ids === 'string'
+              ? JSON.parse(task.question_ids)
+              : task.question_ids)
+          : [];
+      } catch (error) {
+        console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
+        question_ids = [];
+      }
+      return { 
+        ...task, 
+        question_ids,
+        has_active_session: task.has_active_session > 0
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: formattedTasks,
+      total: formattedTasks.length,
+      date: targetDate,
+    });
+  } catch (error) {
+    console.error('获取未完成任务失败:', error);
+    throw new AppError(500, '获取未完成任务失败');
+  }
+});
+
+// 获取单个训练计划详情 (必须在特定路由之后)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -273,49 +388,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// 获取今日任务
-router.get('/today/tasks', async (req: Request, res: Response) => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-
-    const tasks = await query(
-      `SELECT dt.id, dt.plan_id, dt.task_date, dt.category, dt.duration, 
-              dt.question_ids, dt.status, dt.completed_at,
-              tp.student_name, tp.target_school
-       FROM daily_tasks dt
-       INNER JOIN training_plans tp ON dt.plan_id = tp.id
-       WHERE dt.task_date = ? AND tp.status = ?
-       ORDER BY dt.category`,
-      [today, 'active']
-    );
-
-    // 解析 JSON 字段（添加错误处理）
-    const formattedTasks = tasks.map((task: any) => {
-      let question_ids = [];
-      try {
-        question_ids = task.question_ids
-          ? (typeof task.question_ids === 'string'
-              ? JSON.parse(task.question_ids)
-              : task.question_ids)
-          : [];
-      } catch (error) {
-        console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
-        question_ids = [];
-      }
-      return { ...task, question_ids };
-    });
-
-    res.json({
-      success: true,
-      data: formattedTasks,
-      total: formattedTasks.length,
-    });
-  } catch (error) {
-    console.error('获取今日任务失败:', error);
-    throw new AppError(500, '获取今日任务失败');
-  }
-});
-
 // 标记任务完成
 router.patch('/tasks/:taskId/complete', async (req: Request, res: Response) => {
   try {
@@ -338,6 +410,183 @@ router.patch('/tasks/:taskId/complete', async (req: Request, res: Response) => {
     if (error instanceof AppError) throw error;
     console.error('标记任务完成失败:', error);
     throw new AppError(500, '标记任务完成失败');
+  }
+});
+
+// 从任务创建练习会话
+router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response) => {
+  try {
+    const { taskId } = req.params;
+    const { question_count = 10 } = req.body;
+    
+    // 获取任务详情
+    const task = await queryOne(
+      `SELECT dt.id, dt.plan_id, dt.category, dt.duration, dt.status,
+              tp.student_name, tp.target_school
+       FROM daily_tasks dt
+       INNER JOIN training_plans tp ON dt.plan_id = tp.id
+       WHERE dt.id = ?`,
+      [taskId]
+    );
+    
+    if (!task) {
+      throw new AppError(404, '任务不存在');
+    }
+    
+    if (task.status === 'completed') {
+      throw new AppError(400, '任务已完成,无法再次练习');
+    }
+    
+    // 检查是否已有进行中的会话
+    const existingSession = await queryOne(
+      `SELECT id, question_ids FROM sessions WHERE task_id = ? AND status = 'in_progress'`,
+      [taskId]
+    );
+    
+    // 如果已有现有会话，返回现有会话信息
+    if (existingSession) {
+      const sessionId = existingSession.id;
+      
+      // 从会话中获取保存的题目ID列表
+      let questionIds: number[] = [];
+      if (existingSession.question_ids) {
+        try {
+          const parsed = typeof existingSession.question_ids === 'string'
+            ? JSON.parse(existingSession.question_ids)
+            : existingSession.question_ids;
+          if (Array.isArray(parsed)) {
+            questionIds = parsed;
+          }
+        } catch (e) {
+          console.warn('解析会话题目ID列表失败:', e);
+        }
+      }
+      
+      // 如果会话中没有保存题目ID，从 qa_records 中提取（兼容旧数据）
+      if (questionIds.length === 0) {
+        const qaRecords = await query(
+          `SELECT DISTINCT question_id FROM qa_records WHERE session_id = ? AND question_id IS NOT NULL ORDER BY created_at ASC`,
+          [sessionId]
+        );
+        questionIds = qaRecords.map((r: any) => r.question_id);
+        
+        // 如果从 qa_records 中提取到了题目ID，保存到会话中（更新旧数据）
+        if (questionIds.length > 0) {
+          await execute(
+            `UPDATE sessions SET question_ids = ? WHERE id = ?`,
+            [JSON.stringify(questionIds), sessionId]
+          );
+        }
+      }
+      
+      // 获取题目详情
+      let questions = [];
+      if (questionIds.length > 0) {
+        const placeholders = questionIds.map(() => '?').join(',');
+        questions = await query(
+          `SELECT id, question_text, category, difficulty, reference_answer
+           FROM questions
+           WHERE id IN (${placeholders})`,
+          questionIds
+        );
+      }
+      
+      // 如果会话中没有题目（可能是新创建的会话），从题库选择题目
+      if (questions.length === 0) {
+        questions = await query(
+          `SELECT id, question_text, category, difficulty, reference_answer
+           FROM questions
+           WHERE category = ?
+           ORDER BY RAND()
+           LIMIT ${parseInt(question_count as string)}`,
+          [task.category]
+        );
+        
+        if (questions.length === 0) {
+          throw new AppError(400, `该类别(${task.category})暂无可用题目,请先添加题目`);
+        }
+        
+        // 更新会话，保存题目ID列表
+        const newQuestionIds = questions.map((q: any) => q.id);
+        await execute(
+          `UPDATE sessions SET question_ids = ? WHERE id = ?`,
+          [JSON.stringify(newQuestionIds), sessionId]
+        );
+      }
+      
+      console.log(`✅ 返回现有会话: 任务ID=${taskId}, 会话ID=${sessionId}, 题目数=${questions.length}`);
+      
+      return res.json({
+        success: true,
+        message: '已找到现有会话',
+        data: {
+          session_id: sessionId,
+          task_id: taskId,
+          questions,
+          total_questions: questions.length,
+          task_info: {
+            category: task.category,
+            duration: task.duration,
+            student_name: task.student_name,
+            target_school: task.target_school,
+          },
+          is_existing: true, // 标记这是现有会话
+        },
+      });
+    }
+    
+    // 如果没有现有会话，创建新会话
+    // 从题库选择题目
+    const questions = await query(
+      `SELECT id, question_text, category, difficulty, reference_answer
+       FROM questions
+       WHERE category = ?
+       ORDER BY RAND()
+       LIMIT ${parseInt(question_count as string)}`,
+      [task.category]
+    );
+    
+    if (questions.length === 0) {
+      throw new AppError(400, `该类别(${task.category})暂无可用题目,请先添加题目`);
+    }
+    
+    // 创建会话，保存题目ID列表
+    const questionIds = questions.map((q: any) => q.id);
+    const sessionId = await insert(
+      `INSERT INTO sessions (task_id, category, mode, status, question_ids)
+       VALUES (?, ?, ?, ?, ?)`,
+      [taskId, task.category, 'text_qa', 'in_progress', JSON.stringify(questionIds)]
+    );
+    
+    // 更新任务状态为进行中
+    await execute(
+      'UPDATE daily_tasks SET status = ? WHERE id = ?',
+      ['in_progress', taskId]
+    );
+    
+    console.log(`✅ 从任务创建练习会话: 任务ID=${taskId}, 会话ID=${sessionId}, 题目数=${questions.length}`);
+    
+    res.status(201).json({
+      success: true,
+      message: '会话创建成功',
+      data: {
+        session_id: sessionId,
+        task_id: taskId,
+        questions,
+        total_questions: questions.length,
+        task_info: {
+          category: task.category,
+          duration: task.duration,
+          student_name: task.student_name,
+          target_school: task.target_school,
+        },
+        is_existing: false, // 标记这是新创建的会话
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('从任务创建会话失败:', error);
+    throw new AppError(500, '从任务创建会话失败');
   }
 });
 

@@ -1,17 +1,61 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios'
+import axios, { AxiosError, AxiosRequestConfig, CancelTokenSource } from 'axios'
 import { message } from 'antd'
 
 // API 基础URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// 在开发环境中，使用相对路径通过Vite代理访问后端
+// 在生产环境中，可以设置 VITE_API_URL 环境变量
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // 创建axios实例
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 10000, // 优化：从30秒降低到10秒
   headers: {
     'Content-Type': 'application/json',
   },
 })
+
+// 请求缓存：简单的内存缓存，5分钟TTL
+interface CacheEntry {
+  data: any
+  timestamp: number
+  expiresAt: number
+}
+
+const cache = new Map<string, CacheEntry>()
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+
+// 请求去重：相同请求在pending时不重复发送
+const pendingRequests = new Map<string, Promise<any>>()
+
+// 请求取消：存储每个请求的取消token
+const cancelTokens = new Map<string, CancelTokenSource>()
+
+/**
+ * 生成请求的唯一key
+ */
+function getRequestKey(config: AxiosRequestConfig): string {
+  const { method, url, params, data } = config
+  const paramsStr = params ? JSON.stringify(params) : ''
+  const dataStr = data ? JSON.stringify(data) : ''
+  return `${method}:${url}:${paramsStr}:${dataStr}`
+}
+
+/**
+ * 清除缓存（用于数据变更操作后）
+ */
+export function clearCache(pattern?: string) {
+  if (!pattern) {
+    cache.clear()
+    return
+  }
+  // 清除匹配模式的缓存
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) {
+      cache.delete(key)
+    }
+  }
+}
 
 // 请求拦截器
 apiClient.interceptors.request.use(
@@ -21,6 +65,13 @@ apiClient.interceptors.request.use(
     // if (token) {
     //   config.headers.Authorization = `Bearer ${token}`
     // }
+    
+    // 为每个请求创建取消token
+    const source = axios.CancelToken.source()
+    config.cancelToken = source.token
+    const requestKey = getRequestKey(config)
+    cancelTokens.set(requestKey, source)
+    
     return config
   },
   (error) => {
@@ -32,9 +83,38 @@ apiClient.interceptors.request.use(
 // 响应拦截器
 apiClient.interceptors.response.use(
   (response) => {
+    // 缓存GET请求的响应（5分钟TTL）
+    const config = response.config
+    if (config.method?.toLowerCase() === 'get') {
+      const requestKey = getRequestKey(config)
+      // 缓存整个响应数据对象
+      cache.set(requestKey, {
+        data: response.data,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + CACHE_TTL,
+      })
+    }
+    
+    // 清除pending请求
+    const requestKey = getRequestKey(config)
+    pendingRequests.delete(requestKey)
+    cancelTokens.delete(requestKey)
+    
     return response
   },
   (error: AxiosError<any>) => {
+    // 如果是取消请求，不显示错误
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
+    
+    // 清除pending请求
+    if (error.config) {
+      const requestKey = getRequestKey(error.config)
+      pendingRequests.delete(requestKey)
+      cancelTokens.delete(requestKey)
+    }
+    
     // 统一错误处理
     const errorMessage = error.response?.data?.message || error.message || '请求失败'
     
@@ -53,78 +133,277 @@ apiClient.interceptors.response.use(
   }
 )
 
+/**
+ * 增强的请求函数：支持缓存、去重、取消和重试
+ * 
+ * 返回格式：{ success: true, data: ... } 或 { success: false, message: ... }
+ * 
+ * @param config 请求配置
+ * @param retries 重试次数（默认 1 次）
+ */
+async function enhancedRequest<T = any>(
+  config: AxiosRequestConfig, 
+  retries = 1
+): Promise<{ success: boolean; data: T; [key: string]: any }> {
+  const requestKey = getRequestKey(config)
+  
+  // 1. 检查缓存（仅GET请求）
+  if (config.method?.toLowerCase() === 'get') {
+    const cached = cache.get(requestKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      // 缓存中存储的是 response.data，即 { success: true, data: ... }
+      return cached.data
+    }
+  }
+  
+  // 2. 检查是否有pending的相同请求
+  const pending = pendingRequests.get(requestKey)
+  if (pending) {
+    return pending as Promise<{ success: boolean; data: T; [key: string]: any }>
+  }
+  
+  // 3. 创建新请求（带重试机制）
+  const requestPromise = (async () => {
+    let lastError: any
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await apiClient.request(config)
+        // response.data 已经是 { success: true, data: ... } 格式
+        return response.data
+      } catch (error: any) {
+        lastError = error
+        
+        // 如果是取消请求，直接抛出
+        if (axios.isCancel(error)) {
+          throw error
+        }
+        
+        // 如果是客户端错误（4xx），不重试
+        if (error.response?.status >= 400 && error.response?.status < 500) {
+          throw error
+        }
+        
+        // 如果是最后一次尝试，抛出错误
+        if (attempt === retries) {
+          break
+        }
+        
+        // 等待一段时间后重试（指数退避）
+        const delay = Math.min(1000 * Math.pow(2, attempt), 5000)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    
+    // 所有重试都失败，抛出最后一个错误
+    pendingRequests.delete(requestKey)
+    throw lastError
+  })()
+  
+  pendingRequests.set(requestKey, requestPromise)
+  return requestPromise
+}
+
+/**
+ * 取消所有pending请求（用于组件卸载时）
+ */
+export function cancelAllPendingRequests() {
+  for (const [key, source] of cancelTokens.entries()) {
+    source.cancel('组件卸载，取消请求')
+    cancelTokens.delete(key)
+    pendingRequests.delete(key)
+  }
+}
+
 // API接口定义
 export const api = {
   // 学校相关
   schools: {
-    list: () => apiClient.get('/schools'),
-    get: (id: string) => apiClient.get(`/schools/${id}`),
+    list: () => enhancedRequest({ method: 'get', url: '/schools' }),
+    get: (id: string) => enhancedRequest({ method: 'get', url: `/schools/${id}` }),
+    create: (data: any) => {
+      clearCache('schools')
+      return apiClient.post('/schools', data).then(res => res.data)
+    },
+    update: (code: string, data: any) => {
+      clearCache('schools')
+      return apiClient.put(`/schools/${code}`, data).then(res => res.data)
+    },
+    delete: (code: string) => {
+      clearCache('schools')
+      return apiClient.delete(`/schools/${code}`).then(res => res.data)
+    },
   },
 
   // 题库相关
   questions: {
-    list: (params?: any) => apiClient.get('/questions', { params }),
-    get: (id: string) => apiClient.get(`/questions/${id}`),
-    create: (data: any) => apiClient.post('/questions', data),
-    update: (id: string, data: any) => apiClient.put(`/questions/${id}`, data),
-    delete: (id: string) => apiClient.delete(`/questions/${id}`),
-    stats: () => apiClient.get('/questions/stats/summary'),
+    list: (params?: any) => enhancedRequest({ method: 'get', url: '/questions', params }),
+    get: (id: string) => enhancedRequest({ method: 'get', url: `/questions/${id}` }),
+    create: (data: any) => {
+      clearCache('questions') // 清除相关缓存
+      return apiClient.post('/questions', data).then(res => res.data)
+    },
+    update: (id: string, data: any) => {
+      clearCache('questions') // 清除相关缓存
+      return apiClient.put(`/questions/${id}`, data).then(res => res.data)
+    },
+    delete: (id: string) => {
+      clearCache('questions') // 清除相关缓存
+      return apiClient.delete(`/questions/${id}`).then(res => res.data)
+    },
+    stats: () => enhancedRequest({ method: 'get', url: '/questions/stats/summary' }),
   },
 
   // 训练计划相关
   plans: {
-    list: (params?: any) => apiClient.get('/plans', { params }),
-    get: (id: string) => apiClient.get(`/plans/${id}`),
-    create: (data: any) => apiClient.post('/plans', data),
-    updateStatus: (id: string, status: string) => 
-      apiClient.patch(`/plans/${id}/status`, { status }),
-    delete: (id: string) => apiClient.delete(`/plans/${id}`),
-    todayTasks: () => apiClient.get('/plans/today/tasks'),
+    list: (params?: any) => enhancedRequest({ method: 'get', url: '/plans', params }),
+    get: (id: string) => enhancedRequest({ method: 'get', url: `/plans/${id}` }),
+    create: (data: any) => {
+      clearCache('plans')
+      return apiClient.post('/plans', data).then(res => res.data)
+    },
+    updateStatus: (id: string, status: string) => {
+      clearCache('plans')
+      return apiClient.patch(`/plans/${id}/status`, { status }).then(res => res.data)
+    },
+    delete: (id: string) => {
+      clearCache('plans')
+      return apiClient.delete(`/plans/${id}`).then(res => res.data)
+    },
+    todayTasks: () => enhancedRequest({ method: 'get', url: '/plans/today/tasks' }),
+    pendingTasks: (params?: { date?: string; status?: string }) => 
+      enhancedRequest({ method: 'get', url: '/plans/pending-tasks', params }),
+    startTaskPractice: (taskId: string, data?: any) => 
+      apiClient.post(`/plans/tasks/${taskId}/start-practice`, data).then(res => res.data),
     completeTask: (taskId: string) => 
-      apiClient.patch(`/plans/tasks/${taskId}/complete`),
+      apiClient.patch(`/plans/tasks/${taskId}/complete`).then(res => res.data),
   },
 
   // 练习会话相关
   sessions: {
-    create: (data: any) => apiClient.post('/sessions', data),
-    get: (id: string) => apiClient.get(`/sessions/${id}`),
+    create: (data: any) => apiClient.post('/sessions', data).then(res => res.data),
+    get: (id: string) => enhancedRequest({ method: 'get', url: `/sessions/${id}` }),
     recent: (limit = 10) => 
-      apiClient.get('/sessions/recent/list', { params: { limit } }),
+      enhancedRequest({ method: 'get', url: '/sessions/recent/list', params: { limit } }),
     submitAnswer: (sessionId: string, data: any) => 
-      apiClient.post(`/sessions/${sessionId}/answer`, data),
-    complete: (sessionId: string) => 
-      apiClient.patch(`/sessions/${sessionId}/complete`),
-    delete: (sessionId: string) => 
-      apiClient.delete(`/sessions/${sessionId}`),
+      apiClient.post(`/sessions/${sessionId}/answer`, data).then(res => res.data),
+    complete: (sessionId: string) => {
+      clearCache('sessions')
+      return apiClient.patch(`/sessions/${sessionId}/complete`).then(res => res.data)
+    },
+    delete: (sessionId: string) => {
+      clearCache('sessions')
+      return apiClient.delete(`/sessions/${sessionId}`).then(res => res.data)
+    },
   },
 
   // 反馈相关
   feedback: {
-    generate: (data: any) => apiClient.post('/feedback/generate', data),
+    generate: (data: any) => apiClient.post('/feedback/generate', data).then(res => res.data),
     list: (sessionId: string) => 
-      apiClient.get(`/feedback/session/${sessionId}`),
+      enhancedRequest({ method: 'get', url: `/feedback/session/${sessionId}` }),
     batchGenerate: (sessionId: string) => 
-      apiClient.post('/feedback/batch', { session_id: sessionId }),
-    deleteRecord: (recordId: string) => 
-      apiClient.delete(`/feedback/record/${recordId}`),
-    deleteSession: (sessionId: string) => 
-      apiClient.delete(`/feedback/session/${sessionId}`),
+      apiClient.post('/feedback/batch', { session_id: sessionId }).then(res => res.data),
+    deleteRecord: (recordId: string) => {
+      clearCache('feedback')
+      return apiClient.delete(`/feedback/record/${recordId}`).then(res => res.data)
+    },
+    deleteSession: (sessionId: string) => {
+      clearCache('feedback')
+      return apiClient.delete(`/feedback/session/${sessionId}`).then(res => res.data)
+    },
   },
 
   // AI服务相关
   ai: {
-    generateQuestions: (data: any) => 
-      apiClient.post('/ai/generate-questions', data),
-    generatePlan: (data: any) => 
-      apiClient.post('/ai/generate-plan', data),
+    generateQuestions: (data: any) => {
+      clearCache('questions')
+      return apiClient.post('/ai/generate-questions', data).then(res => res.data)
+    },
+    generatePlan: (data: any) => {
+      clearCache('plans')
+      return apiClient.post('/ai/generate-plan', data).then(res => res.data)
+    },
+    generateSchool: (data: any) => {
+      clearCache('schools')
+      return apiClient.post('/ai/generate-school', data).then(res => res.data)
+    },
+    extractInterviewMemory: (data: any) => {
+      return apiClient.post('/ai/extract-interview-memory', data).then(res => res.data)
+    },
+    saveInterviewQuestions: (data: any) => {
+      clearCache('questions')
+      return apiClient.post('/ai/save-interview-questions', data).then(res => res.data)
+    },
+    saveWeaknesses: (data: any) => {
+      clearCache('weaknesses')
+      return apiClient.post('/ai/save-weaknesses', data).then(res => res.data)
+    },
+    testConnection: (data: any) => {
+      return apiClient.post('/ai/test-connection', data).then(res => res.data)
+    },
   },
 
   // 数据管理相关
   data: {
+    stats: () => enhancedRequest({ method: 'get', url: '/data/stats' }),
     export: (type: string) => 
-      apiClient.get('/data/export', { params: { type } }),
-    backup: () => apiClient.post('/data/backup'),
-    restore: (data: any) => apiClient.post('/data/restore', data),
+      enhancedRequest({ method: 'get', url: '/data/export', params: { type } }),
+    backup: () => apiClient.post('/data/backup').then(res => res.data),
+    restore: (data: any) => apiClient.post('/data/restore', data).then(res => res.data),
+    import: (data: any) => {
+      clearCache() // 清除所有缓存
+      return apiClient.post('/data/import', data).then(res => res.data)
+    },
+    clear: () => {
+      clearCache() // 清除所有缓存
+      return apiClient.delete('/data/clear').then(res => res.data)
+    },
+    cleanup: () => {
+      clearCache() // 清除所有缓存
+      return apiClient.post('/data/cleanup').then(res => res.data)
+    },
+    seedSchools: () => {
+      clearCache('schools')
+      return apiClient.post('/data/seed-schools').then(res => res.data)
+    },
+    seedQuestions: () => {
+      clearCache('questions')
+      return apiClient.post('/data/seed-questions').then(res => res.data)
+    },
+    seedAll: () => {
+      clearCache() // 清除所有缓存
+      return apiClient.post('/data/seed-all').then(res => res.data)
+    },
+  },
+
+  // 弱点管理相关
+  weaknesses: {
+    list: (params?: any) => enhancedRequest({ method: 'get', url: '/weaknesses', params }),
+    get: (id: string) => enhancedRequest({ method: 'get', url: `/weaknesses/${id}` }),
+    updateStatus: (id: string, status: string) => {
+      clearCache('weaknesses')
+      return apiClient.patch(`/weaknesses/${id}/status`, { status }).then(res => res.data)
+    },
+    delete: (id: string) => {
+      clearCache('weaknesses')
+      return apiClient.delete(`/weaknesses/${id}`).then(res => res.data)
+    },
+    stats: () => enhancedRequest({ method: 'get', url: '/weaknesses/stats/summary' }),
+    trends: (params?: { student_name?: string; days?: number }) => 
+      enhancedRequest({ method: 'get', url: '/weaknesses/stats/trends', params }),
+    generateQuestions: (data: any) => {
+      clearCache('questions')
+      return apiClient.post('/ai/generate-questions-from-weaknesses', data).then(res => res.data)
+    },
+  },
+
+  // 设置相关
+  settings: {
+    get: () => enhancedRequest({ method: 'get', url: '/settings' }),
+    update: (data: any) => {
+      clearCache('settings')
+      return apiClient.post('/settings', data).then(res => res.data)
+    },
   },
 }
 
