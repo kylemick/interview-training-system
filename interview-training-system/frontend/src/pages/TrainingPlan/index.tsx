@@ -55,6 +55,10 @@ interface DailyTask {
   duration: number;
   status: string;
   completed_at?: string;
+  session_info?: {
+    session_id: number;
+    qa_records_count: number;
+  };
 }
 
 interface Settings {
@@ -418,14 +422,49 @@ const TrainingPlan = () => {
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 250,
       render: (_: any, record: DailyTask) => {
         if (record.status === 'completed') {
+          const sessionId = (record as any).session_info?.session_id;
           return (
             <Space size="small">
               <Tag icon={<CheckCircleOutlined />} color="success">
                 已完成
               </Tag>
+              {sessionId ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => navigate(`/feedback?session=${sessionId}`)}
+                >
+                  查看提交记录
+                </Button>
+              ) : (
+                <Button
+                  type="default"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={async () => {
+                    // 如果没有 session_info，尝试查找会话
+                    try {
+                      const sessionsRes = await api.sessions.recent(100);
+                      if (sessionsRes.success) {
+                        const taskSession = sessionsRes.data.find((s: any) => s.task_id === record.id);
+                        if (taskSession) {
+                          navigate(`/feedback?session=${taskSession.id}`);
+                        } else {
+                          message.warning('未找到该任务的练习记录');
+                        }
+                      }
+                    } catch (error) {
+                      message.error('查找练习记录失败');
+                    }
+                  }}
+                >
+                  查找记录
+                </Button>
+              )}
             </Space>
           );
         }

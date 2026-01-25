@@ -23,7 +23,50 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 // 获取所有题目（支持筛选）
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { category, difficulty, school_code, source, limit = '50', offset = '0' } = req.query;
+    const { category, difficulty, school_code, source, limit = '50', offset = '0', ids } = req.query;
+
+    // 如果提供了 ids 参数，按指定 ID 列表返回（保持顺序）
+    if (ids) {
+      const idList = (ids as string).split(',').map(id => {
+        const numId = parseInt(id.trim(), 10);
+        if (isNaN(numId) || numId <= 0) {
+          throw new AppError(400, `无效的题目ID: ${id}`);
+        }
+        return numId;
+      });
+
+      if (idList.length === 0) {
+        return res.json({
+          success: true,
+          data: [],
+          total: 0,
+        });
+      }
+
+      // 使用 FIELD() 函数保持指定 ID 的顺序
+      const placeholders = idList.map(() => '?').join(',');
+      const fieldOrder = idList.map((_, index) => `FIELD(id, ${placeholders})`).join(', ');
+      
+      const questions = await query(
+        `SELECT id, category, question_text, difficulty, reference_answer, tags, school_code, source, created_at, updated_at
+         FROM questions
+         WHERE id IN (${placeholders})
+         ORDER BY FIELD(id, ${placeholders})`,
+        [...idList, ...idList] // 第一个用于 WHERE，第二个用于 ORDER BY
+      );
+
+      // 统一解析 JSON 字段
+      const formattedQuestions = questions.map((q: any) => ({
+        ...q,
+        tags: parseJsonField(q.tags, 'tags'),
+      }));
+
+      return res.json({
+        success: true,
+        data: formattedQuestions,
+        total: formattedQuestions.length,
+      });
+    }
 
     // 验证和规范化分页参数
     const limitNum = Math.min(parseInt(limit as string) || 50, 100); // 最大 100
@@ -87,6 +130,7 @@ router.get('/', async (req: Request, res: Response) => {
       offset: offsetNum,
     });
   } catch (error) {
+    if (error instanceof AppError) throw error;
     console.error('获取题目列表失败:', error);
     throw new AppError(500, '获取题目列表失败');
   }

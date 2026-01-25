@@ -26,11 +26,13 @@ import { api } from '../../utils/api'
 const { Title, Text, Paragraph } = Typography
 const { Panel } = Collapse
 
-// 专项类别映射
+// 专项类别映射（统一处理 logic-thinking 和 logical-thinking）
 const CATEGORY_MAP: Record<string, string> = {
   'english-oral': '英文口语',
   'chinese-expression': '中文表达',
-  'logical-thinking': '逻辑思维',
+  'chinese-oral': '中文表达', // 兼容旧数据
+  'logic-thinking': '逻辑思维',
+  'logical-thinking': '逻辑思维', // 兼容旧数据
   'current-affairs': '时事常识',
   'science-knowledge': '科学常识',
   'personal-growth': '个人成长',
@@ -54,6 +56,7 @@ interface QARecord {
   answer_text: string
   ai_feedback: any
   created_at: string
+  is_placeholder?: boolean // 标记是否为占位记录（未提交答案的题目）
 }
 
 interface SessionDetail {
@@ -155,47 +158,181 @@ export default function Feedback() {
       const detail = res.success ? res.data : null
       
       if (detail) {
-        // 如果有question_ids，按题目ID去重qa_records，确保每个题目只显示一次
+        // 调试日志：查看原始数据
+        console.log('📊 会话详情原始数据:', {
+          sessionId,
+          question_ids: detail.question_ids,
+          qa_records_count: detail.qa_records?.length || 0,
+          qa_records: detail.qa_records
+        })
+        
+        // 统一类别名称：将 logical-thinking 转换为 logic-thinking
+        if (detail.session?.category === 'logical-thinking') {
+          detail.session.category = 'logic-thinking'
+        }
+        
+        // 确保 qa_records 存在且是数组
+        if (!detail.qa_records || !Array.isArray(detail.qa_records)) {
+          console.warn('⚠️ qa_records 不存在或不是数组，初始化为空数组')
+          detail.qa_records = []
+        }
+        
+        // 如果有 question_ids 但没有 qa_records，尝试获取题目详情
+        if (detail.question_ids && Array.isArray(detail.question_ids) && detail.question_ids.length > 0 && detail.qa_records.length === 0) {
+          try {
+            // 尝试批量获取题目详情
+            const questionPromises = detail.question_ids.map((qid: number) => 
+              api.questions.get(String(qid)).catch(() => null)
+            )
+            const questionResults = await Promise.all(questionPromises)
+            
+            // 为每个题目创建占位记录
+            detail.qa_records = detail.question_ids.map((qid: number, index: number) => {
+              const questionResult = questionResults[index]
+              const question = questionResult?.success ? questionResult.data : null
+              
+              return {
+                question_id: qid,
+                question_text: question?.question_text || `题目 ID: ${qid}（暂无答案）`,
+                answer_text: '',
+                ai_feedback: null,
+                created_at: null,
+                id: `placeholder_${qid}`,
+                is_placeholder: true
+              }
+            })
+          } catch (error) {
+            console.warn('获取题目详情失败:', error)
+            // 如果获取失败，仍然创建占位记录
+            detail.qa_records = detail.question_ids.map((qid: number) => ({
+              question_id: qid,
+              question_text: `题目 ID: ${qid}（暂无答案）`,
+              answer_text: '',
+              ai_feedback: null,
+              created_at: null,
+              id: `placeholder_${qid}`,
+              is_placeholder: true
+            }))
+          }
+        }
+        
+        // 简化逻辑：优先显示所有记录，按 question_id 去重（如果有）
+        // 先收集所有记录，按 question_id 去重（保留最新的）
+        const recordsMap = new Map<string, any>()
+        detail.qa_records.forEach((record: any) => {
+          let key: string
+          if (record.question_id !== null && record.question_id !== undefined) {
+            // 统一转换为字符串作为 key（避免类型不匹配）
+            key = `qid_${record.question_id}`
+          } else {
+            // 没有 question_id 的记录，使用 id
+            key = `id_${record.id}`
+          }
+          
+          const existing = recordsMap.get(key)
+          if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
+            recordsMap.set(key, record)
+          }
+        })
+        
+        // 如果有 question_ids，按顺序排列；否则按创建时间排序
+        let finalRecords: any[] = []
+        
         if (detail.question_ids && Array.isArray(detail.question_ids) && detail.question_ids.length > 0) {
-          // 按题目ID分组，每个题目只保留最新的记录
-          const recordsByQuestion = new Map<number, any>()
-          detail.qa_records.forEach((record: any) => {
-            if (record.question_id) {
-              const existing = recordsByQuestion.get(record.question_id)
-              if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
-                recordsByQuestion.set(record.question_id, record)
+          // 按 question_ids 的顺序排列
+          const recordsByQuestionId = new Map<number, any>()
+          recordsMap.forEach((record) => {
+            if (record.question_id !== null && record.question_id !== undefined) {
+              const qid = typeof record.question_id === 'string' 
+                ? parseInt(record.question_id, 10) 
+                : record.question_id
+              if (!isNaN(qid)) {
+                recordsByQuestionId.set(qid, record)
               }
             }
           })
           
-          // 按question_ids的顺序构建记录列表
-          const orderedRecords: any[] = []
-          detail.question_ids.forEach((questionId: number) => {
-            const record = recordsByQuestion.get(questionId)
-            if (record) {
-              orderedRecords.push(record)
+          // 先收集所有缺失的 question_id（没有对应记录的）
+          const missingQuestionIds: number[] = []
+          detail.question_ids.forEach((qid: any) => {
+            const qidNum = typeof qid === 'string' ? parseInt(qid, 10) : qid
+            if (!isNaN(qidNum) && !recordsByQuestionId.has(qidNum)) {
+              missingQuestionIds.push(qidNum)
             }
           })
           
-          // 更新qa_records为去重后的列表
-          detail.qa_records = orderedRecords
-          detail.total_questions = detail.question_ids.length
-        } else if (detail.qa_records && detail.qa_records.length > 0) {
-          // 如果没有question_ids，按question_id去重
-          const uniqueRecords = new Map<number, any>()
-          detail.qa_records.forEach((record: any) => {
-            if (record.question_id) {
-              const existing = uniqueRecords.get(record.question_id)
-              if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
-                uniqueRecords.set(record.question_id, record)
+          // 批量获取缺失题目的详情
+          const questionDetailsMap = new Map<number, any>()
+          if (missingQuestionIds.length > 0) {
+            try {
+              const questionPromises = missingQuestionIds.map((qid: number) => 
+                api.questions.get(String(qid)).catch(() => null)
+              )
+              const questionResults = await Promise.all(questionPromises)
+              
+              questionResults.forEach((result, index) => {
+                const qid = missingQuestionIds[index]
+                if (result?.success && result.data) {
+                  questionDetailsMap.set(qid, result.data)
+                }
+              })
+            } catch (error) {
+              console.warn('获取题目详情失败:', error)
+            }
+          }
+          
+          // 按 question_ids 的顺序添加记录（包括占位记录）
+          detail.question_ids.forEach((qid: any) => {
+            const qidNum = typeof qid === 'string' ? parseInt(qid, 10) : qid
+            if (!isNaN(qidNum)) {
+              const record = recordsByQuestionId.get(qidNum)
+              if (record) {
+                finalRecords.push(record)
+                recordsByQuestionId.delete(qidNum) // 已添加，从 map 中移除
+              } else {
+                // 创建占位记录，使用实际的题目内容（如果获取到了）
+                const questionDetail = questionDetailsMap.get(qidNum)
+                finalRecords.push({
+                  question_id: qidNum,
+                  question_text: questionDetail?.question_text || `题目 ID: ${qidNum}（暂无答案）`,
+                  answer_text: '',
+                  ai_feedback: null,
+                  created_at: null,
+                  id: `placeholder_${qidNum}`,
+                  is_placeholder: true
+                })
               }
-            } else {
-              // 没有question_id的记录，按id去重
-              uniqueRecords.set(parseInt(record.id), record)
             }
           })
-          detail.qa_records = Array.from(uniqueRecords.values())
-          detail.total_questions = uniqueRecords.size
+          
+          // 添加剩余的记录（不在 question_ids 中的，如编号16的情况）
+          recordsByQuestionId.forEach((record) => {
+            finalRecords.push(record)
+          })
+          
+          // 添加没有 question_id 的记录
+          recordsMap.forEach((record, key) => {
+            if (key.startsWith('id_') && !finalRecords.find(r => r.id === record.id)) {
+              finalRecords.push(record)
+            }
+          })
+        } else {
+          // 没有 question_ids，按创建时间排序
+          finalRecords = Array.from(recordsMap.values()).sort((a, b) => {
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          })
+        }
+        
+        // 解析反馈数据
+        detail.qa_records = finalRecords.map((record: any) => {
+          return parseFeedbackData(record)
+        })
+        
+        // 更新 total_questions
+        if (detail.question_ids && Array.isArray(detail.question_ids) && detail.question_ids.length > 0) {
+          detail.total_questions = Math.max(detail.question_ids.length, finalRecords.length)
+        } else {
+          detail.total_questions = finalRecords.length
         }
       }
       
@@ -206,6 +343,32 @@ export default function Feedback() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 解析反馈数据的辅助函数（防御性解析）
+  const parseFeedbackData = (record: any): any => {
+    if (!record.ai_feedback) {
+      return record
+    }
+    
+    try {
+      // 如果已经是对象，直接返回
+      if (typeof record.ai_feedback === 'object' && record.ai_feedback !== null) {
+        return record
+      }
+      
+      // 如果是字符串，尝试解析
+      if (typeof record.ai_feedback === 'string') {
+        const parsed = JSON.parse(record.ai_feedback)
+        return { ...record, ai_feedback: parsed }
+      }
+    } catch (error) {
+      console.warn(`解析反馈数据失败 (记录ID: ${record.id}):`, error)
+      // 解析失败时，返回原记录但将 ai_feedback 设为 null，避免页面崩溃
+      return { ...record, ai_feedback: null }
+    }
+    
+    return record
   }
 
   // 生成AI反馈
@@ -501,8 +664,17 @@ export default function Feedback() {
                   )
                 }
               >
-                {sessionDetail.qa_records.length === 0 ? (
-                  <Empty description="暂无问答记录" />
+                {!sessionDetail.qa_records || sessionDetail.qa_records.length === 0 ? (
+                  <Empty 
+                    description={
+                      <div>
+                        <p>暂无问答记录</p>
+                        <p style={{ fontSize: '12px', color: '#999', marginTop: 8 }}>
+                          调试信息: qa_records = {sessionDetail.qa_records ? `${sessionDetail.qa_records.length} 条` : 'undefined'}
+                        </p>
+                      </div>
+                    } 
+                  />
                 ) : (
                   <Collapse accordion>
                     {sessionDetail.qa_records.map((record, index) => {
@@ -538,119 +710,216 @@ export default function Feedback() {
                         <Divider />
 
                         {/* 你的回答 */}
-                        <div style={{ marginBottom: 16 }}>
-                          <Text strong style={{ fontSize: 15 }}>
-                            你的回答：
-                          </Text>
-                          <Paragraph
-                            style={{
-                              marginTop: 8,
-                              padding: 12,
-                              background: '#f5f5f5',
-                              borderRadius: 4,
-                            }}
-                          >
-                            {record.answer_text}
-                          </Paragraph>
-                        </div>
-
-                        {/* AI反馈 */}
-                        {record.ai_feedback ? (
-                          <div
-                            style={{
-                              marginTop: 16,
-                              padding: 16,
-                              background: '#e6f7ff',
-                              borderRadius: 4,
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text strong style={{ fontSize: 15, color: '#1890ff' }}>
-                                <ThunderboltOutlined style={{ marginRight: 8 }} />
-                                AI反馈
-                              </Text>
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
-                                onClick={() => deleteFeedback(record.id)}
-                                style={{ fontSize: 12 }}
+                        {record.is_placeholder ? (
+                          <div style={{ marginBottom: 16, padding: 16, background: '#fffbe6', borderRadius: 4, border: '1px solid #ffe58f' }}>
+                            <Text type="warning">
+                              ⚠️ 此题目尚未提交答案
+                            </Text>
+                            <div style={{ marginTop: 8 }}>
+                              <Button 
+                                type="primary" 
+                                onClick={() => {
+                                  // 传递 session 和 question_id，让 practice 页面能定位到正确的题目
+                                  const questionId = record.question_id
+                                  // 确保 questionId 是数字类型
+                                  const questionIdNum = typeof questionId === 'string' 
+                                    ? parseInt(questionId, 10) 
+                                    : questionId
+                                  
+                                  console.log(`🔗 跳转到练习页面: session=${selectedSession}, question_id=${questionIdNum} (原始: ${questionId}, 类型: ${typeof questionId})`)
+                                  
+                                  if (questionIdNum && !isNaN(questionIdNum)) {
+                                    navigate(`/practice?session=${selectedSession}&question=${questionIdNum}`)
+                                  } else {
+                                    console.warn(`⚠️ 无效的 question_id: ${questionId}, 只传递 session`)
+                                    navigate(`/practice?session=${selectedSession}`)
+                                  }
+                                }}
                               >
-                                删除反馈
+                                前往练习页面提交答案
                               </Button>
-                            </div>
-                            <div style={{ marginTop: 12 }}>
-                              {record.ai_feedback.score && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text>综合评分：</Text>
-                                  <Tag color="blue" style={{ marginLeft: 8, fontSize: 14 }}>
-                                    {record.ai_feedback.score}/10
-                                  </Tag>
-                                </div>
-                              )}
-                              {record.ai_feedback.strengths && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text strong>优点：</Text>
-                                  <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
-                                    {record.ai_feedback.strengths}
-                                  </Paragraph>
-                                </div>
-                              )}
-                              {record.ai_feedback.weaknesses && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text strong>待改进：</Text>
-                                  <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
-                                    {record.ai_feedback.weaknesses}
-                                  </Paragraph>
-                                </div>
-                              )}
-                              {record.ai_feedback.suggestions && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text strong>建议：</Text>
-                                  <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
-                                    {record.ai_feedback.suggestions}
-                                  </Paragraph>
-                                </div>
-                              )}
-                              {record.ai_feedback.reference_thinking && (
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text strong style={{ color: '#722ed1' }}>🤔 参考思路：</Text>
-                                  <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
-                                    {record.ai_feedback.reference_thinking}
-                                  </Paragraph>
-                                </div>
-                              )}
-                              {record.ai_feedback.reference_answer && (
-                                <div
-                                  style={{
-                                    marginTop: 12,
-                                    padding: 12,
-                                    background: '#fff',
-                                    borderRadius: 4,
-                                    border: '1px dashed #1890ff',
-                                  }}
-                                >
-                                  <Text strong style={{ color: '#722ed1' }}>📝 参考答案：</Text>
-                                  <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
-                                    {record.ai_feedback.reference_answer}
-                                  </Paragraph>
-                                </div>
-                              )}
                             </div>
                           </div>
                         ) : (
-                          <Button
-                            type="primary"
-                            icon={<ThunderboltOutlined />}
-                            onClick={() =>
-                              generateFeedback(record.id, record.question_text, record.answer_text)
-                            }
-                            loading={generatingFeedback}
-                            style={{ marginTop: 16 }}
-                          >
-                            生成AI反馈
-                          </Button>
+                          <div style={{ marginBottom: 16 }}>
+                            <Text strong style={{ fontSize: 15 }}>
+                              你的回答：
+                            </Text>
+                            <Paragraph
+                              style={{
+                                marginTop: 8,
+                                padding: 12,
+                                background: '#f5f5f5',
+                                borderRadius: 4,
+                              }}
+                            >
+                              {record.answer_text || '（无答案）'}
+                            </Paragraph>
+                          </div>
                         )}
+
+                        {/* AI反馈 */}
+                        {(() => {
+                          // 调试：检查反馈数据
+                          console.log('反馈数据检查:', {
+                            recordId: record.id,
+                            hasAiFeedback: !!record.ai_feedback,
+                            aiFeedbackType: typeof record.ai_feedback,
+                            aiFeedbackValue: record.ai_feedback
+                          })
+                          
+                          // 检查是否有反馈数据（支持对象、字符串、null等多种情况）
+                          const hasFeedback = record.ai_feedback && 
+                            (typeof record.ai_feedback === 'object' || typeof record.ai_feedback === 'string')
+                          
+                          if (hasFeedback && typeof record.ai_feedback === 'object' && record.ai_feedback !== null) {
+                            // 反馈是对象格式，正常显示
+                            return (
+                              <div
+                                style={{
+                                  marginTop: 16,
+                                  padding: 16,
+                                  background: '#e6f7ff',
+                                  borderRadius: 4,
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Text strong style={{ fontSize: 15, color: '#1890ff' }}>
+                                    <ThunderboltOutlined style={{ marginRight: 8 }} />
+                                    AI反馈
+                                  </Text>
+                                  <Button
+                                    type="text"
+                                    danger
+                                    size="small"
+                                    onClick={() => deleteFeedback(record.id)}
+                                    style={{ fontSize: 12 }}
+                                  >
+                                    删除反馈
+                                  </Button>
+                                </div>
+                                <div style={{ marginTop: 12 }}>
+                                  {record.ai_feedback.score && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text>综合评分：</Text>
+                                      <Tag color="blue" style={{ marginLeft: 8, fontSize: 14 }}>
+                                        {record.ai_feedback.score}/10
+                                      </Tag>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.overall_score && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text>总体评分：</Text>
+                                      <Tag color="blue" style={{ marginLeft: 8, fontSize: 14 }}>
+                                        {record.ai_feedback.overall_score}/100
+                                      </Tag>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.strengths && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text strong>优点：</Text>
+                                      <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
+                                        {record.ai_feedback.strengths}
+                                      </Paragraph>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.weaknesses && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text strong>待改进：</Text>
+                                      <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
+                                        {record.ai_feedback.weaknesses}
+                                      </Paragraph>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.suggestions && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text strong>建议：</Text>
+                                      <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
+                                        {record.ai_feedback.suggestions}
+                                      </Paragraph>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.reference_thinking && (
+                                    <div style={{ marginBottom: 12 }}>
+                                      <Text strong style={{ color: '#722ed1' }}>🤔 参考思路：</Text>
+                                      <Paragraph style={{ marginTop: 4, marginLeft: 16 }}>
+                                        {record.ai_feedback.reference_thinking}
+                                      </Paragraph>
+                                    </div>
+                                  )}
+                                  {record.ai_feedback.reference_answer && (
+                                    <div
+                                      style={{
+                                        marginTop: 12,
+                                        padding: 12,
+                                        background: '#fff',
+                                        borderRadius: 4,
+                                        border: '1px dashed #1890ff',
+                                      }}
+                                    >
+                                      <Text strong style={{ color: '#722ed1' }}>📝 参考答案：</Text>
+                                      <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
+                                        {record.ai_feedback.reference_answer}
+                                      </Paragraph>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          } else if (record.ai_feedback && typeof record.ai_feedback === 'string') {
+                            // 反馈是字符串格式，尝试解析
+                            try {
+                              const parsed = JSON.parse(record.ai_feedback)
+                              if (parsed && typeof parsed === 'object') {
+                                // 解析成功，但为了简化，提示用户刷新页面以看到正确格式
+                                return (
+                                  <div style={{ marginTop: 16, padding: 12, background: '#fffbe6', borderRadius: 4, border: '1px solid #ffe58f' }}>
+                                    <Text type="warning">
+                                      ⚠️ 反馈数据需要重新加载，请刷新页面
+                                    </Text>
+                                  </div>
+                                )
+                              }
+                            } catch (e) {
+                              console.warn('解析反馈字符串失败:', e)
+                            }
+                            return (
+                              <div style={{ marginTop: 16, padding: 12, background: '#fffbe6', borderRadius: 4, border: '1px solid #ffe58f' }}>
+                                <Text type="warning">
+                                  ⚠️ 反馈数据格式异常，请重新生成反馈
+                                </Text>
+                                <Button
+                                  type="primary"
+                                  icon={<ThunderboltOutlined />}
+                                  onClick={() =>
+                                    generateFeedback(record.id, record.question_text, record.answer_text)
+                                  }
+                                  loading={generatingFeedback}
+                                  style={{ marginTop: 8 }}
+                                  size="small"
+                                >
+                                  重新生成反馈
+                                </Button>
+                              </div>
+                            )
+                          } else if (!record.is_placeholder) {
+                            // 没有反馈且不是占位记录，显示生成按钮
+                            return (
+                              <Button
+                                type="primary"
+                                icon={<ThunderboltOutlined />}
+                                onClick={() =>
+                                  generateFeedback(record.id, record.question_text, record.answer_text)
+                                }
+                                loading={generatingFeedback}
+                                style={{ marginTop: 16 }}
+                              >
+                                生成AI反馈
+                              </Button>
+                            )
+                          }
+                          return null
+                        })()}
                         </Panel>
                       )
                     })}

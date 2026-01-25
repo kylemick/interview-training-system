@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS qa_records (
   id INT AUTO_INCREMENT PRIMARY KEY,
   session_id INT NOT NULL COMMENT '关联会话',
+  plan_id INT COMMENT '关联训练计划（通过 session -> task -> plan 关联）',
   question_id INT COMMENT '关联题目(可选)',
   question_text TEXT NOT NULL COMMENT '问题内容',
   answer_text TEXT NOT NULL COMMENT '回答内容',
@@ -151,8 +152,10 @@ CREATE TABLE IF NOT EXISTS qa_records (
   ai_feedback JSON COMMENT 'AI反馈',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_session_id (session_id),
+  INDEX idx_plan_id (plan_id),
   INDEX idx_question_id (question_id),
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (plan_id) REFERENCES training_plans(id) ON DELETE SET NULL,
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='问答记录';
 

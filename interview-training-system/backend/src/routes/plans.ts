@@ -239,17 +239,18 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     const formattedPlan = { ...plan, category_allocation };
 
-    // 获取该计划的所有每日任务
+    // 获取该计划的所有每日任务，并关联会话信息
     const tasks = await query(
-      `SELECT id, task_date, category, duration, question_ids, status, completed_at
-       FROM daily_tasks
-       WHERE plan_id = ?
-       ORDER BY task_date ASC`,
+      `SELECT dt.id, dt.task_date, dt.category, dt.duration, dt.question_ids, dt.status, dt.completed_at,
+              (SELECT id FROM sessions WHERE task_id = dt.id ORDER BY start_time DESC LIMIT 1) as session_id
+       FROM daily_tasks dt
+       WHERE dt.plan_id = ?
+       ORDER BY dt.task_date ASC`,
       [id]
     );
 
-    // 解析 JSON 字段（添加错误处理）
-    const formattedTasks = tasks.map((task: any) => {
+    // 解析 JSON 字段并获取会话信息（添加错误处理）
+    const formattedTasks = await Promise.all(tasks.map(async (task: any) => {
       let question_ids = [];
       try {
         question_ids = task.question_ids
@@ -261,8 +262,54 @@ router.get('/:id', async (req: Request, res: Response) => {
         console.warn(`解析任务 ${task.id} 的 question_ids 失败:`, error);
         question_ids = [];
       }
-      return { ...task, question_ids };
-    });
+      
+      // 获取会话信息（优先获取已完成的会话，如果没有则获取最新的）
+      let session_info = null;
+      if (task.session_id) {
+        try {
+          // 确保 session_id 是数字类型
+          const sessionIdNum = typeof task.session_id === 'string' 
+            ? parseInt(task.session_id, 10) 
+            : task.session_id;
+          
+          if (!isNaN(sessionIdNum)) {
+            const qaCount = await queryOne(
+              `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
+              [sessionIdNum]
+            );
+            session_info = {
+              session_id: sessionIdNum,
+              qa_records_count: qaCount?.count || 0
+            };
+          }
+        } catch (error) {
+          console.warn(`获取任务 ${task.id} 的会话信息失败:`, error);
+        }
+      } else {
+        // 如果没有找到会话，尝试查找该任务的所有会话（可能有多条）
+        try {
+          const allSessions = await query(
+            `SELECT id FROM sessions WHERE task_id = ? ORDER BY start_time DESC LIMIT 1`,
+            [task.id]
+          );
+          if (allSessions.length > 0) {
+            const sessionId = allSessions[0].id;
+            const qaCount = await queryOne(
+              `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
+              [sessionId]
+            );
+            session_info = {
+              session_id: sessionId,
+              qa_records_count: qaCount?.count || 0
+            };
+          }
+        } catch (error) {
+          console.warn(`查找任务 ${task.id} 的会话失败:`, error);
+        }
+      }
+      
+      return { ...task, question_ids, session_info };
+    }));
 
     res.json({
       success: true,
@@ -649,8 +696,20 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
       throw new AppError(404, '任务不存在');
     }
     
+    // 如果任务已完成，检查是否有已完成的会话
+    // 如果有，允许用户查看已完成的会话（不创建新会话）
+    // 如果没有，不允许创建新会话（任务已完成）
     if (task.status === 'completed') {
-      throw new AppError(400, '任务已完成,无法再次练习');
+      const completedSession = await queryOne(
+        `SELECT id FROM sessions WHERE task_id = ? AND status = 'completed' ORDER BY start_time DESC LIMIT 1`,
+        [taskId]
+      );
+      
+      if (!completedSession) {
+        // 任务已完成但没有会话，不允许创建新会话
+        throw new AppError(400, '任务已完成,无法再次练习');
+      }
+      // 如果有已完成的会话，继续处理（会在下面返回现有会话）
     }
     
     // 根据任务时长计算题目数量：每10分钟1题，最少1题
@@ -659,11 +718,20 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
       ? parseInt(question_count as string)
       : Math.max(1, Math.ceil(task.duration / 10));
     
-    // 检查是否已有进行中的会话
-    const existingSession = await queryOne(
-      `SELECT id, question_ids FROM sessions WHERE task_id = ? AND status = 'in_progress'`,
+    // 检查是否已有会话（优先查找进行中的，如果没有则查找已完成的）
+    // 避免重复创建会话，即使会话已完成也应该返回它
+    let existingSession = await queryOne(
+      `SELECT id, question_ids, status FROM sessions WHERE task_id = ? AND status = 'in_progress' ORDER BY start_time DESC LIMIT 1`,
       [taskId]
     );
+    
+    // 如果没有进行中的会话，查找已完成的会话（最新的）
+    if (!existingSession) {
+      existingSession = await queryOne(
+        `SELECT id, question_ids, status FROM sessions WHERE task_id = ? AND status = 'completed' ORDER BY start_time DESC LIMIT 1`,
+        [taskId]
+      );
+    }
     
     // 如果已有现有会话，返回现有会话信息
     if (existingSession) {
@@ -749,16 +817,17 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
         );
       }
       
-      console.log(`✅ 返回现有会话: 任务ID=${taskId}, 会话ID=${sessionId}, 题目数=${questions.length}`);
+      console.log(`✅ 返回现有会话: 任务ID=${taskId}, 会话ID=${sessionId}, 状态=${existingSession.status}, 题目数=${questions.length}`);
       
       return res.json({
         success: true,
-        message: '已找到现有会话',
+        message: existingSession.status === 'completed' ? '已找到已完成的会话' : '已找到现有会话',
         data: {
           session_id: sessionId,
           task_id: taskId,
           questions,
           total_questions: questions.length,
+          session_status: existingSession.status, // 返回会话状态
           task_info: {
             category: task.category,
             duration: task.duration,
@@ -768,6 +837,7 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
             plan_name: task.plan_name,
           },
           is_existing: true, // 标记这是现有会话
+          is_completed: existingSession.status === 'completed', // 标记是否已完成
         },
       });
     }

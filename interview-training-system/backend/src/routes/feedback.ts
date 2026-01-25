@@ -11,10 +11,15 @@ const router = Router();
 // 为单个问答生成反馈
 router.post('/generate', async (req: Request, res: Response) => {
   try {
-    const { session_id, record_id, question_text, answer_text, category, target_school } = req.body;
+    let { session_id, record_id, question_text, answer_text, category, target_school } = req.body;
 
     if (!question_text || !answer_text || !category) {
       throw new AppError(400, '缺少必填字段：question_text, answer_text, category');
+    }
+
+    // 统一类别名称：将 logical-thinking 转换为 logic-thinking（兼容旧数据）
+    if (category === 'logical-thinking') {
+      category = 'logic-thinking';
     }
 
     // 获取参考答案（如果有 question_id）
@@ -313,7 +318,9 @@ function getCategoryName(category: string): string {
   const map: Record<string, string> = {
     'english-oral': '英文口语',
     'chinese-oral': '中文表达',
+    'chinese-expression': '中文表达', // 兼容旧数据
     'logic-thinking': '逻辑思维',
+    'logical-thinking': '逻辑思维', // 兼容旧数据
     'current-affairs': '时事常识',
     'science-knowledge': '科学常识',
     'personal-growth': '个人成长',

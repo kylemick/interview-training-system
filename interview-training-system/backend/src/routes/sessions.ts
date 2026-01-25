@@ -93,23 +93,114 @@ router.get('/:id', async (req: Request, res: Response) => {
       throw new AppError(404, '会话不存在');
     }
 
+    // 统一类别名称：将 logical-thinking 转换为 logic-thinking（兼容旧数据）
+    if (session.category === 'logical-thinking') {
+      session.category = 'logic-thinking';
+    }
+
     // 获取问答记录
+    // 确保 id 是数字类型（MySQL 需要数字类型匹配）
+    const sessionIdNum = parseInt(id, 10)
+    if (isNaN(sessionIdNum)) {
+      console.error(`❌ 无效的会话ID: ${id}`)
+      throw new AppError(400, '无效的会话ID')
+    }
+    
+    console.log(`🔍 查询问答记录: session_id = ${sessionIdNum} (原始: ${id})`)
+    console.log(`📋 会话信息: id=${session.id}, question_ids=${JSON.stringify(session.question_ids)}`)
+    
+    // 先检查 question_ids 是否存在
+    let questionIds: number[] = [];
+    if (session.question_ids) {
+      try {
+        questionIds = typeof session.question_ids === 'string'
+          ? JSON.parse(session.question_ids)
+          : session.question_ids;
+        console.log(`📋 解析后的 question_ids:`, questionIds)
+      } catch (e) {
+        console.warn(`解析会话 ${session.id} 的 question_ids 失败:`, e);
+      }
+    }
+    
+    // 查询问答记录
     const qaRecords = await query(
       `SELECT id, question_id, question_text, answer_text, response_time, ai_feedback, created_at
        FROM qa_records WHERE session_id = ?
        ORDER BY created_at ASC`,
-      [id]
+      [sessionIdNum]
     );
+    
+    console.log(`📊 查询结果: 找到 ${qaRecords.length} 条问答记录`)
+    
+    // 如果 question_ids 有数据但 qa_records 为空，可能是数据不一致
+    if (questionIds.length > 0 && qaRecords.length === 0) {
+      console.warn(`⚠️  警告: 会话 ${sessionIdNum} 有 ${questionIds.length} 个 question_ids，但没有对应的 qa_records`)
+      console.warn(`    question_ids:`, questionIds)
+      
+      // 检查这些 question_id 是否在其他 session_id 中
+      if (questionIds.length > 0) {
+        const placeholders = questionIds.map(() => '?').join(',')
+        const checkOtherSessions = await query(
+          `SELECT session_id, question_id, COUNT(*) as count 
+           FROM qa_records 
+           WHERE question_id IN (${placeholders})
+           GROUP BY session_id, question_id
+           LIMIT 20`,
+          questionIds
+        )
+        console.log(`🔍 这些 question_id 在其他会话中的记录:`, checkOtherSessions)
+      }
+    }
+    
+    if (qaRecords.length === 0) {
+      // 检查数据库中是否真的没有记录（使用字符串和数字两种方式）
+      const checkQueryNum = await query(
+        `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
+        [sessionIdNum]
+      )
+      const checkQueryStr = await query(
+        `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
+        [String(sessionIdNum)]
+      )
+      console.log(`🔍 数据库检查 (数字): session_id=${sessionIdNum} 的记录数 = ${checkQueryNum[0]?.count || 0}`)
+      console.log(`🔍 数据库检查 (字符串): session_id="${String(sessionIdNum)}" 的记录数 = ${checkQueryStr[0]?.count || 0}`)
+      
+      // 检查所有 qa_records 的 session_id 类型和值
+      const allSessionIds = await query(
+        `SELECT DISTINCT session_id, COUNT(*) as count 
+         FROM qa_records 
+         GROUP BY session_id 
+         ORDER BY session_id 
+         LIMIT 20`
+      )
+      console.log(`📋 数据库中所有会话的问答记录统计:`, allSessionIds)
+      
+      // 检查是否有接近的 session_id（可能是数据错误）
+      const nearbySessions = await query(
+        `SELECT session_id, COUNT(*) as count 
+         FROM qa_records 
+         WHERE session_id BETWEEN ? AND ?
+         GROUP BY session_id`,
+        [sessionIdNum - 2, sessionIdNum + 2]
+      )
+      console.log(`🔍 附近的 session_id (${sessionIdNum - 2} 到 ${sessionIdNum + 2}):`, nearbySessions)
+    }
 
     // 解析 JSON 字段（添加错误处理）
     const formattedRecords = qaRecords.map((record: any) => {
       let ai_feedback = null;
       try {
-        ai_feedback = record.ai_feedback
-          ? (typeof record.ai_feedback === 'string' ? JSON.parse(record.ai_feedback) : record.ai_feedback)
-          : null;
+        if (record.ai_feedback) {
+          // 处理字符串和对象两种情况
+          if (typeof record.ai_feedback === 'string') {
+            ai_feedback = JSON.parse(record.ai_feedback);
+          } else if (typeof record.ai_feedback === 'object' && record.ai_feedback !== null) {
+            ai_feedback = record.ai_feedback;
+          }
+        }
       } catch (error) {
         console.warn(`解析记录 ${record.id} 的 ai_feedback 失败:`, error);
+        console.warn(`原始数据:`, record.ai_feedback);
         ai_feedback = null;
       }
       return { ...record, ai_feedback };
@@ -128,17 +219,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         : null,
     } : null;
 
-    // 解析 question_ids JSON 字段
-    let questionIds: number[] = [];
-    if (session.question_ids) {
-      try {
-        questionIds = typeof session.question_ids === 'string'
-          ? JSON.parse(session.question_ids)
-          : session.question_ids;
-      } catch (e) {
-        console.warn(`解析会话 ${session.id} 的 question_ids 失败:`, e);
-      }
-    }
+    // questionIds 已在上面解析，这里不需要重复声明
 
     // 计算实际题目数量：使用question_ids的长度，如果为空则从qa_records统计唯一题目
     let actualQuestionCount = questionIds.length;
@@ -198,14 +279,65 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       throw new AppError(400, '会话已完成，无法继续提交答案');
     }
 
-    // 保存问答记录
+    // 确保 id 是数字类型（MySQL 需要数字类型匹配）
+    const sessionIdNum = parseInt(id, 10)
+    if (isNaN(sessionIdNum)) {
+      console.error(`❌ 无效的会话ID: ${id}`)
+      throw new AppError(400, '无效的会话ID')
+    }
+    
+    // 获取会话信息，包括关联的 plan_id（通过 task_id 获取）
+    // 确保 plan_id 正确关联：session -> task -> plan
+    const sessionInfo = await queryOne(
+      `SELECT s.id, s.task_id, s.category, dt.plan_id, dt.id as task_id_verified
+       FROM sessions s
+       LEFT JOIN daily_tasks dt ON s.task_id = dt.id
+       WHERE s.id = ?`,
+      [sessionIdNum]
+    );
+    
+    if (!sessionInfo) {
+      throw new AppError(404, '会话不存在');
+    }
+    
+    // 验证 plan_id 的关联关系
+    let finalPlanId = null;
+    if (sessionInfo.task_id) {
+      // 有 task_id，必须从 task 获取 plan_id
+      if (!sessionInfo.plan_id) {
+        console.warn(`⚠️  警告: 会话 ${sessionIdNum} 有 task_id=${sessionInfo.task_id}，但无法获取 plan_id，可能是任务已删除`)
+      } else {
+        finalPlanId = sessionInfo.plan_id;
+      }
+    }
+    // 如果没有 task_id，plan_id 保持为 null（自由练习）
+    
+    // 保存问答记录，包含 plan_id 和 question_id
     const recordId = await insert(
-      `INSERT INTO qa_records (session_id, question_id, question_text, answer_text, response_time)
-       VALUES (?, ?, ?, ?, ?)`,
-      [id, question_id || null, question_text, answer_text, response_time || null]
+      `INSERT INTO qa_records (session_id, plan_id, question_id, question_text, answer_text, response_time)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        sessionIdNum, 
+        finalPlanId,              // 从 task 关联的 plan_id（如果有）
+        question_id || null,       // 题目ID
+        question_text, 
+        answer_text, 
+        response_time || null
+      ]
     );
 
-    console.log(`✅ 保存答案: 会话=${id}, 记录=${recordId}`);
+    console.log(`✅ 保存答案: 会话=${sessionIdNum}, 记录=${recordId}, plan_id=${finalPlanId || 'null'}, question_id=${question_id || 'null'}, task_id=${sessionInfo.task_id || 'null'}`)
+    
+    // 验证记录是否成功插入
+    const verifyRecord = await queryOne(
+      `SELECT id, session_id, plan_id, question_id FROM qa_records WHERE id = ?`,
+      [recordId]
+    )
+    if (verifyRecord) {
+      console.log(`✅ 验证成功: 记录 ${recordId} 已保存，session_id=${verifyRecord.session_id}, plan_id=${verifyRecord.plan_id || 'null'}, question_id=${verifyRecord.question_id || 'null'}`)
+    } else {
+      console.error(`❌ 验证失败: 记录 ${recordId} 未找到`)
+    }
 
     res.status(201).json({
       success: true,
@@ -226,9 +358,12 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // 验证会话存在并获取关联的任务ID
+    // 验证会话存在并获取关联的任务ID和计划ID
     const session = await queryOne(
-      'SELECT id, status, task_id, category FROM sessions WHERE id = ?', 
+      `SELECT s.id, s.status, s.task_id, s.category, dt.plan_id
+       FROM sessions s
+       LEFT JOIN daily_tasks dt ON s.task_id = dt.id
+       WHERE s.id = ?`, 
       [id]
     );
     if (!session) {
@@ -247,19 +382,35 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
 
     // 如果会话关联了任务,自动标记任务完成
     let taskCompleted = false;
+    let planId = null;
     if (session.task_id) {
       const affectedRows = await execute(
         'UPDATE daily_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?',
         ['completed', session.task_id]
       );
       taskCompleted = affectedRows > 0;
+      planId = session.plan_id;
       
       if (taskCompleted) {
-        console.log(`✅ 任务自动完成: 任务ID=${session.task_id}`);
+        console.log(`✅ 任务自动完成: 任务ID=${session.task_id}, 计划ID=${planId || 'null'}`);
       }
     }
 
-    console.log(`✅ 会话完成: ID=${id}, 类别=${session.category}, 关联任务=${session.task_id || '无'}`);
+    // 验证并修复 qa_records 的 plan_id（确保所有记录都正确关联）
+    if (session.task_id && session.plan_id) {
+      const fixResult = await execute(
+        `UPDATE qa_records qr
+         SET qr.plan_id = ?
+         WHERE qr.session_id = ? 
+           AND (qr.plan_id IS NULL OR qr.plan_id != ?)`,
+        [session.plan_id, id, session.plan_id]
+      );
+      if (fixResult > 0) {
+        console.log(`✅ 修复了 ${fixResult} 条问答记录的 plan_id: 会话=${id}, plan_id=${session.plan_id}`);
+      }
+    }
+
+    console.log(`✅ 会话完成: ID=${id}, 类别=${session.category}, 关联任务=${session.task_id || '无'}, 计划ID=${planId || '无'}`);
 
     res.json({
       success: true,
@@ -267,6 +418,7 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
       data: {
         session_id: id,
         task_id: session.task_id,
+        plan_id: planId,
         task_completed: taskCompleted,
       },
     });

@@ -23,6 +23,7 @@ import {
   CheckCircleOutlined,
   FireOutlined,
   ClockCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../utils/api'
@@ -53,6 +54,7 @@ interface Question {
 interface SessionData {
   session_id: string
   question_ids: string[]
+  status?: 'in_progress' | 'completed' // 会话状态
 }
 
 interface AIFeedback {
@@ -103,9 +105,8 @@ export default function Practice() {
   const [submitting, setSubmitting] = useState(false)
   const [targetSchool, setTargetSchool] = useState<string>('SPCC') // 默认值，从设置中加载
 
-  // 继续现有会话（加载已提交的答案和反馈）- 保留以备将来使用
-  // @ts-expect-error - 保留此函数以备将来使用
-  const _continueExistingSession = async (sessionId: string) => {
+  // 继续现有会话（加载已提交的答案和反馈）
+  const _continueExistingSession = async (sessionId: string, targetQuestionId?: number) => {
     try {
       setLoading(true)
       message.loading({ content: '正在加载会话详情...', key: 'loading', duration: 0 })
@@ -170,25 +171,65 @@ export default function Practice() {
       const loadedFeedbacks: Record<number, AIFeedback> = {}
       
       // 先收集每个题目的最新记录（按 created_at 排序，取最新的）
+      // 确保类型匹配：统一转换为数字进行比较
       const latestRecordsByQuestion = new Map<number, any>()
       qaRecords.forEach((record: any) => {
-        if (record.question_id) {
-          const existing = latestRecordsByQuestion.get(record.question_id)
-          if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
-            latestRecordsByQuestion.set(record.question_id, record)
+        if (record.question_id !== null && record.question_id !== undefined) {
+          const recordQuestionId = typeof record.question_id === 'string' 
+            ? parseInt(record.question_id, 10) 
+            : record.question_id
+          if (!isNaN(recordQuestionId)) {
+            const existing = latestRecordsByQuestion.get(recordQuestionId)
+            if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
+              latestRecordsByQuestion.set(recordQuestionId, record)
+            }
           }
         }
       })
       
       // 按会话保存的题目ID顺序构建题目列表
-      for (const questionId of questionIds) {
-        const question = allQuestions.find((q: any) => q.id === questionId)
+      // 注意：allQuestions 应该已经按照 questionIds 的顺序返回（因为 API 使用了 FIELD 排序）
+      // 但为了确保顺序正确，我们仍然按照 questionIds 的顺序来构建
+      console.log(`📋 开始构建题目列表: questionIds=${JSON.stringify(questionIds)}, allQuestions.length=${allQuestions.length}`)
+      console.log(`📋 allQuestions 顺序:`, allQuestions.map((q: any) => {
+        const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+        return qId
+      }))
+      
+      // 创建一个 Map 以便快速查找
+      const questionMap = new Map<number, any>()
+      allQuestions.forEach((q: any) => {
+        const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+        if (!isNaN(qId)) {
+          questionMap.set(qId, q)
+        }
+      })
+      
+      for (let i = 0; i < questionIds.length; i++) {
+        const questionId = questionIds[i]
+        // 确保类型匹配：questionId 可能是数字或字符串
+        const qIdNum = typeof questionId === 'string' ? parseInt(questionId, 10) : questionId
+        if (isNaN(qIdNum)) {
+          console.warn(`⚠️ 无效的 questionId: ${questionId}`)
+          continue
+        }
+        
+        // 从 Map 中查找题目（更快且确保类型匹配）
+        const question = questionMap.get(qIdNum)
+        
         if (question) {
           const questionIndex = sortedQuestions.length
           sortedQuestions.push(question)
+          console.log(`✅ 添加题目到列表: index=${questionIndex}, question_id=${qIdNum}, question_text=${question.question_text.substring(0, 50)}...`)
+          
+          // 验证索引是否正确
+          if (questionIndex !== i) {
+            console.warn(`⚠️  索引不匹配！期望 index=${i}，实际 index=${questionIndex}`)
+          }
           
           // 加载该题目的答案和反馈（如果有）
-          const latestRecord = latestRecordsByQuestion.get(questionId)
+          // 使用数字类型的 questionId 来查找记录
+          const latestRecord = latestRecordsByQuestion.get(qIdNum)
           if (latestRecord) {
             // 加载答案（使用最新的答案）
             if (latestRecord.answer_text) {
@@ -208,7 +249,12 @@ export default function Practice() {
                 console.warn('解析反馈失败:', latestRecord.id, e)
               }
             }
+          } else {
+            // 调试日志：记录没有找到记录的题目
+            console.log(`⚠️ 题目 ${qIdNum} (索引 ${questionIndex}) 没有找到对应的 qa_record`)
           }
+        } else {
+          console.warn(`⚠️ 题目 ID ${qIdNum} 在题库中不存在`)
         }
       }
 
@@ -217,18 +263,82 @@ export default function Practice() {
         throw new Error('无法加载题目，请刷新页面重试')
       }
 
-      // 找到第一个未完成的题目索引
-      const firstUnansweredIndex = sortedQuestions.findIndex((_: any, index: number) => !loadedAnswers[index])
+      // 确定要跳转到的题目索引
+      let targetIndex = -1
+      
+      // 如果指定了 targetQuestionId，必须定位到该题目（不回退到其他题目）
+      if (targetQuestionId) {
+        console.log(`🔍 开始定位题目: targetQuestionId=${targetQuestionId} (类型: ${typeof targetQuestionId})`)
+        console.log(`📋 题目列表:`, sortedQuestions.map((q: Question) => {
+          const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+          return { id: qId, idType: typeof q.id, idRaw: q.id }
+        }))
+        
+        targetIndex = sortedQuestions.findIndex((q: Question) => {
+          const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+          const match = qId === targetQuestionId
+          if (match) {
+            console.log(`✅ 匹配成功: question.id=${qId} === targetQuestionId=${targetQuestionId}`)
+          }
+          return match
+        })
+        
+        if (targetIndex >= 0) {
+          const matchedQuestion = sortedQuestions[targetIndex]
+          const matchedQId = typeof matchedQuestion.id === 'string' ? parseInt(matchedQuestion.id, 10) : matchedQuestion.id
+          console.log(`✅ 定位到指定题目: question_id=${matchedQId}, index=${targetIndex}, question_text=${matchedQuestion.question_text.substring(0, 50)}...`)
+        } else {
+          console.warn(`⚠️ 指定的题目 ID ${targetQuestionId} 在题目列表中未找到`)
+          console.warn(`   可用的 question_ids:`, sortedQuestions.map((q: Question) => {
+            const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+            return qId
+          }))
+          // 如果找不到指定的题目，定位到第一题（而不是第一个未完成的）
+          targetIndex = 0
+          console.log(`📍 未找到指定题目，定位到第一题: index=${targetIndex}`)
+        }
+      } else {
+        // 如果没有指定 question_id，找到第一个未完成的题目索引
+        targetIndex = sortedQuestions.findIndex((_: any, index: number) => !loadedAnswers[index])
+        if (targetIndex >= 0) {
+          console.log(`📍 定位到第一个未完成的题目: index=${targetIndex}`)
+        } else {
+          // 如果都完成了，定位到最后一题
+          targetIndex = sortedQuestions.length - 1
+          console.log(`📍 所有题目已完成，定位到最后一题: index=${targetIndex}`)
+        }
+      }
 
       // 先设置所有状态，确保页面正确渲染
       setSessionData({
         session_id: session.id,
         question_ids: sortedQuestions.map((q: any) => q.id),
+        status: session.status || 'in_progress', // 保存会话状态
       })
       setQuestions(sortedQuestions)
       setTaskInfo(sessionData.task_info || null)
       setCategory(session.category)
-      setCurrentIndex(firstUnansweredIndex >= 0 ? firstUnansweredIndex : sortedQuestions.length - 1)
+      // 最终验证：确保定位的题目是正确的
+      if (targetIndex >= 0 && targetIndex < sortedQuestions.length) {
+        const finalQuestion = sortedQuestions[targetIndex]
+        const finalQId = typeof finalQuestion.id === 'string' ? parseInt(finalQuestion.id, 10) : finalQuestion.id
+        console.log(`🎯 最终定位结果: index=${targetIndex}, question_id=${finalQId}, question_text=${finalQuestion.question_text.substring(0, 50)}...`)
+        
+        if (targetQuestionId && finalQId !== targetQuestionId) {
+          console.error(`❌ 定位错误！期望 question_id=${targetQuestionId}，但定位到了 question_id=${finalQId}`)
+          // 尝试重新定位
+          const correctIndex = sortedQuestions.findIndex((q: Question) => {
+            const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+            return qId === targetQuestionId
+          })
+          if (correctIndex >= 0) {
+            console.log(`🔧 修正定位: index=${correctIndex}`)
+            targetIndex = correctIndex
+          }
+        }
+      }
+      
+      setCurrentIndex(targetIndex)
       setAnswers(loadedAnswers)
       setFeedbacks(loadedFeedbacks)
       
@@ -247,6 +357,13 @@ export default function Practice() {
         totalQuestions: sortedQuestions.length,
         answeredCount: Object.keys(loadedAnswers).length,
         feedbackCount: Object.keys(loadedFeedbacks).length,
+        targetQuestionId: targetQuestionId || '未指定',
+        finalIndex: targetIndex,
+        finalQuestionId: targetIndex >= 0 ? (typeof sortedQuestions[targetIndex]?.id === 'string' ? parseInt(sortedQuestions[targetIndex].id, 10) : sortedQuestions[targetIndex]?.id) : 'N/A',
+        questionIds: sortedQuestions.map((q: Question) => {
+          const qId = typeof q.id === 'string' ? parseInt(q.id, 10) : q.id
+          return qId
+        }),
         answers: loadedAnswers,
         feedbacks: Object.keys(loadedFeedbacks).map(i => ({ index: i, hasFeedback: !!loadedFeedbacks[Number(i)] }))
       })
@@ -291,11 +408,15 @@ export default function Practice() {
 
       // 如果是现有会话，需要加载已提交的答案和反馈
       if (data.is_existing) {
+        // 检查会话是否已完成
+        const isCompleted = data.is_completed || data.session_status === 'completed'
+        
         // 后端已经返回了题目，但需要加载已提交的答案和反馈
         // 先设置题目和会话信息
         setSessionData({
           session_id: data.session_id,
           question_ids: data.questions.map((q: any) => q.id),
+          status: isCompleted ? 'completed' : 'in_progress', // 保存会话状态
         })
         setQuestions(data.questions)
         setTaskInfo(data.task_info || null)
@@ -313,8 +434,17 @@ export default function Practice() {
             
             // 按题目ID匹配答案和反馈
             data.questions.forEach((question: Question, index: number) => {
-              // 找到该题目的最新记录
-              const records = qaRecords.filter((r: any) => r.question_id === question.id)
+              // 确保类型匹配：question.id 可能是字符串或数字，需要统一转换
+              const questionId = typeof question.id === 'string' ? parseInt(question.id, 10) : question.id
+              
+              // 找到该题目的最新记录（确保类型匹配）
+              const records = qaRecords.filter((r: any) => {
+                const recordQuestionId = typeof r.question_id === 'string' 
+                  ? parseInt(r.question_id, 10) 
+                  : r.question_id
+                return !isNaN(questionId) && !isNaN(recordQuestionId) && recordQuestionId === questionId
+              })
+              
               if (records.length > 0) {
                 // 取最新的记录
                 const latestRecord = records.reduce((latest: any, current: any) => {
@@ -337,15 +467,37 @@ export default function Practice() {
                     console.warn('解析反馈失败:', latestRecord.id, e)
                   }
                 }
+              } else {
+                // 调试日志：记录没有找到记录的题目
+                console.log(`⚠️ 题目 ${questionId} (索引 ${index}) 没有找到对应的 qa_record`)
               }
             })
             
             setAnswers(loadedAnswers)
             setFeedbacks(loadedFeedbacks)
             
-            // 找到第一个未完成的题目索引
-            const firstUnansweredIndex = data.questions.findIndex((_: any, index: number) => !loadedAnswers[index])
-            setCurrentIndex(firstUnansweredIndex >= 0 ? firstUnansweredIndex : data.questions.length - 1)
+            // 如果会话已完成，显示所有题目（从第一题开始）
+            // 如果会话进行中，找到第一个未完成的题目索引
+            if (isCompleted) {
+              setCurrentIndex(0) // 已完成会话，从第一题开始查看
+            } else {
+              // 找到第一个没有答案的题目索引
+              // 使用已加载的 answers 来判断，因为 answers 是按索引存储的
+              const firstUnansweredIndex = data.questions.findIndex((_question: Question, index: number) => {
+                // 检查该索引位置是否有答案
+                return !loadedAnswers[index]
+              })
+              setCurrentIndex(firstUnansweredIndex >= 0 ? firstUnansweredIndex : data.questions.length - 1)
+              
+              // 调试日志
+              if (firstUnansweredIndex >= 0) {
+                const unansweredQuestion = data.questions[firstUnansweredIndex]
+                const questionId = typeof unansweredQuestion.id === 'string' 
+                  ? parseInt(unansweredQuestion.id, 10) 
+                  : unansweredQuestion.id
+                console.log(`📍 定位到第一个未完成的题目: 索引=${firstUnansweredIndex}, question_id=${questionId}`)
+              }
+            }
           } else {
             setCurrentIndex(0)
             setAnswers({})
@@ -360,7 +512,9 @@ export default function Practice() {
         
         setStep('practice')
         message.success({ 
-          content: `继续练习！共 ${data.questions?.length || 0} 题`, 
+          content: isCompleted 
+            ? `查看已完成的练习记录（共 ${data.questions?.length || 0} 题）` 
+            : `继续练习！共 ${data.questions?.length || 0} 题`, 
           key: 'loading',
           duration: 2
         })
@@ -371,6 +525,7 @@ export default function Practice() {
       setSessionData({
         session_id: data.session_id,
         question_ids: data.questions.map((q: any) => q.id),
+        status: 'in_progress', // 新创建的会话状态为进行中
       })
       setQuestions(data.questions)
       setTaskInfo(data.task_info || null)
@@ -417,6 +572,23 @@ export default function Practice() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskId])
+
+  // 检查是否有 session 参数，如果有则恢复会话
+  useEffect(() => {
+    const sessionId = searchParams.get('session')
+    const questionIdParam = searchParams.get('question')
+    
+    if (sessionId && !sessionData) {
+      // 如果有 session 参数但没有 sessionData，尝试恢复会话
+      console.log('检测到 session 参数，尝试恢复会话:', sessionId, questionIdParam ? `question=${questionIdParam}` : '')
+      // 使用 _continueExistingSession 函数，并传递 question_id（如果有）
+      _continueExistingSession(sessionId, questionIdParam ? parseInt(questionIdParam, 10) : undefined).catch((error) => {
+        console.error('恢复会话失败:', error)
+        message.error('恢复会话失败，请刷新页面重试')
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 加载弱点列表
   const loadWeaknesses = async () => {
@@ -572,13 +744,28 @@ export default function Practice() {
 
     if (!sessionData) return
 
+    // 检查会话状态，如果已完成则不允许提交
+    if (sessionData.status === 'completed') {
+      message.warning('该会话已完成，无法继续提交答案。请查看反馈页面。')
+      navigate(`/feedback?session=${sessionData.session_id}`)
+      return
+    }
+
     try {
       setSubmitting(true)
       const currentQuestion = questions[currentIndex]
+      
+      // 确保 question_id 是数字类型
+      const questionId = typeof currentQuestion.id === 'string' 
+        ? parseInt(currentQuestion.id, 10) 
+        : currentQuestion.id
+      
+      // 调试日志：确认提交的是哪个题目
+      console.log(`📝 提交答案: 索引=${currentIndex}, question_id=${questionId}, question_text=${currentQuestion.question_text.substring(0, 50)}...`)
 
       // 1. 保存答案
       const submitRes = await api.sessions.submitAnswer(sessionData.session_id, {
-        question_id: currentQuestion.id,
+        question_id: questionId,
         question_text: currentQuestion.question_text,
         answer_text: answers[currentIndex],
         response_time: null,
@@ -1214,8 +1401,18 @@ export default function Practice() {
           </Button>
 
           <Space>
-            <Button onClick={() => navigate('/')}>暂停练习</Button>
-            {currentIndex === questions.length - 1 ? (
+            <Button onClick={() => navigate('/')}>
+              {sessionData?.status === 'completed' ? '返回' : '暂停练习'}
+            </Button>
+            {sessionData?.status === 'completed' ? (
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={() => navigate(`/feedback?session=${sessionData.session_id}`)}
+              >
+                查看反馈
+              </Button>
+            ) : currentIndex === questions.length - 1 ? (
               <Button
                 type="primary"
                 icon={<CheckCircleOutlined />}
