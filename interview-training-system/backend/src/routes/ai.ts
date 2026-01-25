@@ -231,19 +231,267 @@ ${text.trim()}
       { role: 'user', content: prompt }
     ]);
     
-    // 解析返回的JSON
+    // 解析返回的JSON（使用更健壮的解析逻辑）
     let extractedData;
-    try {
-      // 尝试从返回的文本中提取JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('无法从AI响应中提取JSON');
+    
+    /**
+     * 智能提取JSON对象（使用括号匹配找到完整的JSON）
+     */
+    function extractCompleteJSON(text: string): string | null {
+      // 1. 尝试提取markdown代码块中的JSON
+      const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        text = codeBlockMatch[1].trim();
       }
-    } catch (parseError) {
+      
+      // 2. 找到第一个 { 的位置
+      const firstBrace = text.indexOf('{');
+      if (firstBrace === -1) return null;
+      
+      // 3. 使用括号匹配找到完整的JSON对象
+      let braceCount = 0;
+      let inString = false;
+      let escapeNext = false;
+      let jsonEnd = -1;
+      
+      for (let i = firstBrace; i < text.length; i++) {
+        const char = text[i];
+        
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+        
+        if (char === '\\') {
+          escapeNext = true;
+          continue;
+        }
+        
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+          continue;
+        }
+        
+        if (!inString) {
+          if (char === '{') {
+            braceCount++;
+          } else if (char === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              jsonEnd = i + 1;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (jsonEnd > firstBrace) {
+        return text.substring(firstBrace, jsonEnd);
+      }
+      
+      return null;
+    }
+    
+    /**
+     * 尝试修复常见的JSON格式错误
+     */
+    function fixJSONFormat(jsonText: string): string {
+      // 移除注释
+      jsonText = jsonText.replace(/\/\/.*$/gm, '');
+      jsonText = jsonText.replace(/\/\*[\s\S]*?\*\//g, '');
+      
+      // 移除尾随逗号（在 } 或 ] 之前）
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      
+      // 修复未完成的键值对（如 "key": 后面没有值）
+      jsonText = jsonText.replace(/("[\w_]+")\s*:\s*([^,}\]]*?)(?=\s*[,}\]])/g, (match, key, value) => {
+        const trimmedValue = value.trim();
+        if (!trimmedValue || trimmedValue === '') {
+          // 如果值缺失，删除整个键值对
+          return '';
+        }
+        // 如果值不是有效的JSON值（不是字符串、数字、布尔、null、对象、数组），尝试修复
+        if (!trimmedValue.match(/^(".*"|[\d.]+|true|false|null|\{.*\}|\[.*\])$/)) {
+          // 尝试将其作为字符串
+          return `${key}: ${JSON.stringify(trimmedValue)}`;
+        }
+        return match;
+      });
+      
+      // 清理多余的逗号
+      jsonText = jsonText.replace(/,+/g, ',');
+      jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+      
+      return jsonText;
+    }
+    
+    try {
+      let jsonText = response.trim();
+      
+      // 1. 提取完整的JSON对象
+      const completeJSON = extractCompleteJSON(jsonText);
+      if (!completeJSON) {
+        throw new Error('无法从AI响应中提取完整的JSON对象');
+      }
+      
+      // 2. 修复JSON格式
+      jsonText = fixJSONFormat(completeJSON);
+      
+      // 3. 尝试解析JSON
+      extractedData = JSON.parse(jsonText);
+      
+      // 4. 验证必要字段
+      if (!extractedData.questions || !Array.isArray(extractedData.questions)) {
+        extractedData.questions = [];
+      }
+      if (!extractedData.weaknesses || !Array.isArray(extractedData.weaknesses)) {
+        extractedData.weaknesses = [];
+      }
+      if (!extractedData.summary) {
+        extractedData.summary = '';
+      }
+      
+    } catch (parseError: any) {
       console.error('解析AI响应失败:', parseError);
-      throw new AppError(500, 'AI返回格式错误，请重试');
+      console.error('AI原始响应（前1000字符）:', response.substring(0, 1000));
+      console.error('JSON解析错误详情:', parseError.message);
+      
+      // 尝试部分提取：即使JSON不完整，也尝试提取能解析的部分
+      try {
+        let questions: any[] = [];
+        let weaknesses: any[] = [];
+        let summary = 'AI返回格式错误，无法解析完整数据。请检查输入文本或稍后重试。';
+        
+        // 尝试提取questions数组（使用括号匹配找到完整的数组）
+        const questionsStart = response.indexOf('"questions"');
+        if (questionsStart !== -1) {
+          const arrayStart = response.indexOf('[', questionsStart);
+          if (arrayStart !== -1) {
+            let bracketCount = 0;
+            let inString = false;
+            let escapeNext = false;
+            let arrayEnd = -1;
+            
+            for (let i = arrayStart; i < response.length; i++) {
+              const char = response[i];
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+              if (char === '\\') {
+                escapeNext = true;
+                continue;
+              }
+              if (char === '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+              }
+              if (!inString) {
+                if (char === '[') bracketCount++;
+                else if (char === ']') {
+                  bracketCount--;
+                  if (bracketCount === 0) {
+                    arrayEnd = i + 1;
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (arrayEnd > arrayStart) {
+              try {
+                const questionsText = response.substring(arrayStart, arrayEnd);
+                questions = JSON.parse(questionsText);
+              } catch (e) {
+                console.warn('无法解析questions数组:', e);
+              }
+            }
+          }
+        }
+        
+        // 尝试提取weaknesses数组（同样的方法）
+        const weaknessesStart = response.indexOf('"weaknesses"');
+        if (weaknessesStart !== -1) {
+          const arrayStart = response.indexOf('[', weaknessesStart);
+          if (arrayStart !== -1) {
+            let bracketCount = 0;
+            let inString = false;
+            let escapeNext = false;
+            let arrayEnd = -1;
+            
+            for (let i = arrayStart; i < response.length; i++) {
+              const char = response[i];
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+              if (char === '\\') {
+                escapeNext = true;
+                continue;
+              }
+              if (char === '"' && !escapeNext) {
+                inString = !inString;
+                continue;
+              }
+              if (!inString) {
+                if (char === '[') bracketCount++;
+                else if (char === ']') {
+                  bracketCount--;
+                  if (bracketCount === 0) {
+                    arrayEnd = i + 1;
+                    break;
+                  }
+                }
+              }
+            }
+            
+            if (arrayEnd > arrayStart) {
+              try {
+                const weaknessesText = response.substring(arrayStart, arrayEnd);
+                weaknesses = JSON.parse(weaknessesText);
+              } catch (e) {
+                console.warn('无法解析weaknesses数组:', e);
+              }
+            }
+          }
+        }
+        
+        // 尝试提取summary（简单字符串匹配）
+        const summaryMatch = response.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+        if (summaryMatch) {
+          try {
+            summary = JSON.parse('"' + summaryMatch[1] + '"');
+          } catch (e) {
+            summary = summaryMatch[1];
+          }
+        }
+        
+        extractedData = {
+          questions: Array.isArray(questions) ? questions : [],
+          weaknesses: Array.isArray(weaknesses) ? weaknesses : [],
+          summary: summary || 'AI返回格式错误，无法解析完整数据。'
+        };
+        
+        console.warn(`⚠️  使用部分提取的数据：${extractedData.questions.length}个问题，${extractedData.weaknesses.length}个弱点`);
+        
+      } catch (fallbackError: any) {
+        // 如果连部分提取都失败，返回空结构
+        extractedData = {
+          questions: [],
+          weaknesses: [],
+          summary: 'AI返回格式错误，无法解析数据。请检查输入文本或稍后重试。'
+        };
+        console.warn('⚠️  使用空数据结构作为最终后备方案');
+      }
+    }
+    
+    // 确保extractedData已定义
+    if (!extractedData) {
+      extractedData = {
+        questions: [],
+        weaknesses: [],
+        summary: '无法解析AI响应'
+      };
     }
 
     // 如果用户指定了类别或学校，覆盖AI的判断
