@@ -1,52 +1,52 @@
-# Change: 添加学科能力专项训练
+# Change: 添加學科能力專項訓練
 
 ## Why
 
-香港升中面试不仅考查口语表达和思维能力，还重点考查学生的学科基础能力。目前系统支持的七大专项类别主要关注面试技巧和表达能力，但缺少针对学科基础能力的专项训练。
+香港升中面試不仅考查口語表達和思維能力，还重點考查學生的學科基础能力。目前係統支持的七大專項類別主要關注面試技巧和表達能力，但缺少針對學科基础能力的專項訓練。
 
-学生需要针对性的学科能力训练：
-- **中文阅读理解**：通过阅读文章，考察阅读理解、字词理解、观点提炼等能力
-- **英文阅读理解**：通过阅读英文文章，考察阅读理解、词汇、观点分析等能力
-- **数学基础**：考察计算能力、数学概念理解、基础数学知识应用
-- **科学实践**：考察科学现象说明、科学推理、科学行为等能力
+學生需要針對性的學科能力訓練：
+- **中文阅读理解**：通過阅读文章，考察阅读理解、字詞理解、觀點提炼等能力
+- **英文阅读理解**：通過阅读英文文章，考察阅读理解、詞汇、觀點分析等能力
+- **數學基础**：考察計算能力、數學概念理解、基础數學知識应用
+- **科學实践**：考察科學现象說明、科學推理、科學行为等能力
 
-这些学科能力是面试中的重要考查点，特别是对于SPCC等重视STEM教育的学校。
+这些學科能力是面試中的重要考查點，特別是對于SPCC等重视STEM教育的學校。
 
 ## What Changes
 
-- **新增四个学科能力类别**：
+- **新增四个學科能力類別**：
   - `chinese-reading`（中文阅读理解）
   - `english-reading`（英文阅读理解）
-  - `mathematics`（数学基础）
-  - `science-practice`（科学实践）
+  - `mathematics`（數學基础）
+  - `science-practice`（科學实践）
 
-- **扩展题目数据模型**：支持新的学科能力类别，每个类别有特定的题目生成规则和评估标准
+- **扩展題目數據模型**：支持新的學科能力類別，每个類別有特定的題目生成規則和評估標準
 
-- **增强题目生成能力**：AI生成题目时，针对不同学科能力类别使用专门的提示词和生成策略
+- **增强題目生成能力**：AI生成題目時，針對不同學科能力類別使用專门的提示詞和生成策略
 
-- **扩展训练计划支持**：训练计划可以包含学科能力类别的任务分配
+- **扩展訓練計劃支持**：訓練計劃可以包含學科能力類別的任務分配
 
-- **扩展练习会话支持**：练习会话支持选择学科能力类别进行专项训练
+- **扩展練習會話支持**：練習會話支持選擇學科能力類別進行專項訓練
 
-- **更新前端界面**：题库管理、训练计划、练习界面支持新的学科能力类别
+- **更新前端界面**：題庫管理、訓練計劃、練習界面支持新的學科能力類別
 
 ## Impact
 
 - **受影响的能力**：
-  - `question-bank`（题库管理）- 新增类别支持
-  - `training-plans`（训练计划管理）- 支持学科能力类别分配
-  - `interview-practice`（面试练习）- 支持学科能力类别练习
+  - `question-bank`（題庫管理）- 新增類別支持
+  - `training-plans`（訓練計劃管理）- 支持學科能力類別分配
+  - `interview-practice`（面試練習）- 支持學科能力類別練習
 
-- **受影响代码**：
-  - `backend/src/routes/questions.ts` - 类别定义和查询
-  - `backend/src/ai/questionGenerator.ts` - 题目生成逻辑
-  - `backend/src/ai/trainingPlanner.ts` - 训练计划生成
-  - `backend/src/types/index.ts` - 类型定义
-  - `backend/src/db/schema.sql` - 数据库结构（无需修改，category字段已支持）
-  - `frontend/src/pages/Questions/index.tsx` - 题库管理界面
-  - `frontend/src/pages/TrainingPlan/index.tsx` - 训练计划界面
-  - `frontend/src/pages/Practice/index.tsx` - 练习界面
+- **受影响代碼**：
+  - `backend/src/routes/questions.ts` - 類別定义和查询
+  - `backend/src/ai/questionGenerator.ts` - 題目生成邏輯
+  - `backend/src/ai/trainingPlanner.ts` - 訓練計劃生成
+  - `backend/src/types/index.ts` - 類型定义
+  - `backend/src/db/schema.sql` - 數據庫結构（无需修改，category字段已支持）
+  - `frontend/src/pages/Questions/index.tsx` - 題庫管理界面
+  - `frontend/src/pages/TrainingPlan/index.tsx` - 訓練計劃界面
+  - `frontend/src/pages/Practice/index.tsx` - 練習界面
 
-- **数据库变更**：无需修改数据库结构，`questions.category` 字段已支持任意字符串值
+- **數據庫变更**：无需修改數據庫結构，`questions.category` 字段已支持任意字符串值
 
-- **向后兼容性**：现有七大专项类别保持不变，新类别作为补充，不影响现有功能
+- **向後兼容性**：现有七大專項類別保持不变，新類別作为补充，不影响现有功能

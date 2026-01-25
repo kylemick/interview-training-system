@@ -16,18 +16,18 @@ import { useAiThinking } from '../../hooks/useAiThinking'
 
 const { Title, Text } = Typography
 
-// 专项类别映射
+// 專項類別映射
 const CATEGORY_MAP: Record<string, string> = {
-  'english-oral': '英文口语',
-  'chinese-expression': '中文表达',
-  'logical-thinking': '逻辑思维',
-  'current-affairs': '时事常识',
-  'science-knowledge': '科学常识',
-  'personal-growth': '个人成长',
-  'group-discussion': '小组讨论',
+  'english-oral': '英文口語',
+  'chinese-expression': '中文表達',
+  'logical-thinking': '邏輯思維',
+  'current-affairs': '時事常識',
+  'science-knowledge': '科學常識',
+  'personal-growth': '个人成長',
+  'group-discussion': '小組討論',
 }
 
-// 状态标签颜色
+// 狀態標籤颜色
 const STATUS_COLOR: Record<string, string> = {
   pending: 'default',
   in_progress: 'processing',
@@ -81,10 +81,10 @@ export default function Dashboard() {
   const [weaknesses, setWeaknesses] = useState<Weakness[]>([])
   const [generatingQuestionsId, setGeneratingQuestionsId] = useState<number | null>(null)
 
-  // 生成针对性题目
+  // 生成針對性題目
   const handleGenerateQuestions = useCallback(async (weaknessId: number) => {
     if (generatingQuestionsId) {
-      message.warning('正在生成题目，请勿重复点击');
+      message.warning('正在生成題目，请勿重复點击');
       return;
     }
 
@@ -100,13 +100,13 @@ export default function Dashboard() {
           });
         },
         {
-          taskName: '生成针对性题目',
+          taskName: '生成針對性題目',
           onSuccess: () => {
-            message.success('题目生成成功');
+            message.success('題目生成成功');
             navigate('/questions');
           },
           onError: (error: any) => {
-            message.error(error?.response?.data?.message || '题目生成失败');
+            message.error(error?.response?.data?.message || '題目生成失敗');
           },
         }
       );
@@ -115,40 +115,40 @@ export default function Dashboard() {
     }
   }, [generatingQuestionsId, navigate, executeWithThinking]);
 
-  // 优化：使用 useCallback 缓存 loadDashboardData 函数
+  // 優化：使用 useCallback 缓存 loadDashboardData 函數
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true)
 
-      // 并行加载数据 - 使用新的 pendingTasks API
+      // 并行加载數據 - 使用新的 pendingTasks API
       const [tasksRes, sessionsRes, weaknessesRes] = await Promise.all([
         api.plans.pendingTasks().catch((err) => {
-          console.error('加载任务失败:', err);
+          console.error('加载任務失敗:', err);
           return { data: [] };
         }),
         api.sessions.recent(5).catch((err) => {
-          console.error('加载会话失败:', err);
+          console.error('加载會話失敗:', err);
           return { data: [] };
         }),
         api.weaknesses.list({ status: 'active', severity: 'high' }).catch((err) => {
-          console.error('加载弱点失败:', err);
+          console.error('加载弱點失敗:', err);
           return { data: [] };
         }),
       ])
 
-      // 注意：enhancedRequest 返回的是 { data: ... } 格式，但有些API可能直接返回数据
+      // 注意：enhancedRequest 返回的是 { data: ... } 格式，但有些API可能直接返回數據
       const tasks = tasksRes?.data || tasksRes || []
       const sessions = sessionsRes?.data || sessionsRes || []
       const weaknesses = weaknessesRes?.data || weaknessesRes || []
 
       setTodayTasks(tasks)
       setRecentSessions(sessions)
-      setWeaknesses(weaknesses.slice(0, 5)) // 只显示前5个高严重度弱点
+      setWeaknesses(weaknesses.slice(0, 5)) // 只显示前5个高嚴重度弱點
 
-      // 计算统计数据
+      // 計算統計數據
       const completedToday = tasks.filter((t: DailyTask) => t.status === 'completed').length
       
-      // 区分计划内练习和自由练习的统计
+      // 区分計劃內練習和自由練習的統計
       const taskSessions = sessions.filter((s: Session) => s.task_id != null)
       const freeSessions = sessions.filter((s: Session) => s.task_id == null)
       
@@ -166,48 +166,48 @@ export default function Dashboard() {
         freeQuestions,
       })
     } catch (error) {
-      console.error('加载仪表盘数据失败:', error)
+      console.error('加载仪表盘數據失敗:', error)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // 加载仪表盘数据
+  // 加载仪表盘數據
   useEffect(() => {
     loadDashboardData()
     
-    // 清理函数：组件卸载时取消所有pending请求
+    // 清理函數：組件卸载時取消所有pending请求
     return () => {
       cancelAllPendingRequests()
     }
   }, [loadDashboardData])
 
-  // 优化：使用 useCallback 缓存 handleStartTask
+  // 優化：使用 useCallback 缓存 handleStartTask
   const handleStartTask = useCallback((taskId: string) => {
     navigate(`/practice?taskId=${taskId}`)
   }, [navigate])
 
-  // 跳过任务
+  // 跳過任務
   const handleSkipTask = useCallback(async (taskId: string) => {
     Modal.confirm({
-      title: '确认跳过任务',
-      content: `确认跳过此任务?将不计入练习记录。`,
-      okText: '确认跳过',
+      title: '確认跳過任務',
+      content: `確认跳過此任務?将不計入練習記錄。`,
+      okText: '確认跳過',
       cancelText: '取消',
       okType: 'danger',
       onOk: async () => {
         try {
           await api.plans.skipTask(taskId)
-          message.success('任务已跳过')
-          loadDashboardData() // 重新加载数据
+          message.success('任務已跳過')
+          loadDashboardData() // 重新加载數據
         } catch (error: any) {
-          message.error(error.response?.data?.message || '跳过任务失败')
+          message.error(error.response?.data?.message || '跳過任務失敗')
         }
       },
     })
   }, [loadDashboardData])
 
-  // 优化：使用 useMemo 缓存计算结果
+  // 優化：使用 useMemo 缓存計算結果
   const todayProgress = useMemo(() => {
     return todayTasks.length > 0 
       ? Math.round((stats.completedToday / todayTasks.length) * 100) 
@@ -220,14 +220,14 @@ export default function Dashboard() {
         <FireOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />
         仪表盘
       </Title>
-      <Text type="secondary">欢迎使用升中面试训练系统！</Text>
+      <Text type="secondary">欢迎使用升中面試訓練係統！</Text>
 
-      {/* 统计卡片 */}
+      {/* 統計卡片 */}
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="今日进度"
+              title="今日進度"
               value={todayProgress}
               suffix="%"
               prefix={<CheckCircleOutlined />}
@@ -239,7 +239,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="今日任务"
+              title="今日任務"
               value={stats.completedToday}
               suffix={`/ ${todayTasks.length}`}
               prefix={<ClockCircleOutlined />}
@@ -250,41 +250,41 @@ export default function Dashboard() {
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="最近练习"
+              title="最近練習"
               value={stats.totalSessions}
               suffix="次"
               prefix={<BookOutlined />}
               valueStyle={{ color: '#722ed1' }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-              计划内: {stats.taskSessions} | 自由: {stats.freeSessions}
+              計劃內: {stats.taskSessions} | 自由: {stats.freeSessions}
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Card>
             <Statistic
-              title="累计题目"
+              title="累計題目"
               value={stats.totalQuestions}
-              suffix="题"
+              suffix="題"
               prefix={<TrophyOutlined />}
               valueStyle={{ color: '#faad14' }}
             />
             <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-              计划内: {stats.taskQuestions} | 自由: {stats.freeQuestions}
+              計劃內: {stats.taskQuestions} | 自由: {stats.freeQuestions}
             </div>
           </Card>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        {/* 今日任务 */}
+        {/* 今日任務 */}
         <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
                 <ClockCircleOutlined />
-                今日任务
+                今日任務
               </Space>
             }
             extra={
@@ -296,11 +296,11 @@ export default function Dashboard() {
           >
             {todayTasks.length === 0 ? (
               <Empty
-                description="今日暂无任务"
+                description="今日暫无任務"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               >
                 <Button type="primary" onClick={() => navigate('/plans')}>
-                  创建训练计划
+                  創建訓練計劃
                 </Button>
               </Empty>
             ) : (
@@ -320,7 +320,7 @@ export default function Dashboard() {
                             size="small"
                             onClick={() => handleStartTask(task.id)}
                           >
-                            继续练习
+                            继续練習
                           </Button>
                         </Space>
                       ) : (
@@ -330,7 +330,7 @@ export default function Dashboard() {
                             size="small"
                             onClick={() => handleStartTask(task.id)}
                           >
-                            开始练习
+                            開始練習
                           </Button>
                           <Button
                             type="default"
@@ -338,7 +338,7 @@ export default function Dashboard() {
                             icon={<CloseCircleOutlined />}
                             onClick={() => handleSkipTask(task.id)}
                           >
-                            跳过
+                            跳過
                           </Button>
                         </Space>
                       ),
@@ -348,7 +348,7 @@ export default function Dashboard() {
                       title={
                         <Space>
                           <Text strong>{CATEGORY_MAP[task.category] || task.category}</Text>
-                          <Tag color="blue">{task.duration}分钟</Tag>
+                          <Tag color="blue">{task.duration}分鐘</Tag>
                         </Space>
                       }
                       description={
@@ -364,13 +364,13 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* 最近练习 */}
+        {/* 最近練習 */}
         <Col xs={24} lg={12}>
           <Card
             title={
               <Space>
                 <BookOutlined />
-                最近练习
+                最近練習
               </Space>
             }
             extra={
@@ -382,11 +382,11 @@ export default function Dashboard() {
           >
             {recentSessions.length === 0 ? (
               <Empty
-                description="暂无练习记录"
+                description="暫无練習記錄"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
               >
                 <Button type="primary" onClick={() => navigate('/practice')}>
-                  开始练习
+                  開始練習
                 </Button>
               </Empty>
             ) : (
@@ -407,7 +407,7 @@ export default function Dashboard() {
                       title={
                         <Space>
                           <Text strong>{CATEGORY_MAP[session.category] || session.category}</Text>
-                          <Tag>{session.question_count || 0}题</Tag>
+                          <Tag>{session.question_count || 0}題</Tag>
                         </Space>
                       }
                       description={
@@ -421,9 +421,9 @@ export default function Dashboard() {
                             })}
                           </Text>
                           <Tag color={STATUS_COLOR[session.status]}>
-                            {session.status === 'in_progress' && '进行中'}
+                            {session.status === 'in_progress' && '進行中'}
                             {session.status === 'completed' && '已完成'}
-                            {session.status === 'paused' && '已暂停'}
+                            {session.status === 'paused' && '已暫停'}
                           </Tag>
                         </Space>
                       }
@@ -436,13 +436,13 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* 弱点提醒 */}
+      {/* 弱點提醒 */}
       {weaknesses.length > 0 && (
         <Card
           title={
             <Space>
               <WarningOutlined style={{ color: '#ff4d4f' }} />
-              需要关注的弱点
+              需要關注的弱點
             </Space>
           }
           extra={
@@ -464,7 +464,7 @@ export default function Dashboard() {
                         weakness.severity === 'medium' ? 'orange' : 'blue'
                       }>
                         {weakness.severity === 'high' ? '高' :
-                         weakness.severity === 'medium' ? '中' : '低'}严重
+                         weakness.severity === 'medium' ? '中' : '低'}嚴重
                       </Tag>
                       <Text strong>{CATEGORY_MAP[weakness.category] || weakness.category}</Text>
                       <Tag>{weakness.weakness_type}</Tag>
@@ -474,18 +474,18 @@ export default function Dashboard() {
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
                       <Text>{weakness.description}</Text>
                       <Space>
-                        <Text type="secondary">已练习: {weakness.practice_count}次</Text>
+                        <Text type="secondary">已練習: {weakness.practice_count}次</Text>
                         <Button
                           type="link"
                           size="small"
                           loading={generatingQuestionsId === weakness.id}
                           disabled={generatingQuestionsId === weakness.id}
                           onClick={() => {
-                            // 根据弱点生成针对性题目
+                            // 根據弱點生成針對性題目
                             handleGenerateQuestions(weakness.id);
                           }}
                         >
-                          生成针对性题目
+                          生成針對性題目
                         </Button>
                       </Space>
                     </Space>
@@ -508,7 +508,7 @@ export default function Dashboard() {
               icon={<BookOutlined />}
               onClick={() => navigate('/practice')}
             >
-              开始练习
+              開始練習
             </Button>
           </Col>
           <Col xs={12} sm={8} md={6}>
@@ -518,7 +518,7 @@ export default function Dashboard() {
               icon={<ClockCircleOutlined />}
               onClick={() => navigate('/plans')}
             >
-              训练计划
+              訓練計劃
             </Button>
           </Col>
           <Col xs={12} sm={8} md={6}>
@@ -538,7 +538,7 @@ export default function Dashboard() {
               icon={<TrophyOutlined />}
               onClick={() => navigate('/progress')}
             >
-              进度报告
+              進度报告
             </Button>
           </Col>
         </Row>

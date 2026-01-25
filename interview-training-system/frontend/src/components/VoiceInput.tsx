@@ -1,6 +1,6 @@
 /**
- * 语音输入组件
- * 提供语音识别功能，支持中文和英文
+ * 語音输入組件
+ * 提供語音識別功能，支持中文和英文
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -18,21 +18,21 @@ import {
 const { Text } = Typography
 
 export interface VoiceInputProps {
-  onResult: (text: string) => void // 识别结果回调
-  onError?: (error: Error) => void // 错误回调
-  language?: SupportedLanguage // 识别语言
+  onResult: (text: string) => void // 識別結果回調
+  onError?: (error: Error) => void // 错误回調
+  language?: SupportedLanguage // 識別語言
   disabled?: boolean // 是否禁用
-  onModelLoading?: (progress: number) => void // 模型加载进度回调
+  onModelLoading?: (progress: number) => void // 模型加载進度回調
 }
 
 type VoiceInputState =
   | 'idle' // 空闲
   | 'loading' // 加载模型中
-  | 'ready' // 准备就绪
-  | 'listening' // 录音中
-  | 'processing' // 识别中
-  | 'completed' // 识别完成
-  | 'error' // 错误状态
+  | 'ready' // 準備就绪
+  | 'listening' // 錄音中
+  | 'processing' // 識別中
+  | 'completed' // 識別完成
+  | 'error' // 错误狀態
 
 export default function VoiceInput({
   onResult,
@@ -67,7 +67,7 @@ export default function VoiceInput({
     }
   }, [onError])
 
-  // 清理资源
+  // 清理資源
   useEffect(() => {
     return () => {
       if (recorderRef.current) {
@@ -90,7 +90,7 @@ export default function VoiceInput({
       setState('loading')
       setLoadingProgress(0)
       setErrorInfo(null)
-      console.log(`开始加载模型: ${selectedLanguage}`)
+      console.log(`開始加载模型: ${selectedLanguage}`)
 
       const recognizer = await createVoskRecognizer(
         selectedLanguage,
@@ -102,14 +102,14 @@ export default function VoiceInput({
 
       recognizerRef.current = recognizer
       setState('ready')
-      setRetryCount(0) // 重置重试计数
+      setRetryCount(0) // 重置重試計數
       console.log('模型加载成功')
-      message.success('模型加载完成，可以开始录音')
+      message.success('模型加载完成，可以開始錄音')
     } catch (error) {
-      console.error('模型加载失败:', error)
+      console.error('模型加载失敗:', error)
       setState('error')
       
-      let errorMessage = '模型加载失败，请检查网络连接或稍后重试'
+      let errorMessage = '模型加载失敗，请检查网络连接或稍後重試'
       let errorCode = 'UNKNOWN_ERROR'
       let canRetry = true
 
@@ -117,7 +117,7 @@ export default function VoiceInput({
         errorMessage = error.message
         errorCode = error.code
         
-        // 某些错误不应该重试
+        // 某些错误不应该重試
         if (
           error.code === VoskErrorCode.WASM_NOT_SUPPORTED ||
           error.code === VoskErrorCode.MODULE_NOT_FOUND
@@ -135,30 +135,30 @@ export default function VoiceInput({
       })
 
       // 显示错误提示
-      message.error(errorMessage, 8) // 显示8秒，让用户有时间阅读
+      message.error(errorMessage, 8) // 显示8秒，让用户有時間阅读
       onError?.(error instanceof Error ? error : new Error(errorMessage))
     }
   }
 
-  // 重试加载模型
+  // 重試加载模型
   const retryLoadModel = async () => {
     if (retryCount >= MAX_RETRY_COUNT) {
-      message.warning('已达到最大重试次数，请检查配置后重试')
+      message.warning('已達到最大重試次數，请检查配置後重試')
       return
     }
 
     setRetryCount((prev) => prev + 1)
-    console.log(`重试加载模型 (${retryCount + 1}/${MAX_RETRY_COUNT})`)
+    console.log(`重試加载模型 (${retryCount + 1}/${MAX_RETRY_COUNT})`)
     
-    // 清除之前的错误状态
+    // 清除之前的错误狀態
     setErrorInfo(null)
     
-    // 如果识别器已存在，先销毁
+    // 如果識別器已存在，先销毁
     if (recognizerRef.current) {
       try {
         recognizerRef.current.destroy()
       } catch (e) {
-        console.warn('清理识别器时出错:', e)
+        console.warn('清理識別器時出错:', e)
       }
       recognizerRef.current = null
     }
@@ -167,9 +167,9 @@ export default function VoiceInput({
     await loadModel()
   }
 
-  // 开始录音
+  // 開始錄音
   const startRecording = async () => {
-    // 如果状态不是 ready 或 idle，需要先处理
+    // 如果狀態不是 ready 或 idle，需要先处理
     if (state === 'loading' || state === 'processing' || state === 'listening' || state === 'error' || state === 'completed') {
       return
     }
@@ -177,12 +177,12 @@ export default function VoiceInput({
     // 如果模型未加载，先加载模型
     if (state === 'idle') {
       await loadModel()
-      // loadModel 内部会更新 state，如果加载失败会设置为 'error'
-      // 这里直接返回，让用户再次点击时如果状态是 ready 就可以继续
+      // loadModel 內部會更新 state，如果加载失敗會设置为 'error'
+      // 这里直接返回，让用户再次點击時如果狀態是 ready 就可以继续
       return
     }
     
-    // 确保状态是 ready
+    // 確保狀態是 ready
     if (state !== 'ready') {
       return
     }
@@ -195,31 +195,31 @@ export default function VoiceInput({
       const recorder = new AudioRecorder()
       recorderRef.current = recorder
 
-      // 开始录音时长计时
+      // 開始錄音時長計時
       durationTimerRef.current = window.setInterval(() => {
         setRecordingDuration((prev) => prev + 1)
       }, 1000)
 
-      // 开始录音
+      // 開始錄音
       await recorder.startRecording((audioData) => {
-        // 收集音频数据
+        // 收集音频數據
         audioChunksRef.current.push(audioData)
 
-        // 实时识别（可选，如果支持流式识别）
-        // 注意：state 在闭包中可能不是最新值，使用 recognizerRef 来检查状态
+        // 实時識別（可選，如果支持流式識別）
+        // 注意：state 在闭包中可能不是最新值，使用 recognizerRef 來检查狀態
         if (recognizerRef.current) {
-          // 这里可以实现实时识别逻辑
+          // 这里可以实现实時識別邏輯
         }
       })
 
-      message.info('开始录音...')
+      message.info('開始錄音...')
     } catch (error) {
-      console.error('录音启动失败:', error)
+      console.error('錄音启動失敗:', error)
       setState('error')
       const errorMessage =
         error instanceof VoskError
           ? error.message
-          : '录音启动失败，请检查麦克风权限'
+          : '錄音启動失敗，请检查麦克風权限'
       message.error(errorMessage)
       onError?.(error instanceof Error ? error : new Error(errorMessage))
 
@@ -230,12 +230,12 @@ export default function VoiceInput({
     }
   }
 
-  // 停止录音并识别
+  // 停止錄音并識別
   const stopRecording = async () => {
     if (state !== 'listening' || !recorderRef.current) return
 
     try {
-      // 停止录音
+      // 停止錄音
       recorderRef.current.stopRecording()
       recorderRef.current = null
 
@@ -245,9 +245,9 @@ export default function VoiceInput({
       }
 
       setState('processing')
-      message.info('正在识别...')
+      message.info('正在識別...')
 
-      // 合并所有音频数据
+      // 合并所有音频數據
       const totalLength = audioChunksRef.current.reduce(
         (sum, chunk) => sum + chunk.length,
         0
@@ -259,45 +259,45 @@ export default function VoiceInput({
         offset += chunk.length
       }
 
-      // 执行识别
+      // 执行識別
       if (recognizerRef.current) {
         const result = await recognizerRef.current.recognize(mergedAudio)
         if (result) {
           onResult(result)
           setState('completed')
-          message.success('识别完成')
+          message.success('識別完成')
         } else {
-          throw new Error('识别结果为空')
+          throw new Error('識別結果为空')
         }
       } else {
-        throw new Error('识别器未初始化')
+        throw new Error('識別器未初始化')
       }
     } catch (error) {
-      console.error('识别失败:', error)
+      console.error('識別失敗:', error)
       setState('error')
       const errorMessage =
-        error instanceof Error ? error.message : '识别失败，请重试'
+        error instanceof Error ? error.message : '識別失敗，请重試'
       message.error(errorMessage)
       onError?.(error instanceof Error ? error : new Error(errorMessage))
     }
   }
 
-  // 格式化录音时长
+  // 格式化錄音時長
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // 语言切换处理
+  // 語言切换处理
   const handleLanguageChange = (lang: SupportedLanguage) => {
     if (state === 'listening' || state === 'processing') {
-      message.warning('请先停止录音')
+      message.warning('请先停止錄音')
       return
     }
 
     setSelectedLanguage(lang)
-    // 如果模型已加载，需要重新加载新语言的模型
+    // 如果模型已加载，需要重新加载新語言的模型
     if (recognizerRef.current) {
       recognizerRef.current.destroy()
       recognizerRef.current = null
@@ -305,9 +305,9 @@ export default function VoiceInput({
     }
   }
 
-  // 如果浏览器不支持，不显示组件（优雅降级）
+  // 如果浏览器不支持，不显示組件（優雅降级）
   if (!isWebAssemblySupported()) {
-    console.warn('浏览器不支持 WebAssembly，语音输入功能不可用')
+    console.warn('浏览器不支持 WebAssembly，語音输入功能不可用')
     return null
   }
 
@@ -317,7 +317,7 @@ export default function VoiceInput({
   const isReady = state === 'ready'
   const canStart = state === 'idle' || state === 'ready' || (state === 'error' && errorInfo?.canRetry)
   
-  // 如果错误不可恢复，隐藏组件（优雅降级）
+  // 如果错误不可恢复，隐藏組件（優雅降级）
   const shouldHideComponent = 
     state === 'error' && 
     errorInfo && 
@@ -326,17 +326,17 @@ export default function VoiceInput({
      errorInfo.code === VoskErrorCode.MODULE_NOT_FOUND)
   
   if (shouldHideComponent) {
-    console.warn('语音输入功能不可用，已自动降级到文本输入')
+    console.warn('語音输入功能不可用，已自動降级到文本输入')
     return null
   }
 
   return (
     <div style={{ marginBottom: 16 }}>
       <Space direction="vertical" style={{ width: '100%' }} size="small">
-        {/* 语言选择器 */}
+        {/* 語言選擇器 */}
         <Space>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            识别语言：
+            識別語言：
           </Text>
           <Select
             value={selectedLanguage}
@@ -351,7 +351,7 @@ export default function VoiceInput({
           />
         </Space>
 
-        {/* 模型加载进度 */}
+        {/* 模型加载進度 */}
         {isLoading && (
           <div>
             <Progress
@@ -365,7 +365,7 @@ export default function VoiceInput({
           </div>
         )}
 
-        {/* 录音控制按钮 */}
+        {/* 錄音控制按钮 */}
         <Space>
           {canStart && (
             <Button
@@ -375,7 +375,7 @@ export default function VoiceInput({
               disabled={disabled || isLoading}
               loading={isLoading}
             >
-              {state === 'idle' ? '加载模型' : '开始录音'}
+              {state === 'idle' ? '加载模型' : '開始錄音'}
             </Button>
           )}
 
@@ -387,10 +387,10 @@ export default function VoiceInput({
                 onClick={stopRecording}
                 disabled={disabled}
               >
-                停止录音 ({formatDuration(recordingDuration)})
+                停止錄音 ({formatDuration(recordingDuration)})
               </Button>
               <Text type="danger" style={{ fontSize: 12 }}>
-                ● 录音中...
+                ● 錄音中...
               </Text>
             </>
           )}
@@ -398,13 +398,13 @@ export default function VoiceInput({
           {isProcessing && (
             <Space>
               <LoadingOutlined spin />
-              <Text type="secondary">识别中...</Text>
+              <Text type="secondary">識別中...</Text>
             </Space>
           )}
 
           {isReady && !isRecording && !isProcessing && (
             <Text type="success" style={{ fontSize: 12 }}>
-              ✓ 准备就绪
+              ✓ 準備就绪
             </Text>
           )}
         </Space>
@@ -412,18 +412,18 @@ export default function VoiceInput({
         {/* 错误提示 */}
         {state === 'error' && errorInfo && (
           <Alert
-            message="语音输入功能暂时不可用"
+            message="語音输入功能暫時不可用"
             description={
               <div>
                 <div style={{ marginBottom: 8 }}>{errorInfo.message}</div>
                 {errorInfo.code === VoskErrorCode.MODEL_FILE_NOT_FOUND && (
                   <div style={{ fontSize: 12, color: '#666' }}>
-                    请参考 VOICE_INPUT_SETUP.md 文档配置模型文件
+                    请參考 VOICE_INPUT_SETUP.md 文檔配置模型文件
                   </div>
                 )}
                 {errorInfo.code === VoskErrorCode.MODULE_NOT_FOUND && (
                   <div style={{ fontSize: 12, color: '#666' }}>
-                    请在 frontend 目录下运行: npm install vosk-browser
+                    请在 frontend 目錄下运行: npm install vosk-browser
                   </div>
                 )}
               </div>
@@ -438,7 +438,7 @@ export default function VoiceInput({
                   onClick={retryLoadModel}
                   disabled={isLoading}
                 >
-                  重试
+                  重試
                 </Button>
               ) : null
             }
@@ -449,7 +449,7 @@ export default function VoiceInput({
         {/* 使用提示 */}
         {state === 'idle' && !errorInfo && (
           <Text type="secondary" style={{ fontSize: 12 }}>
-            提示：首次使用需要加载语音识别模型，请确保网络连接正常
+            提示：首次使用需要加载語音識別模型，请確保网络连接正常
           </Text>
         )}
       </Space>

@@ -88,7 +88,7 @@ const TrainingPlan = () => {
     loadSchools();
   }, []);
 
-  // 加载学校列表
+  // 加载學校列表
   const loadSchools = async () => {
     try {
       setLoadingSchools(true);
@@ -97,7 +97,7 @@ const TrainingPlan = () => {
         setSchools(response.data);
       }
     } catch (error) {
-      console.error('加载学校列表失败:', error);
+      console.error('加载學校列表失敗:', error);
     } finally {
       setLoadingSchools(false);
     }
@@ -110,7 +110,7 @@ const TrainingPlan = () => {
       const settingsData = response.data;
       setSettings(settingsData);
     } catch (error) {
-      console.error('加载设置失败:', error);
+      console.error('加载设置失敗:', error);
     }
   };
 
@@ -120,15 +120,15 @@ const TrainingPlan = () => {
       const response = await api.plans.list();
       setPlans(response.success ? response.data : []);
     } catch (error) {
-      message.error('获取训练计划列表失败');
+      message.error('获取訓練計劃列表失敗');
     } finally {
       setLoading(false);
     }
   };
 
-  // 打开创建弹窗时,自动填充设置中的学生信息
+  // 打開創建弹窗時,自動填充设置中的學生信息
   const handleOpenCreateModal = () => {
-    // 自动填充学生信息(如果有)
+    // 自動填充學生信息(如果有)
     form.setFieldsValue({
       student_name: settings?.student_name || '',
       target_school: settings?.target_school || '',
@@ -143,22 +143,22 @@ const TrainingPlan = () => {
       
       // 验证必填字段
       if (!values.dateRange || !Array.isArray(values.dateRange) || values.dateRange.length !== 2) {
-        message.error('请选择训练周期');
+        message.error('请選擇訓練周期');
         return;
       }
 
       const [startDate, endDate] = values.dateRange;
       
-      // 验证目标学校
+      // 验证目標學校
       const targetSchool = values.target_school || settings?.target_school;
       if (!targetSchool) {
-        message.error('请选择目标学校');
+        message.error('请選擇目標學校');
         return;
       }
 
-      // 验证学生姓名（必须从设置获取）
+      // 验证學生姓名（必须從设置获取）
       if (!settings?.student_name) {
-        message.error('请先在设置页面配置学生姓名');
+        message.error('请先在设置页面配置學生姓名');
         return;
       }
 
@@ -169,7 +169,7 @@ const TrainingPlan = () => {
         'generate-plan',
         async () => {
           return await api.plans.create({
-            // 不传递student_name，让后端从设置获取
+            // 不傳递student_name，让後端從设置获取
             target_school: targetSchool,
             start_date: startDate.format('YYYY-MM-DD'),
             end_date: endDate.format('YYYY-MM-DD'),
@@ -177,19 +177,19 @@ const TrainingPlan = () => {
           });
         },
         {
-          taskName: '生成训练计划',
+          taskName: '生成訓練計劃',
           onSuccess: (response) => {
-            message.success(response.message || '训练计划创建成功');
+            message.success(response.message || '訓練計劃創建成功');
             setModalOpen(false);
             form.resetFields();
             fetchPlans();
           },
           onError: (error: any) => {
-            console.error('创建训练计划失败:', error);
+            console.error('創建訓練計劃失敗:', error);
             const errorMessage = error.response?.data?.error?.message 
               || error.response?.data?.message 
               || error.message 
-              || '创建训练计划失败';
+              || '創建訓練計劃失敗';
             message.error(errorMessage);
           },
         }
@@ -207,7 +207,7 @@ const TrainingPlan = () => {
       setDailyTasks(response.success ? response.data.tasks : []);
       setDetailModalOpen(true);
     } catch (error) {
-      message.error('获取计划详情失败');
+      message.error('获取計劃详情失敗');
     } finally {
       setLoading(false);
     }
@@ -216,35 +216,35 @@ const TrainingPlan = () => {
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
       await api.plans.updateStatus(String(id), status);
-      message.success('状态已更新');
+      message.success('狀態已更新');
       fetchPlans();
-      // 如果详情弹窗打开,刷新任务列表
+      // 如果详情弹窗打開,刷新任務列表
       if (detailModalOpen && selectedPlan) {
         handleViewDetails(selectedPlan);
       }
     } catch (error) {
-      message.error('更新状态失败');
+      message.error('更新狀態失敗');
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await api.plans.delete(String(id));
-      message.success('训练计划已删除');
+      message.success('訓練計劃已删除');
       fetchPlans();
       if (detailModalOpen) {
         setDetailModalOpen(false);
       }
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   };
 
   const getStatusTag = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
-      active: { label: '进行中', color: 'green' },
+      active: { label: '進行中', color: 'green' },
       completed: { label: '已完成', color: 'blue' },
-      paused: { label: '已暂停', color: 'orange' },
+      paused: { label: '已暫停', color: 'orange' },
     };
     const config = statusMap[status] || { label: status, color: 'default' };
     return <Tag color={config.color}>{config.label}</Tag>;
@@ -252,13 +252,13 @@ const TrainingPlan = () => {
 
   const getCategoryLabel = (category: string) => {
     const map: Record<string, string> = {
-      'english-oral': '英文口语',
-      'chinese-oral': '中文表达',
-      'logic-thinking': '逻辑思维',
-      'current-affairs': '时事常识',
-      'science-knowledge': '科学常识',
-      'personal-growth': '个人成长',
-      'group-discussion': '小组讨论',
+      'english-oral': '英文口語',
+      'chinese-oral': '中文表達',
+      'logic-thinking': '邏輯思維',
+      'current-affairs': '時事常識',
+      'science-knowledge': '科學常識',
+      'personal-growth': '个人成長',
+      'group-discussion': '小組討論',
     };
     return map[category] || category;
   };
@@ -271,20 +271,20 @@ const TrainingPlan = () => {
       width: 60,
     },
     {
-      title: '学生姓名',
+      title: '學生姓名',
       dataIndex: 'student_name',
       key: 'student_name',
       width: 120,
     },
     {
-      title: '目标学校',
+      title: '目標學校',
       dataIndex: 'target_school',
       key: 'target_school',
       width: 100,
       render: (school: string) => <Tag color="blue">{school}</Tag>,
     },
     {
-      title: '训练周期',
+      title: '訓練周期',
       key: 'period',
       width: 200,
       render: (_: any, record: TrainingPlan) => (
@@ -294,21 +294,21 @@ const TrainingPlan = () => {
       ),
     },
     {
-      title: '每日时长',
+      title: '每日時長',
       dataIndex: 'daily_duration',
       key: 'daily_duration',
       width: 100,
-      render: (duration: number) => `${duration} 分钟`,
+      render: (duration: number) => `${duration} 分鐘`,
     },
     {
-      title: '状态',
+      title: '狀態',
       dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status: string) => getStatusTag(status),
     },
     {
-      title: '创建时间',
+      title: '創建時間',
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
@@ -330,7 +330,7 @@ const TrainingPlan = () => {
               icon={<PauseCircleOutlined />}
               onClick={() => handleUpdateStatus(record.id, 'paused')}
             >
-              暂停
+              暫停
             </Button>
           )}
           {record.status === 'paused' && (
@@ -353,7 +353,7 @@ const TrainingPlan = () => {
               完成
             </Button>
           )}
-          <Popconfirm title="确定删除此计划？" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="確定删除此計劃？" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
               删除
             </Button>
@@ -363,26 +363,26 @@ const TrainingPlan = () => {
     },
   ];
 
-  // 开始任务练习
+  // 開始任務練習
   const handleStartTask = (taskId: number) => {
     navigate(`/practice?taskId=${taskId}`);
   };
 
-  // 跳过任务
+  // 跳過任務
   const handleSkipTask = async (taskId: number) => {
     Modal.confirm({
-      title: '确认跳过任务',
-      content: `确认跳过此任务?将不计入练习记录。`,
-      okText: '确认跳过',
+      title: '確认跳過任務',
+      content: `確认跳過此任務?将不計入練習記錄。`,
+      okText: '確认跳過',
       cancelText: '取消',
       okType: 'danger',
       onOk: async () => {
         try {
           await api.plans.skipTask(String(taskId));
-          message.success('任务已跳过');
-          fetchPlans(); // 重新加载数据
+          message.success('任務已跳過');
+          fetchPlans(); // 重新加载數據
         } catch (error: any) {
-          message.error(error.response?.data?.message || '跳过任务失败');
+          message.error(error.response?.data?.message || '跳過任務失敗');
         }
       },
     });
@@ -396,28 +396,28 @@ const TrainingPlan = () => {
       width: 120,
     },
     {
-      title: '专项',
+      title: '專項',
       dataIndex: 'category',
       key: 'category',
       width: 150,
       render: (category: string) => getCategoryLabel(category),
     },
     {
-      title: '时长',
+      title: '時長',
       dataIndex: 'duration',
       key: 'duration',
       width: 100,
-      render: (duration: number) => `${duration} 分钟`,
+      render: (duration: number) => `${duration} 分鐘`,
     },
     {
-      title: '状态',
+      title: '狀態',
       dataIndex: 'status',
       key: 'status',
       width: 100,
       render: (status: string) => {
         const map: Record<string, { label: string; color: string }> = {
           pending: { label: '待完成', color: 'default' },
-          in_progress: { label: '进行中', color: 'processing' },
+          in_progress: { label: '進行中', color: 'processing' },
           completed: { label: '已完成', color: 'success' },
         };
         const config = map[status] || { label: status, color: 'default' };
@@ -425,7 +425,7 @@ const TrainingPlan = () => {
       },
     },
     {
-      title: '完成时间',
+      title: '完成時間',
       dataIndex: 'completed_at',
       key: 'completed_at',
       width: 180,
@@ -450,7 +450,7 @@ const TrainingPlan = () => {
                   icon={<EyeOutlined />}
                   onClick={() => navigate(`/feedback?session=${sessionId}`)}
                 >
-                  查看提交记录
+                  查看提交記錄
                 </Button>
               ) : (
                 <Button
@@ -458,7 +458,7 @@ const TrainingPlan = () => {
                   size="small"
                   icon={<EyeOutlined />}
                   onClick={async () => {
-                    // 如果没有 session_info，尝试查找会话
+                    // 如果没有 session_info，尝試查找會話
                     try {
                       const sessionsRes = await api.sessions.recent(100);
                       if (sessionsRes.success) {
@@ -466,15 +466,15 @@ const TrainingPlan = () => {
                         if (taskSession) {
                           navigate(`/feedback?session=${taskSession.id}`);
                         } else {
-                          message.warning('未找到该任务的练习记录');
+                          message.warning('未找到该任務的練習記錄');
                         }
                       }
                     } catch (error) {
-                      message.error('查找练习记录失败');
+                      message.error('查找練習記錄失敗');
                     }
                   }}
                 >
-                  查找记录
+                  查找記錄
                 </Button>
               )}
             </Space>
@@ -488,7 +488,7 @@ const TrainingPlan = () => {
               icon={<PlayCircleFilled />}
               onClick={() => handleStartTask(record.id)}
             >
-              继续练习
+              继续練習
             </Button>
           );
         }
@@ -500,7 +500,7 @@ const TrainingPlan = () => {
               icon={<PlayCircleOutlined />}
               onClick={() => handleStartTask(record.id)}
             >
-              开始
+              開始
             </Button>
             <Button
               type="default"
@@ -508,7 +508,7 @@ const TrainingPlan = () => {
               icon={<CloseCircleOutlined />}
               onClick={() => handleSkipTask(record.id)}
             >
-              跳过
+              跳過
             </Button>
           </Space>
         );
@@ -518,11 +518,11 @@ const TrainingPlan = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>训练计划</h1>
+      <h1>訓練計劃</h1>
 
       <Space style={{ marginBottom: 16 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateModal}>
-          创建训练计划
+          創建訓練計劃
         </Button>
       </Space>
 
@@ -532,25 +532,25 @@ const TrainingPlan = () => {
         rowKey="id"
         loading={loading}
         pagination={{
-          showTotal: (total) => `共 ${total} 个计划`,
+          showTotal: (total) => `共 ${total} 个計劃`,
         }}
       />
 
-      {/* 创建训练计划弹窗 */}
+      {/* 創建訓練計劃弹窗 */}
       <Modal
-        title="🎯 创建训练计划"
+        title="🎯 創建訓練計劃"
         open={modalOpen}
         onOk={handleCreate}
         onCancel={() => setModalOpen(false)}
         width={600}
-        okText="AI 生成计划"
+        okText="AI 生成計劃"
         cancelText="取消"
         confirmLoading={loading}
       >
         {(!settings?.student_name || !settings?.target_school) && (
           <Alert
-            message="请先配置学生信息"
-            description="在创建训练计划前,请先在「设置」页面配置学生姓名和目标学校。"
+            message="请先配置學生信息"
+            description="在創建訓練計劃前,请先在「设置」页面配置學生姓名和目標學校。"
             type="warning"
             showIcon
             style={{ marginBottom: 16 }}
@@ -564,8 +564,8 @@ const TrainingPlan = () => {
         
         <Form form={form} layout="vertical">
           <Form.Item 
-            label="学生姓名"
-            tooltip={settings?.student_name ? '此信息来自设置页面，如需修改请前往设置页面' : '请先在设置页面配置学生姓名'}
+            label="學生姓名"
+            tooltip={settings?.student_name ? '此信息來自设置页面，如需修改请前往设置页面' : '请先在设置页面配置學生姓名'}
           >
             <Input 
               value={settings?.student_name || '未设置'} 
@@ -582,12 +582,12 @@ const TrainingPlan = () => {
 
           <Form.Item 
             name="target_school" 
-            label="目标学校" 
-            rules={[{ required: true, message: '请选择目标学校' }]}
-            tooltip={settings?.target_school ? '已自动填充设置中的目标学校，可以修改' : undefined}
+            label="目標學校" 
+            rules={[{ required: true, message: '请選擇目標學校' }]}
+            tooltip={settings?.target_school ? '已自動填充设置中的目標學校，可以修改' : undefined}
           >
             <Select 
-              placeholder={settings?.target_school ? `当前: ${settings.target_school}` : "选择目标学校"}
+              placeholder={settings?.target_school ? `当前: ${settings.target_school}` : "選擇目標學校"}
               loading={loadingSchools}
               showSearch
               optionFilterProp="children"
@@ -600,36 +600,36 @@ const TrainingPlan = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="dateRange" label="训练周期" rules={[{ required: true, message: '请选择训练周期' }]}>
+          <Form.Item name="dateRange" label="訓練周期" rules={[{ required: true, message: '请選擇訓練周期' }]}>
             <RangePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item name="daily_duration" label="每日训练时长（分钟）" initialValue={30}>
+          <Form.Item name="daily_duration" label="每日訓練時長（分鐘）" initialValue={30}>
             <Select>
-              <Option value={15}>15 分钟</Option>
-              <Option value={30}>30 分钟</Option>
-              <Option value={45}>45 分钟</Option>
-              <Option value={60}>60 分钟</Option>
+              <Option value={15}>15 分鐘</Option>
+              <Option value={30}>30 分鐘</Option>
+              <Option value={45}>45 分鐘</Option>
+              <Option value={60}>60 分鐘</Option>
             </Select>
           </Form.Item>
         </Form>
 
         <div style={{ marginTop: 16, padding: 12, background: '#f0f2f5', borderRadius: 4 }}>
           <p style={{ marginBottom: 0, color: '#666' }}>
-            💡 AI 将根据目标学校特点和训练周期，自动生成个性化的训练计划和每日任务安排。
+            💡 AI 将根據目標學校特點和訓練周期，自動生成个性化的訓練計劃和每日任務安排。
           </p>
         </div>
       </Modal>
 
-      {/* 计划详情弹窗 */}
+      {/* 計劃详情弹窗 */}
       <Modal
-        title={`📋 训练计划详情 - ${selectedPlan?.student_name}`}
+        title={`📋 訓練計劃详情 - ${selectedPlan?.student_name}`}
         open={detailModalOpen}
         onCancel={() => setDetailModalOpen(false)}
         width={900}
         footer={[
           <Button key="close" onClick={() => setDetailModalOpen(false)}>
-            关闭
+            關闭
           </Button>,
         ]}
       >
@@ -638,25 +638,25 @@ const TrainingPlan = () => {
             <Card style={{ marginBottom: 16 }}>
               <Row gutter={16}>
                 <Col span={6}>
-                  <Statistic title="目标学校" value={selectedPlan.target_school} />
+                  <Statistic title="目標學校" value={selectedPlan.target_school} />
                 </Col>
                 <Col span={6}>
-                  <Statistic title="总天数" value={selectedPlan.total_days} suffix="天" />
+                  <Statistic title="總天數" value={selectedPlan.total_days} suffix="天" />
                 </Col>
                 <Col span={6}>
-                  <Statistic title="每日时长" value={selectedPlan.daily_duration} suffix="分钟" />
+                  <Statistic title="每日時長" value={selectedPlan.daily_duration} suffix="分鐘" />
                 </Col>
                 <Col span={6}>
                   <div>
-                    <div style={{ color: '#666', fontSize: 14 }}>状态</div>
+                    <div style={{ color: '#666', fontSize: 14 }}>狀態</div>
                     <div style={{ marginTop: 8 }}>{getStatusTag(selectedPlan.status)}</div>
                   </div>
                 </Col>
               </Row>
             </Card>
 
-            {/* 类别分配 */}
-            <Card title="专项类别分配" style={{ marginBottom: 16 }}>
+            {/* 類別分配 */}
+            <Card title="專項類別分配" style={{ marginBottom: 16 }}>
               <Row gutter={[16, 16]}>
                 {Object.entries(selectedPlan.category_allocation).map(([category, percentage]) => (
                   <Col span={12} key={category}>
@@ -667,15 +667,15 @@ const TrainingPlan = () => {
               </Row>
             </Card>
 
-            {/* AI 建议 */}
+            {/* AI 建議 */}
             {selectedPlan.ai_suggestions && (
-              <Card title="AI 建议" style={{ marginBottom: 16 }}>
+              <Card title="AI 建議" style={{ marginBottom: 16 }}>
                 <p style={{ whiteSpace: 'pre-wrap' }}>{selectedPlan.ai_suggestions}</p>
               </Card>
             )}
 
-            {/* 每日任务 */}
-            <Card title={`每日任务清单（${dailyTasks.length} 天）`}>
+            {/* 每日任務 */}
+            <Card title={`每日任務清单（${dailyTasks.length} 天）`}>
               <Table
                 columns={taskColumns}
                 dataSource={dailyTasks}

@@ -1,6 +1,6 @@
 /**
- * 简单的 Markdown 渲染器（不依赖外部库）
- * 支持基本的 Markdown 语法
+ * 简单的 Markdown 渲染器（不依赖外部庫）
+ * 支持基本的 Markdown 語法
  */
 import React from 'react';
 
@@ -19,10 +19,10 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, className }) =
     let codeBlockContent: string[] = [];
 
     lines.forEach((line, index) => {
-      // 代码块处理
+      // 代碼块处理
       if (line.trim().startsWith('```')) {
         if (inCodeBlock) {
-          // 结束代码块
+          // 結束代碼块
           elements.push(
             <pre key={`code-${index}`} style={{ 
               background: '#f5f5f5', 
@@ -38,7 +38,7 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, className }) =
           codeBlockContent = [];
           inCodeBlock = false;
         } else {
-          // 开始代码块
+          // 開始代碼块
           inCodeBlock = true;
         }
         return;
@@ -49,7 +49,7 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, className }) =
         return;
       }
 
-      // 标题
+      // 標題
       if (line.startsWith('# ')) {
         elements.push(<h1 key={index} style={{ fontSize: '2em', marginTop: '16px', marginBottom: '8px', fontWeight: 'bold' }}>{line.substring(2)}</h1>);
         return;
@@ -92,7 +92,7 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, className }) =
       );
     });
 
-    // 如果还有未关闭的代码块
+    // 如果还有未關闭的代碼块
     if (inCodeBlock && codeBlockContent.length > 0) {
       elements.push(
         <pre key="code-final" style={{ 
@@ -118,7 +118,7 @@ const SimpleMarkdown: React.FC<SimpleMarkdownProps> = ({ content, className }) =
     const boldRegex = /\*\*(.+?)\*\*/g;
     // 处理斜体 *text*
     const italicRegex = /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g;
-    // 处理行内代码 `code`
+    // 处理行內代碼 `code`
     const codeRegex = /`(.+?)`/g;
     // 处理链接 [text](url)
     const linkRegex = /\[(.+?)\]\((.+?)\)/g;

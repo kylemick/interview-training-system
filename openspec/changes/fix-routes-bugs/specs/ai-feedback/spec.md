@@ -2,18 +2,18 @@
 
 ## MODIFIED Requirements
 
-### Requirement: 会话总结查询
-系统SHALL健壮地处理会话总结的 JSON 字段。
+### Requirement: 會話總結查询
+係統SHALL健壮地处理會話總結的 JSON 字段。
 
-#### Scenario: 获取单个会话总结
-- **WHEN** 用户查询会话总结
-- **THEN** 正确解析 strengths 和 weaknesses JSON 数组
-- **AND** 每个字段独立处理，一个失败不影响另一个
-- **AND** 解析失败时返回空数组并记录警告
+#### Scenario: 获取单个會話總結
+- **WHEN** 用户查询會話總結
+- **THEN** 正確解析 strengths 和 weaknesses JSON 數組
+- **AND** 每个字段独立处理，一个失敗不影响另一个
+- **AND** 解析失敗時返回空數組并記錄警告
 
 #### Scenario: 获取历史反馈列表
 - **WHEN** 用户请求历史反馈列表
-- **THEN** 使用 queryWithPagination() 函数处理分页
-- **AND** limit 参数默认为 20，最大不超过 100
-- **AND** 批量解析所有记录的 JSON 字段
-- **AND** 每条记录的解析失败不影响其他记录
+- **THEN** 使用 queryWithPagination() 函數处理分页
+- **AND** limit 參數默认为 20，最大不超過 100
+- **AND** 批量解析所有記錄的 JSON 字段
+- **AND** 每条記錄的解析失敗不影响其他記錄

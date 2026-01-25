@@ -28,21 +28,32 @@ import { useAiThinking } from '../../hooks/useAiThinking';
 const { TextArea } = Input;
 const { Option } = Select;
 
-// 七大专项类别
+// 七大專項類別
 const CATEGORIES = [
-  { value: 'english-oral', label: '英文口语', color: 'blue' },
-  { value: 'chinese-oral', label: '中文表达', color: 'green' },
-  { value: 'logic-thinking', label: '逻辑思维', color: 'purple' },
-  { value: 'current-affairs', label: '时事常识', color: 'orange' },
-  { value: 'science-knowledge', label: '科学常识', color: 'cyan' },
-  { value: 'personal-growth', label: '个人成长', color: 'magenta' },
-  { value: 'group-discussion', label: '小组讨论', color: 'red' },
+  { value: 'english-oral', label: '英文口語', color: 'blue' },
+  { value: 'chinese-oral', label: '中文表達', color: 'green' },
+  { value: 'logic-thinking', label: '邏輯思維', color: 'purple' },
+  { value: 'current-affairs', label: '時事常識', color: 'orange' },
+  { value: 'science-knowledge', label: '科學常識', color: 'cyan' },
+  { value: 'personal-growth', label: '个人成長', color: 'magenta' },
+  { value: 'group-discussion', label: '小組討論', color: 'red' },
 ];
+
+// 四个學科能力類別
+const SUBJECT_CATEGORIES = [
+  { value: 'chinese-reading', label: '中文阅读理解', color: 'green' },
+  { value: 'english-reading', label: '英文阅读理解', color: 'blue' },
+  { value: 'mathematics', label: '數學基础', color: 'purple' },
+  { value: 'science-practice', label: '科學实践', color: 'cyan' },
+];
+
+// 所有類別（七大專項 + 四个學科能力）
+const ALL_CATEGORIES = [...CATEGORIES, ...SUBJECT_CATEGORIES];
 
 const DIFFICULTIES = [
   { value: 'easy', label: '简单', color: 'green' },
   { value: 'medium', label: '中等', color: 'orange' },
-  { value: 'hard', label: '困难', color: 'red' },
+  { value: 'hard', label: '困難', color: 'red' },
 ];
 
 interface Question {
@@ -87,33 +98,33 @@ const Questions = () => {
   const [form] = Form.useForm();
   const [aiForm] = Form.useForm();
 
-  // 筛选条件
+  // 筛選条件
   const [filters, setFilters] = useState<{
     category?: string;
     difficulty?: string;
     source?: string;
   }>({});
 
-  // 优化：并行加载数据，使用 useCallback 避免重复创建函数
+  // 優化：并行加载數據，使用 useCallback 避免重复創建函數
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setLoadingSchools(true);
 
-      // 并行请求所有数据
+      // 并行请求所有數據
       const [questionsRes, statsRes, schoolsRes] = await Promise.all([
         api.questions.list(filters).catch(err => {
-          console.error('获取题目列表失败:', err);
-          message.error('获取题目列表失败');
+          console.error('获取題目列表失敗:', err);
+          message.error('获取題目列表失敗');
           return { success: false, data: [] };
         }),
         api.questions.stats().catch(err => {
-          console.error('获取统计信息失败:', err);
+          console.error('获取統計信息失敗:', err);
           return { success: false, data: null };
         }),
         api.schools.list().catch(err => {
-          console.error('获取学校列表失败:', err);
-          message.error('获取学校列表失败');
+          console.error('获取學校列表失敗:', err);
+          message.error('获取學校列表失敗');
           return { success: false, data: [] };
         }),
       ]);
@@ -123,7 +134,7 @@ const Questions = () => {
       setStats(statsRes.success ? statsRes.data : null);
       setSchools(schoolsRes.success ? schoolsRes.data : []);
     } catch (error) {
-      console.error('加载数据失败:', error);
+      console.error('加载數據失敗:', error);
     } finally {
       setLoading(false);
       setLoadingSchools(false);
@@ -133,7 +144,7 @@ const Questions = () => {
   useEffect(() => {
     loadData();
     
-    // 清理函数：组件卸载时取消所有pending请求
+    // 清理函數：組件卸载時取消所有pending请求
     return () => {
       cancelAllPendingRequests();
     };
@@ -154,10 +165,10 @@ const Questions = () => {
   const handleDelete = useCallback(async (id: number) => {
     try {
       await api.questions.delete(id.toString());
-      message.success('题目已删除');
+      message.success('題目已删除');
       loadData();
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   }, [loadData]);
 
@@ -167,16 +178,16 @@ const Questions = () => {
 
       if (editingQuestion) {
         await api.questions.update(editingQuestion.id.toString(), values);
-        message.success('题目已更新');
+        message.success('題目已更新');
       } else {
         await api.questions.create(values);
-        message.success('题目已创建');
+        message.success('題目已創建');
       }
 
       setModalOpen(false);
       loadData();
     } catch (error) {
-      message.error('操作失败');
+      message.error('操作失敗');
     }
   }, [editingQuestion, form, loadData]);
 
@@ -187,7 +198,7 @@ const Questions = () => {
       const values = await aiForm.validateFields();
       setLoading(true);
 
-      const categoryLabel = CATEGORIES.find(c => c.value === values.category)?.label || values.category;
+      const categoryLabel = ALL_CATEGORIES.find(c => c.value === values.category)?.label || values.category;
 
       await executeWithThinking(
         'generate-questions',
@@ -198,32 +209,32 @@ const Questions = () => {
           });
         },
         {
-          taskName: `生成${categoryLabel}题目`,
+          taskName: `生成${categoryLabel}題目`,
           onSuccess: (response) => {
-            message.success(response.message || '题目生成成功');
+            message.success(response.message || '題目生成成功');
             setAiModalOpen(false);
             aiForm.resetFields();
             loadData();
           },
           onError: (error: any) => {
-            message.error(error.response?.data?.error?.message || 'AI 生成失败');
+            message.error(error.response?.data?.error?.message || 'AI 生成失敗');
           },
         }
       );
     } catch (error: any) {
-      message.error(error.response?.data?.error?.message || 'AI 生成失败');
+      message.error(error.response?.data?.error?.message || 'AI 生成失敗');
     } finally {
       setLoading(false);
     }
   }, [aiForm, loadData, executeWithThinking]);
 
-  // 优化：使用 useMemo 缓存计算结果
+  // 優化：使用 useMemo 缓存計算結果
   const getCategoryLabel = useCallback((value: string) => {
-    return CATEGORIES.find((c) => c.value === value)?.label || value;
+    return ALL_CATEGORIES.find((c) => c.value === value)?.label || value;
   }, []);
 
   const getCategoryColor = useCallback((value: string) => {
-    return CATEGORIES.find((c) => c.value === value)?.color || 'default';
+    return ALL_CATEGORIES.find((c) => c.value === value)?.color || 'default';
   }, []);
 
   const getDifficultyLabel = useCallback((value: string) => {
@@ -234,7 +245,7 @@ const Questions = () => {
     return DIFFICULTIES.find((d) => d.value === value)?.color || 'default';
   }, []);
 
-  // 优化：使用 useMemo 缓存 columns 定义
+  // 優化：使用 useMemo 缓存 columns 定义
   const columns = useMemo(() => [
     {
       title: 'ID',
@@ -243,7 +254,7 @@ const Questions = () => {
       width: 60,
     },
     {
-      title: '类别',
+      title: '類別',
       dataIndex: 'category',
       key: 'category',
       width: 120,
@@ -252,13 +263,13 @@ const Questions = () => {
       ),
     },
     {
-      title: '题目内容',
+      title: '題目內容',
       dataIndex: 'question_text',
       key: 'question_text',
       ellipsis: true,
     },
     {
-      title: '难度',
+      title: '難度',
       dataIndex: 'difficulty',
       key: 'difficulty',
       width: 80,
@@ -267,7 +278,7 @@ const Questions = () => {
       ),
     },
     {
-      title: '标签',
+      title: '標籤',
       dataIndex: 'tags',
       key: 'tags',
       width: 180,
@@ -282,23 +293,23 @@ const Questions = () => {
       ),
     },
     {
-      title: '学校',
+      title: '學校',
       dataIndex: 'school_code',
       key: 'school_code',
       width: 80,
       render: (code: string) => code && <Tag>{code}</Tag>,
     },
     {
-      title: '来源',
+      title: '來源',
       dataIndex: 'source',
       key: 'source',
       width: 100,
       render: (source: string) => {
         const sourceMap: Record<string, { label: string; color: string }> = {
-          seed: { label: '种子数据', color: 'blue' },
+          seed: { label: '種子數據', color: 'blue' },
           ai_generated: { label: 'AI生成', color: 'purple' },
-          manual: { label: '手动添加', color: 'green' },
-          interview_memory: { label: '面试回忆', color: 'orange' },
+          manual: { label: '手動添加', color: 'green' },
+          interview_memory: { label: '面試回憶', color: 'orange' },
         };
         const config = sourceMap[source] || { label: source, color: 'default' };
         return <Tag color={config.color}>{config.label}</Tag>;
@@ -311,9 +322,9 @@ const Questions = () => {
       render: (_: any, record: Question) => (
         <Space size="small">
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            编辑
+            编輯
           </Button>
-          <Popconfirm title="确定删除此题目？" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="確定删除此題目？" onConfirm={() => handleDelete(record.id)}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
               删除
             </Button>
@@ -325,14 +336,14 @@ const Questions = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>题库管理</h1>
+      <h1>題庫管理</h1>
 
-      {/* 统计信息 */}
+      {/* 統計信息 */}
       {stats && (
         <Row gutter={16} style={{ marginBottom: 24 }}>
           <Col span={6}>
             <Card>
-              <Statistic title="题目总数" value={stats.total || 0} />
+              <Statistic title="題目總數" value={stats.total || 0} />
             </Card>
           </Col>
           {stats.by_category && stats.by_category.slice(0, 3).map((item) => (
@@ -345,16 +356,16 @@ const Questions = () => {
         </Row>
       )}
 
-      {/* 筛选和操作 */}
+      {/* 筛選和操作 */}
       <Space style={{ marginBottom: 16 }} wrap>
         <Select
-          placeholder="选择类别"
+          placeholder="選擇類別"
           allowClear
           style={{ width: 150 }}
           value={filters.category}
           onChange={(value) => setFilters({ ...filters, category: value })}
         >
-          {CATEGORIES.map((cat) => (
+          {ALL_CATEGORIES.map((cat) => (
             <Option key={cat.value} value={cat.value}>
               {cat.label}
             </Option>
@@ -362,7 +373,7 @@ const Questions = () => {
         </Select>
 
         <Select
-          placeholder="选择难度"
+          placeholder="選擇難度"
           allowClear
           style={{ width: 120 }}
           value={filters.difficulty}
@@ -376,16 +387,16 @@ const Questions = () => {
         </Select>
 
         <Select
-          placeholder="选择来源"
+          placeholder="選擇來源"
           allowClear
           style={{ width: 120 }}
           value={filters.source}
           onChange={(value) => setFilters({ ...filters, source: value })}
         >
-          <Option value="seed">种子数据</Option>
+          <Option value="seed">種子數據</Option>
           <Option value="ai_generated">AI生成</Option>
-          <Option value="manual">手动添加</Option>
-          <Option value="interview_memory">面试回忆</Option>
+          <Option value="manual">手動添加</Option>
+          <Option value="interview_memory">面試回憶</Option>
         </Select>
 
         <Button icon={<ReloadOutlined />} onClick={loadData}>
@@ -393,30 +404,30 @@ const Questions = () => {
         </Button>
 
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          添加题目
+          添加題目
         </Button>
 
         <Button type="primary" icon={<RobotOutlined />} onClick={() => setAiModalOpen(true)}>
-          AI 生成题目
+          AI 生成題目
         </Button>
       </Space>
 
-      {/* 题目列表 */}
+      {/* 題目列表 */}
       <Table
         columns={columns}
         dataSource={questions}
         rowKey="id"
         loading={loading}
         pagination={{
-          showTotal: (total) => `共 ${total} 道题目`,
+          showTotal: (total) => `共 ${total} 道題目`,
           showSizeChanger: true,
           showQuickJumper: true,
         }}
       />
 
-      {/* 添加/编辑题目弹窗 */}
+      {/* 添加/编輯題目弹窗 */}
       <Modal
-        title={editingQuestion ? '编辑题目' : '添加题目'}
+        title={editingQuestion ? '编輯題目' : '添加題目'}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
@@ -425,9 +436,9 @@ const Questions = () => {
         cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="category" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
-            <Select placeholder="选择类别">
-              {CATEGORIES.map((cat) => (
+          <Form.Item name="category" label="類別" rules={[{ required: true, message: '请選擇類別' }]}>
+            <Select placeholder="選擇類別">
+              {ALL_CATEGORIES.map((cat) => (
                 <Option key={cat.value} value={cat.value}>
                   {cat.label}
                 </Option>
@@ -435,8 +446,8 @@ const Questions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
-            <Select placeholder="选择难度">
+          <Form.Item name="difficulty" label="難度" rules={[{ required: true, message: '请選擇難度' }]}>
+            <Select placeholder="選擇難度">
               {DIFFICULTIES.map((diff) => (
                 <Option key={diff.value} value={diff.value}>
                   {diff.label}
@@ -445,21 +456,21 @@ const Questions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="question_text" label="题目内容" rules={[{ required: true, message: '请输入题目内容' }]}>
-            <TextArea rows={4} placeholder="输入题目内容" />
+          <Form.Item name="question_text" label="題目內容" rules={[{ required: true, message: '请输入題目內容' }]}>
+            <TextArea rows={4} placeholder="输入題目內容" />
           </Form.Item>
 
-          <Form.Item name="reference_answer" label="参考答案">
-            <TextArea rows={4} placeholder="输入参考答案要点" />
+          <Form.Item name="reference_answer" label="參考答案">
+            <TextArea rows={4} placeholder="输入參考答案要點" />
           </Form.Item>
 
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="输入标签后按回车" />
+          <Form.Item name="tags" label="標籤">
+            <Select mode="tags" placeholder="输入標籤後按回车" />
           </Form.Item>
 
-          <Form.Item name="school_code" label="目标学校（可选）">
+          <Form.Item name="school_code" label="目標學校（可選）">
             <Select
-              placeholder="选择学校或不指定"
+              placeholder="選擇學校或不指定"
               allowClear
               loading={loadingSchools}
               showSearch
@@ -475,9 +486,9 @@ const Questions = () => {
         </Form>
       </Modal>
 
-      {/* AI 生成题目弹窗 */}
+      {/* AI 生成題目弹窗 */}
       <Modal
-        title="🤖 AI 生成题目"
+        title="🤖 AI 生成題目"
         open={aiModalOpen}
         onOk={handleAiGenerate}
         onCancel={() => setAiModalOpen(false)}
@@ -486,9 +497,9 @@ const Questions = () => {
         confirmLoading={loading}
       >
         <Form form={aiForm} layout="vertical">
-          <Form.Item name="category" label="类别" rules={[{ required: true, message: '请选择类别' }]}>
-            <Select placeholder="选择类别">
-              {CATEGORIES.map((cat) => (
+          <Form.Item name="category" label="類別" rules={[{ required: true, message: '请選擇類別' }]}>
+            <Select placeholder="選擇類別">
+              {ALL_CATEGORIES.map((cat) => (
                 <Option key={cat.value} value={cat.value}>
                   {cat.label}
                 </Option>
@@ -496,8 +507,8 @@ const Questions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
-            <Select placeholder="选择难度">
+          <Form.Item name="difficulty" label="難度" rules={[{ required: true, message: '请選擇難度' }]}>
+            <Select placeholder="選擇難度">
               {DIFFICULTIES.map((diff) => (
                 <Option key={diff.value} value={diff.value}>
                   {diff.label}
@@ -506,19 +517,19 @@ const Questions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="count" label="生成数量" initialValue={5}>
+          <Form.Item name="count" label="生成數量" initialValue={5}>
             <Select>
               {[1, 3, 5, 10, 15, 20].map((num) => (
                 <Option key={num} value={num}>
-                  {num} 道题目
+                  {num} 道題目
                 </Option>
               ))}
             </Select>
           </Form.Item>
 
-          <Form.Item name="school_code" label="目标学校（可选）">
+          <Form.Item name="school_code" label="目標學校（可選）">
             <Select
-              placeholder="选择学校或不指定"
+              placeholder="選擇學校或不指定"
               allowClear
               loading={loadingSchools}
               showSearch
@@ -532,8 +543,8 @@ const Questions = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item name="topic" label="主题（可选）">
-            <Input placeholder="如: 环境保护, 科技发展" />
+          <Form.Item name="topic" label="主題（可選）">
+            <Input placeholder="如: 环境保护, 科技發展" />
           </Form.Item>
         </Form>
       </Modal>

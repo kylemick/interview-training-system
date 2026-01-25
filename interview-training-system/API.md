@@ -1,8 +1,8 @@
-# API 文档
+# API 文檔
 
 ## 概述
 
-升中面试训练系统提供RESTful API，用于管理训练计划、练习会话、题库、学校档案等功能。所有API均以JSON格式返回数据。
+升中面試訓練係統提供RESTful API，用于管理訓練計劃、練習會話、題庫、學校檔案等功能。所有API均以JSON格式返回數據。
 
 **基础URL**: `http://localhost:3001/api`
 
@@ -28,9 +28,9 @@
 
 ---
 
-## 1. 学校档案 (Schools)
+## 1. 學校檔案 (Schools)
 
-### 1.1 获取所有学校
+### 1.1 获取所有學校
 **GET** `/schools`
 
 **响应示例**:
@@ -42,7 +42,7 @@
       "id": 1,
       "code": "SPCC",
       "name": "St. Paul's Co-educational College",
-      "name_zh": "圣保罗男女中学",
+      "name_zh": "聖保羅男女中學",
       "focus_areas": ["english-oral", "logic-thinking", "science-knowledge"],
       "interview_style": "academic-rigorous",
       "notes": "..."
@@ -51,10 +51,10 @@
 }
 ```
 
-### 1.2 获取单个学校
+### 1.2 获取单个學校
 **GET** `/schools/:code`
 
-### 1.3 创建学校
+### 1.3 創建學校
 **POST** `/schools`
 
 **请求体**:
@@ -62,35 +62,35 @@
 {
   "code": "SPCC",
   "name": "St. Paul's Co-educational College",
-  "name_zh": "圣保罗男女中学",
+  "name_zh": "聖保羅男女中學",
   "focus_areas": ["english-oral", "logic-thinking"],
   "interview_style": "academic-rigorous",
-  "notes": "备注"
+  "notes": "備注"
 }
 ```
 
-### 1.4 更新学校
+### 1.4 更新學校
 **PUT** `/schools/:code`
 
-### 1.5 删除学校
+### 1.5 删除學校
 **DELETE** `/schools/:code`
 
 ---
 
-## 2. 题库管理 (Questions)
+## 2. 題庫管理 (Questions)
 
-### 2.1 获取题目列表
+### 2.1 获取題目列表
 **GET** `/questions?category=&difficulty=&source=`
 
-**查询参数**:
-- `category`: 专项类别（可选）
-- `difficulty`: 难度（可选）
-- `source`: 来源（可选）
+**查询參數**:
+- `category`: 專項類別（可選）
+- `difficulty`: 難度（可選）
+- `source`: 來源（可選）
 
-### 2.2 获取单个题目
+### 2.2 获取单个題目
 **GET** `/questions/:id`
 
-### 2.3 创建题目
+### 2.3 創建題目
 **POST** `/questions`
 
 **请求体**:
@@ -99,19 +99,19 @@
   "category": "english-oral",
   "question_text": "Tell me about your favorite book.",
   "difficulty": "medium",
-  "reference_answer": "参考答案要点",
+  "reference_answer": "參考答案要點",
   "tags": ["reading", "hobbies"],
   "school_code": "SPCC"
 }
 ```
 
-### 2.4 更新题目
+### 2.4 更新題目
 **PUT** `/questions/:id`
 
-### 2.5 删除题目
+### 2.5 删除題目
 **DELETE** `/questions/:id`
 
-### 2.6 获取题库统计
+### 2.6 获取題庫統計
 **GET** `/questions/stats/summary`
 
 **响应示例**:
@@ -139,12 +139,12 @@
 
 ---
 
-## 3. 训练计划 (Plans)
+## 3. 訓練計劃 (Plans)
 
-### 3.1 获取训练计划列表
+### 3.1 获取訓練計劃列表
 **GET** `/plans`
 
-### 3.2 获取单个训练计划
+### 3.2 获取单个訓練計劃
 **GET** `/plans/:id`
 
 **响应示例**:
@@ -177,7 +177,7 @@
 }
 ```
 
-### 3.3 创建训练计划（AI生成）
+### 3.3 創建訓練計劃（AI生成）
 **POST** `/plans`
 
 **请求体**:
@@ -191,7 +191,7 @@
 }
 ```
 
-### 3.4 更新计划状态
+### 3.4 更新計劃狀態
 **PATCH** `/plans/:id/status`
 
 **请求体**:
@@ -201,14 +201,14 @@
 }
 ```
 
-### 3.5 删除训练计划
+### 3.5 删除訓練計劃
 **DELETE** `/plans/:id`
 
 ---
 
-## 4. 练习会话 (Sessions)
+## 4. 練習會話 (Sessions)
 
-### 4.1 创建练习会话
+### 4.1 創建練習會話
 **POST** `/sessions`
 
 **请求体**:
@@ -222,7 +222,7 @@
 }
 ```
 
-### 4.2 获取会话详情
+### 4.2 获取會話详情
 **GET** `/sessions/:id`
 
 ### 4.3 提交答案
@@ -234,16 +234,16 @@
   "answers": [
     {
       "question_id": 1,
-      "answer": "学生的回答内容"
+      "answer": "學生的回答內容"
     }
   ]
 }
 ```
 
-### 4.4 完成会话
+### 4.4 完成會話
 **POST** `/sessions/:id/complete`
 
-### 4.5 获取会话列表
+### 4.5 获取會話列表
 **GET** `/sessions?category=&status=&date_from=&date_to=`
 
 ---
@@ -275,15 +275,15 @@
       "score": 70,
       "comments": "..."
     },
-    "strengths": ["表达流畅", "逻辑清晰"],
-    "weaknesses": ["词汇量需提升", "缺乏具体例子"],
-    "suggestions": ["建议多阅读英文原著"],
-    "school_specific_advice": "针对SPCC的建议..."
+    "strengths": ["表達流畅", "邏輯清晰"],
+    "weaknesses": ["詞汇量需提升", "缺乏具体例子"],
+    "suggestions": ["建議多阅读英文原著"],
+    "school_specific_advice": "針對SPCC的建議..."
   }
 }
 ```
 
-### 5.2 获取会话反馈
+### 5.2 获取會話反馈
 **GET** `/feedback/session/:session_id`
 
 ### 5.3 获取反馈列表
@@ -291,12 +291,12 @@
 
 ---
 
-## 6. 进度追踪 (Progress)
+## 6. 進度追踪 (Progress)
 
-### 6.1 获取进度统计
+### 6.1 获取進度統計
 **GET** `/progress/stats?time_range=week&student_id=`
 
-**时间范围**: `day`, `week`, `month`, `all`
+**時間范围**: `day`, `week`, `month`, `all`
 
 **响应示例**:
 ```json
@@ -320,19 +320,19 @@
 
 ---
 
-## 7. AI 服务 (AI)
+## 7. AI 服務 (AI)
 
-### 7.1 AI 生成学校档案
+### 7.1 AI 生成學校檔案
 **POST** `/ai/generate-school`
 
 **请求体**:
 ```json
 {
-  "schoolName": "圣保罗男女中学"
+  "schoolName": "聖保羅男女中學"
 }
 ```
 
-### 7.2 AI 生成题目
+### 7.2 AI 生成題目
 **POST** `/ai/generate-questions`
 
 **请求体**:
@@ -347,13 +347,13 @@
 }
 ```
 
-### 7.3 AI 分析面试回忆
+### 7.3 AI 分析面試回憶
 **POST** `/ai/extract-interview-memory`
 
 **请求体**:
 ```json
 {
-  "text": "今天去了SPCC面试，遇到了以下问题...",
+  "text": "今天去了SPCC面試，遇到了以下問題...",
   "category": "english-oral",
   "school_code": "SPCC"
 }
@@ -369,28 +369,28 @@
         "question_text": "Tell me about your favorite book.",
         "category": "english-oral",
         "difficulty": "medium",
-        "reference_answer": "参考答案要点",
+        "reference_answer": "參考答案要點",
         "tags": ["reading", "hobbies"],
-        "notes": "学生回答了Harry Potter..."
+        "notes": "學生回答了Harry Potter..."
       }
     ],
-    "summary": "本次面试主要考察英文表达能力..."
+    "summary": "本次面試主要考察英文表達能力..."
   }
 }
 ```
 
-### 7.4 保存面试回忆题目到题库
+### 7.4 保存面試回憶題目到題庫
 **POST** `/ai/save-interview-questions`
 
 **请求体**:
 ```json
 {
   "questions": [...],
-  "source_text": "原始面试回忆文本"
+  "source_text": "原始面試回憶文本"
 }
 ```
 
-### 7.5 测试 API 连接
+### 7.5 测試 API 连接
 **POST** `/ai/test-connection`
 
 **请求体**:
@@ -402,20 +402,20 @@
 
 ---
 
-## 8. 数据管理 (Data)
+## 8. 數據管理 (Data)
 
-### 8.1 导入种子数据
+### 8.1 導入種子數據
 
-#### 8.1.1 导入学校种子数据
+#### 8.1.1 導入學校種子數據
 **POST** `/data/seed-schools`
 
-#### 8.1.2 导入题库种子数据
+#### 8.1.2 導入題庫種子數據
 **POST** `/data/seed-questions`
 
-#### 8.1.3 导入所有种子数据
+#### 8.1.3 導入所有種子數據
 **POST** `/data/seed-all`
 
-### 8.2 获取数据库统计
+### 8.2 获取數據庫統計
 **GET** `/data/stats`
 
 **响应示例**:
@@ -433,12 +433,12 @@
 }
 ```
 
-### 8.3 导出所有数据
+### 8.3 導出所有數據
 **GET** `/data/export`
 
 **响应**: JSON文件下载
 
-### 8.4 导入备份数据
+### 8.4 導入備份數據
 **POST** `/data/import`
 
 **请求体**:
@@ -464,16 +464,16 @@
 }
 ```
 
-**导入选项**:
-- `merge: true` - 合并模式（保留现有数据，跳过重复）
-- `overwrite: true` - 覆盖模式（清空现有数据后导入）
+**導入選項**:
+- `merge: true` - 合并模式（保留现有數據，跳過重复）
+- `overwrite: true` - 覆盖模式（清空现有數據後導入）
 
-### 8.5 清空训练数据
+### 8.5 清空訓練數據
 **DELETE** `/data/clear`
 
 ---
 
-## 9. 系统设置 (Settings)
+## 9. 係統设置 (Settings)
 
 ### 9.1 获取设置
 **GET** `/settings`
@@ -528,54 +528,54 @@
 
 ---
 
-## 专项类别 (Categories)
+## 專項類別 (Categories)
 
-系统支持七大专项类别：
+係統支持七大專項類別：
 
-| 代码 | 中文名称 | 英文名称 |
+| 代碼 | 中文名称 | 英文名称 |
 |------|---------|---------|
-| `english-oral` | 英文口语 | English Oral |
-| `chinese-oral` | 中文表达 | Chinese Expression |
-| `logic-thinking` | 逻辑思维 | Logical Thinking |
-| `current-affairs` | 时事常识 | Current Affairs |
-| `science-knowledge` | 科学常识 | Science Knowledge |
-| `personal-growth` | 个人成长 | Personal Growth |
-| `group-discussion` | 小组讨论 | Group Discussion |
+| `english-oral` | 英文口語 | English Oral |
+| `chinese-oral` | 中文表達 | Chinese Expression |
+| `logic-thinking` | 邏輯思維 | Logical Thinking |
+| `current-affairs` | 時事常識 | Current Affairs |
+| `science-knowledge` | 科學常識 | Science Knowledge |
+| `personal-growth` | 个人成長 | Personal Growth |
+| `group-discussion` | 小組討論 | Group Discussion |
 
-## 难度等级 (Difficulty)
+## 難度等级 (Difficulty)
 
-| 代码 | 中文名称 |
+| 代碼 | 中文名称 |
 |------|---------|
 | `easy` | 简单 |
 | `medium` | 中等 |
-| `hard` | 困难 |
+| `hard` | 困難 |
 
-## 学校代码 (School Codes)
+## 學校代碼 (School Codes)
 
-| 代码 | 学校名称 |
+| 代碼 | 學校名称 |
 |------|---------|
-| `SPCC` | 圣保罗男女中学 (St. Paul's Co-educational College) |
-| `QC` | 皇仁书院 (Queen's College) |
-| `LSC` | 喇沙书院 (La Salle College) |
-| `DBS` | 拔萃男书院 (Diocesan Boys' School) |
-| `DGS` | 拔萃女书院 (Diocesan Girls' School) |
+| `SPCC` | 聖保羅男女中學 (St. Paul's Co-educational College) |
+| `QC` | 皇仁書院 (Queen's College) |
+| `LSC` | 喇沙書院 (La Salle College) |
+| `DBS` | 拔萃男書院 (Diocesan Boys' School) |
+| `DGS` | 拔萃女書院 (Diocesan Girls' School) |
 
-## 错误代码
+## 错误代碼
 
-| HTTP状态码 | 说明 |
+| HTTP狀態碼 | 說明 |
 |-----------|------|
-| 400 | 请求参数错误 |
+| 400 | 请求參數错误 |
 | 401 | 未授权 |
-| 404 | 资源不存在 |
+| 404 | 資源不存在 |
 | 429 | 请求频率超限 |
-| 500 | 服务器内部错误 |
+| 500 | 服務器內部错误 |
 
 ## 使用示例
 
-### 创建训练计划并开始练习
+### 創建訓練計劃并開始練習
 
 ```bash
-# 1. 创建训练计划
+# 1. 創建訓練計劃
 curl -X POST http://localhost:3001/api/plans \
   -H "Content-Type: application/json" \
   -d '{
@@ -586,7 +586,7 @@ curl -X POST http://localhost:3001/api/plans \
     "daily_duration": 30
   }'
 
-# 2. 创建练习会话
+# 2. 創建練習會話
 curl -X POST http://localhost:3001/api/sessions \
   -H "Content-Type: application/json" \
   -d '{
@@ -605,7 +605,7 @@ curl -X POST http://localhost:3001/api/sessions/1/submit \
     ]
   }'
 
-# 4. 完成会话
+# 4. 完成會話
 curl -X POST http://localhost:3001/api/sessions/1/complete
 
 # 5. 生成反馈
@@ -617,20 +617,20 @@ curl -X POST http://localhost:3001/api/feedback/generate \
   }'
 ```
 
-## 注意事项
+## 注意事項
 
-1. **API Key**: 所有AI相关功能需要配置DeepSeek API Key
-2. **本地运行**: 系统设计为本地运行，不支持远程访问
-3. **数据备份**: 建议定期导出数据备份
+1. **API Key**: 所有AI相關功能需要配置DeepSeek API Key
+2. **本地运行**: 係統设計为本地运行，不支持远程访問
+3. **數據備份**: 建議定期導出數據備份
 4. **网络连接**: AI功能需要网络连接
-5. **并发限制**: 本地单用户使用，无并发限制
+5. **并發限制**: 本地单用户使用，无并發限制
 
 ## 更新日志
 
 ### v1.0.0 (2026-01-25)
-- 初始版本发布
+- 初始版本發布
 - 完整的MVP功能
-- 七大专项训练
+- 七大專項訓練
 - AI智能生成和反馈
-- 数据导入导出
-- 面试回忆分析
+- 數據導入導出
+- 面試回憶分析

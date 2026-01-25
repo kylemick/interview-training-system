@@ -1,4 +1,4 @@
-// 专项类别
+// 專項類別
 export type Category =
   | 'english-oral'
   | 'chinese-oral'
@@ -7,14 +7,18 @@ export type Category =
   | 'science-knowledge'
   | 'personal-growth'
   | 'group-discussion'
+  | 'chinese-reading'   // 中文阅读理解
+  | 'english-reading'   // 英文阅读理解
+  | 'mathematics'       // 數學基础
+  | 'science-practice'  // 科學实践
 
-// 难度等级
+// 難度等级
 export type Difficulty = 1 | 2 | 3 | 4 | 5
 
-// 学校代码
+// 學校代碼
 export type SchoolCode = 'SPCC' | 'QC' | 'LSC' | 'DGS' | 'DBS' | string
 
-// 学校特征
+// 學校特征
 export interface SchoolProfile {
   id: string
   schoolCode: string
@@ -27,7 +31,7 @@ export interface SchoolProfile {
   updatedAt: string
 }
 
-// 题目
+// 題目
 export interface Question {
   id: string
   category: Category
@@ -41,7 +45,7 @@ export interface Question {
   updatedAt: string
 }
 
-// 训练计划
+// 訓練計劃
 export interface TrainingPlan {
   id: string
   studentName?: string
@@ -55,7 +59,7 @@ export interface TrainingPlan {
   updatedAt: string
 }
 
-// 每日任务
+// 每日任務
 export interface DailyTask {
   id: string
   planId: string
@@ -66,7 +70,7 @@ export interface DailyTask {
   status: 'pending' | 'in_progress' | 'completed'
 }
 
-// 训练会话
+// 訓練會話
 export interface Session {
   id: string
   planId?: string
@@ -79,7 +83,7 @@ export interface Session {
   status: 'in_progress' | 'completed' | 'paused'
 }
 
-// 问答记录
+// 問答記錄
 export interface QARecord {
   id: string
   sessionId: string
@@ -95,7 +99,7 @@ export interface QARecord {
   createdAt: string
 }
 
-// 会话总结
+// 會話總結
 export interface SessionSummary {
   id: string
   sessionId: string

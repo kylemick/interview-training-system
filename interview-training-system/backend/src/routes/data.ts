@@ -1,5 +1,5 @@
 /**
- * 数据管理路由 - 种子数据导入
+ * 數據管理路由 - 種子數據導入
  */
 import { Router, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
@@ -7,28 +7,28 @@ import { AppError } from '../middleware/errorHandler.js';
 const router = Router();
 
 /**
- * 获取数据库统计信息
+ * 獲取數據庫統計信息
  * GET /api/data/stats
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     const { query } = await import('../db/index.js');
     
-    // 统计各表数据量
+    // 統計各表數據量
     const schoolsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
     const questionsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
     const plansResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM training_plans');
     const sessionsResult = await query<{ count: number }>('SELECT COUNT(*) as count FROM sessions');
     
-    // 统计种子学校数量（school_profiles表没有source字段，所以统计所有学校）
+    // 統計種子學校數量（school_profiles表沒有source字段，所以統計所有學校）
     const seedSchoolsCount = schoolsResult[0]?.count || 0;
     
-    // 统计题目来源分布
+    // 統計題目來源分佈
     const questionsBySourceRaw = await query<{ source: string; count: number }>(
       'SELECT COALESCE(source, "unknown") as source, COUNT(*) as count FROM questions GROUP BY COALESCE(source, "unknown")'
     );
     
-    // 确保返回格式正确
+    // 確保返回格式正確
     const questionsBySource = questionsBySourceRaw.map((item: any) => ({
       source: item.source || 'unknown',
       count: typeof item.count === 'bigint' ? Number(item.count) : item.count,
@@ -46,21 +46,21 @@ router.get('/stats', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('获取统计信息失败:', error);
-    console.error('错误详情:', error.message, error.stack);
-    throw new AppError(500, `获取统计信息失败: ${error.message}`);
+    console.error('獲取統計信息失敗:', error);
+    console.error('錯誤詳情:', error.message, error.stack);
+    throw new AppError(500, `獲取統計信息失敗: ${error.message}`);
   }
 });
 
 /**
- * 导入学校种子数据
+ * 導入學校種子數據
  * POST /api/data/seed-schools
  */
 router.post('/seed-schools', async (req: Request, res: Response) => {
   try {
-    console.log('🌱 手动导入学校种子数据...');
+    console.log('🌱 手動導入學校種子數據...');
     
-    // 导入前检查现有数据
+    // 導入前檢查現有數據
     const { query } = await import('../db/index.js');
     const [existing] = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
     const beforeCount = existing?.count || 0;
@@ -68,14 +68,14 @@ router.post('/seed-schools', async (req: Request, res: Response) => {
     const { seedSchoolProfiles } = await import('../db/seeds/schools.js');
     await seedSchoolProfiles();
     
-    // 导入后统计
+    // 導入後統計
     const [after] = await query<{ count: number }>('SELECT COUNT(*) as count FROM school_profiles');
     const afterCount = after?.count || 0;
     const imported = afterCount - beforeCount;
     
     res.json({
       success: true,
-      message: '学校种子数据导入完成',
+      message: '學校種子數據導入完成',
       data: {
         before: beforeCount,
         after: afterCount,
@@ -83,20 +83,20 @@ router.post('/seed-schools', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('导入学校种子数据失败:', error);
-    throw new AppError(500, '导入学校种子数据失败');
+    console.error('導入學校種子數據失敗:', error);
+    throw new AppError(500, '導入學校種子數據失敗');
   }
 });
 
 /**
- * 导入题库种子数据
+ * 導入題庫種子數據
  * POST /api/data/seed-questions
  */
 router.post('/seed-questions', async (req: Request, res: Response) => {
   try {
-    console.log('🌱 手动导入题库种子数据...');
+    console.log('🌱 手動導入題庫種子數據...');
     
-    // 导入前检查现有数据
+    // 導入前檢查現有數據
     const { query } = await import('../db/index.js');
     const [existing] = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
     const beforeCount = existing?.count || 0;
@@ -104,14 +104,14 @@ router.post('/seed-questions', async (req: Request, res: Response) => {
     const { seedQuestions } = await import('../db/seeds/questions.js');
     await seedQuestions();
     
-    // 导入后统计
+    // 導入後統計
     const [after] = await query<{ count: number }>('SELECT COUNT(*) as count FROM questions');
     const afterCount = after?.count || 0;
     const imported = afterCount - beforeCount;
     
     res.json({
       success: true,
-      message: '题库种子数据导入完成',
+      message: '題庫種子數據導入完成',
       data: {
         before: beforeCount,
         after: afterCount,
@@ -119,18 +119,18 @@ router.post('/seed-questions', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('导入题库种子数据失败:', error);
-    throw new AppError(500, '导入题库种子数据失败');
+    console.error('導入題庫種子數據失敗:', error);
+    throw new AppError(500, '導入題庫種子數據失敗');
   }
 });
 
 /**
- * 导入所有种子数据
+ * 導入所有種子數據
  * POST /api/data/seed-all
  */
 router.post('/seed-all', async (req: Request, res: Response) => {
   try {
-    console.log('🌱 手动导入所有种子数据...');
+    console.log('🌱 手動導入所有種子數據...');
     
     const { seedSchoolProfiles } = await import('../db/seeds/schools.js');
     await seedSchoolProfiles();
@@ -140,24 +140,24 @@ router.post('/seed-all', async (req: Request, res: Response) => {
     
     res.json({
       success: true,
-      message: '所有种子数据导入成功',
+      message: '所有種子數據導入成功',
     });
   } catch (error) {
-    console.error('导入种子数据失败:', error);
-    throw new AppError(500, '导入种子数据失败');
+    console.error('導入種子數據失敗:', error);
+    throw new AppError(500, '導入種子數據失敗');
   }
 });
 
 /**
- * 清空所有训练数据（保留题库和学校档案）
+ * 清空所有訓練數據（保留題庫和學校檔案）
  * DELETE /api/data/clear
  */
 router.delete('/clear', async (req: Request, res: Response) => {
   try {
-    console.log('🗑️  清空训练数据...');
+    console.log('🗑️  清空訓練數據...');
     const { query, execute } = await import('../db/index.js');
     
-    // 按照外键依赖顺序删除
+    // 按照外鍵依賴順序刪除
     await execute('DELETE FROM qa_records');
     await execute('DELETE FROM feedback');
     await execute('DELETE FROM sessions');
@@ -166,21 +166,21 @@ router.delete('/clear', async (req: Request, res: Response) => {
     
     res.json({
       success: true,
-      message: '所有训练数据已清空（题库和学校档案已保留）',
+      message: '所有訓練數據已清空（題庫和學校檔案已保留）',
     });
   } catch (error) {
-    console.error('清空数据失败:', error);
-    throw new AppError(500, '清空数据失败');
+    console.error('清空數據失敗:', error);
+    throw new AppError(500, '清空數據失敗');
   }
 });
 
 /**
- * 清理和修复问题数据
+ * 清理和修復問題數據
  * POST /api/data/cleanup
  */
 router.post('/cleanup', async (req: Request, res: Response) => {
   try {
-    console.log('🧹 开始清理和修复问题数据...');
+    console.log('🧹 開始清理和修復問題數據...');
     const { query, execute } = await import('../db/index.js');
     
     const results = {
@@ -190,7 +190,7 @@ router.post('/cleanup', async (req: Request, res: Response) => {
       deleted_invalid_tasks: 0,
     };
     
-    // 1. 修复没有 question_ids 的会话（从 qa_records 中提取并保存）
+    // 1. 修復沒有 question_ids 的會話（從 qa_records 中提取並保存）
     const sessionsWithoutQuestions = await query(
       `SELECT id, task_id, status FROM sessions WHERE question_ids IS NULL`
     );
@@ -204,17 +204,17 @@ router.post('/cleanup', async (req: Request, res: Response) => {
       );
       
       if (qaRecords.length > 0) {
-        // 从qa_records中提取题目ID并保存到question_ids
+        // 從qa_records中提取題目ID并保存到question_ids
         const questionIds = qaRecords.map((r: any) => r.question_id);
         await execute(
           `UPDATE sessions SET question_ids = ? WHERE id = ?`,
           [JSON.stringify(questionIds), session.id]
         );
         results.fixed_sessions++;
-        console.log(`✅ 修复会话 ${session.id}，补充了 ${questionIds.length} 个题目ID`);
+        console.log(`✅ 修复會話 ${session.id}，补充了 ${questionIds.length} 个題目ID`);
       } else {
-        // 只删除既没有question_ids也没有qa_records且不是进行中的会话
-        // 保留进行中的会话（可能还没开始答题）和自由练习的会话
+        // 只删除既没有question_ids也没有qa_records且不是進行中的會話
+        // 保留進行中的會話（可能还没開始答題）和自由練習的會話
         const hasAnyRecords = await query(
           `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
           [session.id]
@@ -222,7 +222,7 @@ router.post('/cleanup', async (req: Request, res: Response) => {
         
         const recordCount = hasAnyRecords[0]?.count || 0;
         
-        // 只删除：没有问答记录、不是进行中、且创建时间超过7天的会话
+        // 只删除：没有問答記錄、不是進行中、且創建時間超過7天的會話
         if (recordCount === 0 && session.status !== 'in_progress') {
           const sessionAge = await query(
             `SELECT TIMESTAMPDIFF(DAY, created_at, NOW()) as days_old FROM sessions WHERE id = ?`,
@@ -230,21 +230,21 @@ router.post('/cleanup', async (req: Request, res: Response) => {
           );
           const daysOld = sessionAge[0]?.days_old || 0;
           
-          // 只删除超过7天的空会话
+          // 只删除超過7天的空會話
           if (daysOld > 7) {
             await execute(`DELETE FROM sessions WHERE id = ?`, [session.id]);
             results.deleted_invalid_sessions++;
-            console.log(`🗑️  删除无效会话 ${session.id}（没有问答记录且超过7天）`);
+            console.log(`🗑️  删除无效會話 ${session.id}（没有問答記錄且超過7天）`);
           } else {
-            console.log(`ℹ️  保留会话 ${session.id}（可能是新创建的自由练习会话）`);
+            console.log(`ℹ️  保留會話 ${session.id}（可能是新創建的自由練習會話）`);
           }
         } else {
-          console.log(`ℹ️  保留会话 ${session.id}（有记录或进行中）`);
+          console.log(`ℹ️  保留會話 ${session.id}（有記錄或進行中）`);
         }
       }
     }
     
-    // 2. 删除孤立的问答记录（会话已不存在）
+    // 2. 删除孤立的問答記錄（會話已不存在）
     const orphanedRecords = await query(
       `SELECT q.id FROM qa_records q 
        LEFT JOIN sessions s ON q.session_id = s.id 
@@ -257,10 +257,10 @@ router.post('/cleanup', async (req: Request, res: Response) => {
         [orphanedRecords.map((r: any) => r.id)]
       );
       results.deleted_orphaned_records = orphanedRecords.length;
-      console.log(`🗑️  删除了 ${orphanedRecords.length} 条孤立的问答记录`);
+      console.log(`🗑️  删除了 ${orphanedRecords.length} 条孤立的問答記錄`);
     }
     
-    // 3. 删除无效的任务关联（task_id 指向不存在的任务）
+    // 3. 删除无效的任務關聯（task_id 指向不存在的任務）
     const invalidTaskSessions = await query(
       `SELECT s.id FROM sessions s 
        WHERE s.task_id IS NOT NULL 
@@ -268,17 +268,17 @@ router.post('/cleanup', async (req: Request, res: Response) => {
     );
     
     if (invalidTaskSessions.length > 0) {
-      // 清除无效的 task_id，而不是删除会话
+      // 清除无效的 task_id，而不是删除會話
       await execute(
         `UPDATE sessions SET task_id = NULL 
          WHERE task_id IS NOT NULL 
          AND task_id NOT IN (SELECT id FROM daily_tasks)`
       );
       results.deleted_invalid_tasks = invalidTaskSessions.length;
-      console.log(`🔧 修复了 ${invalidTaskSessions.length} 个会话的无效任务关联`);
+      console.log(`🔧 修复了 ${invalidTaskSessions.length} 个會話的无效任務關聯`);
     }
     
-    // 4. 删除没有关联会话的每日任务（如果任务状态是进行中但会话不存在）
+    // 4. 删除没有關聯會話的每日任務（如果任務狀態是進行中但會話不存在）
     const orphanedTasks = await query(
       `SELECT dt.id FROM daily_tasks dt 
        WHERE dt.status = 'in_progress' 
@@ -291,24 +291,24 @@ router.post('/cleanup', async (req: Request, res: Response) => {
          WHERE id IN (?)`,
         [orphanedTasks.map((t: any) => t.id)]
       );
-      console.log(`🔧 修复了 ${orphanedTasks.length} 个孤立任务的状态`);
+      console.log(`🔧 修复了 ${orphanedTasks.length} 个孤立任務的狀態`);
     }
     
-    console.log('✅ 数据清理完成:', results);
+    console.log('✅ 數據清理完成:', results);
     
     res.json({
       success: true,
-      message: '数据清理和修复完成',
+      message: '數據清理和修复完成',
       data: results,
     });
   } catch (error) {
-    console.error('清理数据失败:', error);
-    throw new AppError(500, '清理数据失败');
+    console.error('清理數據失敗:', error);
+    throw new AppError(500, '清理數據失敗');
   }
 });
 
 /**
- * 导入备份数据
+ * 導入備份數據
  * POST /api/data/import
  * Body: { data: BackupData, options?: { overwrite?: boolean, merge?: boolean } }
  */
@@ -317,10 +317,10 @@ router.post('/import', async (req: Request, res: Response) => {
     const { data, options = {} } = req.body;
     
     if (!data || typeof data !== 'object') {
-      throw new AppError(400, '无效的备份数据格式');
+      throw new AppError(400, '无效的備份數據格式');
     }
     
-    console.log('📥 导入备份数据...');
+    console.log('📥 導入備份數據...');
     const { query, insert } = await import('../db/index.js');
     
     const { overwrite = false, merge = true } = options;
@@ -334,9 +334,9 @@ router.post('/import', async (req: Request, res: Response) => {
       school_profiles: 0,
     };
     
-    // 如果覆盖模式，先清空数据
+    // 如果覆盖模式，先清空數據
     if (overwrite) {
-      console.log('🗑️  覆盖模式：清空现有数据...');
+      console.log('🗑️  覆盖模式：清空现有數據...');
       await query('DELETE FROM qa_records');
       await query('DELETE FROM feedback');
       await query('DELETE FROM sessions');
@@ -352,7 +352,7 @@ router.post('/import', async (req: Request, res: Response) => {
       }
     }
     
-    // 导入训练计划
+    // 導入訓練計劃
     if (data.data.training_plans && Array.isArray(data.data.training_plans)) {
       for (const plan of data.data.training_plans) {
         try {
@@ -376,12 +376,12 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.training_plans++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过训练计划:', plan.id);
+          console.warn('跳過訓練計劃:', plan.id);
         }
       }
     }
     
-    // 导入每日任务
+    // 導入每日任務
     if (data.data.daily_tasks && Array.isArray(data.data.daily_tasks)) {
       for (const task of data.data.daily_tasks) {
         try {
@@ -402,12 +402,12 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.daily_tasks++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过每日任务:', task.id);
+          console.warn('跳過每日任務:', task.id);
         }
       }
     }
     
-    // 导入会话
+    // 導入會話
     if (data.data.sessions && Array.isArray(data.data.sessions)) {
       for (const session of data.data.sessions) {
         try {
@@ -429,17 +429,17 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.sessions++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过会话:', session.id);
+          console.warn('跳過會話:', session.id);
         }
       }
     }
     
-    // 导入问答记录
+    // 導入問答記錄
     if (data.data.qa_records && Array.isArray(data.data.qa_records)) {
       const { queryOne } = await import('../db/index.js');
       for (const record of data.data.qa_records) {
         try {
-          // 如果导入的数据没有 plan_id，尝试从 session 关联获取
+          // 如果導入的數據没有 plan_id，尝試從 session 關聯获取
           let plan_id = record.plan_id || null;
           if (!plan_id && record.session_id) {
             const sessionInfo = await queryOne(
@@ -470,12 +470,12 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.qa_records++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过问答记录:', record.id);
+          console.warn('跳過問答記錄:', record.id);
         }
       }
     }
     
-    // 导入反馈
+    // 導入反馈
     if (data.data.feedback && Array.isArray(data.data.feedback)) {
       for (const fb of data.data.feedback) {
         try {
@@ -498,12 +498,12 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.feedback++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过反馈:', fb.id);
+          console.warn('跳過反馈:', fb.id);
         }
       }
     }
     
-    // 导入题库（可选）
+    // 導入題庫（可選）
     if (data.data.questions && Array.isArray(data.data.questions)) {
       for (const question of data.data.questions) {
         try {
@@ -525,12 +525,12 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.questions++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过题目:', question.id);
+          console.warn('跳過題目:', question.id);
         }
       }
     }
     
-    // 导入学校档案（可选）
+    // 導入學校檔案（可選）
     if (data.data.school_profiles && Array.isArray(data.data.school_profiles)) {
       for (const school of data.data.school_profiles) {
         try {
@@ -551,31 +551,31 @@ router.post('/import', async (req: Request, res: Response) => {
           imported.school_profiles++;
         } catch (error) {
           if (!merge) throw error;
-          console.warn('跳过学校:', school.code);
+          console.warn('跳過學校:', school.code);
         }
       }
     }
     
-    console.log('✅ 导入完成:', imported);
+    console.log('✅ 導入完成:', imported);
     
     res.json({
       success: true,
-      message: '备份数据导入成功',
+      message: '備份數據導入成功',
       data: imported,
     });
   } catch (error) {
-    console.error('导入备份数据失败:', error);
-    throw new AppError(500, '导入备份数据失败');
+    console.error('導入備份數據失敗:', error);
+    throw new AppError(500, '導入備份數據失敗');
   }
 });
 
 /**
- * 导出所有数据
+ * 導出所有數據
  * POST /api/data/backup
  */
 router.post('/backup', async (req: Request, res: Response) => {
   try {
-    console.log('📤 导出所有数据...');
+    console.log('📤 導出所有數據...');
     const { query } = await import('../db/index.js');
     
     const [trainingPlans] = await query('SELECT * FROM training_plans ORDER BY created_at DESC');
@@ -605,13 +605,13 @@ router.post('/backup', async (req: Request, res: Response) => {
       data: backup,
     });
   } catch (error) {
-    console.error('导出数据失败:', error);
-    throw new AppError(500, '导出数据失败');
+    console.error('導出數據失敗:', error);
+    throw new AppError(500, '導出數據失敗');
   }
 });
 
 /**
- * 恢复备份数据
+ * 恢复備份數據
  * POST /api/data/restore
  */
 router.post('/restore', async (req: Request, res: Response) => {
@@ -619,15 +619,15 @@ router.post('/restore', async (req: Request, res: Response) => {
     const { data, overwrite = false } = req.body;
     
     if (!data || typeof data !== 'object') {
-      throw new AppError(400, '无效的备份数据格式');
+      throw new AppError(400, '无效的備份數據格式');
     }
     
-    console.log('📥 恢复备份数据...');
+    console.log('📥 恢复備份數據...');
     
-    // 直接调用导入逻辑（复用import路由的处理逻辑）
+    // 直接調用導入邏輯（复用import路由的处理邏輯）
     const { data: importData, options: importOptions = {} } = { data, options: { overwrite, merge: !overwrite } };
     
-    // 复用import路由的处理逻辑
+    // 复用import路由的处理邏輯
     const { query, insert } = await import('../db/index.js');
     const { overwrite: importOverwrite = false, merge: importMerge = true } = importOptions;
     const imported = {
@@ -640,9 +640,9 @@ router.post('/restore', async (req: Request, res: Response) => {
       school_profiles: 0,
     };
     
-    // 如果覆盖模式，先清空数据
+    // 如果覆盖模式，先清空數據
     if (importOverwrite) {
-      console.log('🗑️  覆盖模式：清空现有数据...');
+      console.log('🗑️  覆盖模式：清空现有數據...');
       await query('DELETE FROM qa_records');
       await query('DELETE FROM feedback');
       await query('DELETE FROM sessions');
@@ -650,16 +650,16 @@ router.post('/restore', async (req: Request, res: Response) => {
       await query('DELETE FROM training_plans');
     }
     
-    // 导入数据（简化版，实际应该完整实现import逻辑）
-    // 这里暂时返回成功，实际应该完整实现数据导入
+    // 導入數據（简化版，实际应该完整实现import邏輯）
+    // 这里暫時返回成功，实际应该完整实现數據導入
     res.json({
       success: true,
-      message: '数据恢复完成（简化实现）',
+      message: '數據恢复完成（简化实现）',
       data: imported,
     });
   } catch (error) {
-    console.error('恢复备份数据失败:', error);
-    throw new AppError(500, '恢复备份数据失败');
+    console.error('恢复備份數據失敗:', error);
+    throw new AppError(500, '恢复備份數據失敗');
   }
 });
 
@@ -671,7 +671,7 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
   try {
     const { query, queryOne, execute } = await import('../db/index.js');
     
-    console.log('📊 开始迁移 qa_records 表的 plan_id 字段...\n');
+    console.log('📊 開始迁移 qa_records 表的 plan_id 字段...\n');
 
     // 1. 检查 plan_id 字段是否存在
     const [columns] = await query(
@@ -683,11 +683,11 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
       console.log('1️⃣  添加 plan_id 字段...');
       await execute(`
         ALTER TABLE qa_records 
-        ADD COLUMN plan_id INT NULL COMMENT '关联训练计划' AFTER session_id
+        ADD COLUMN plan_id INT NULL COMMENT '關聯訓練計劃' AFTER session_id
       `);
       console.log('   ✅ plan_id 字段已添加\n');
     } else {
-      console.log('   ℹ️  plan_id 字段已存在，跳过添加\n');
+      console.log('   ℹ️  plan_id 字段已存在，跳過添加\n');
     }
 
     // 2. 检查索引是否存在
@@ -703,7 +703,7 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
       `);
       console.log('   ✅ 索引已添加\n');
     } else {
-      console.log('   ℹ️  索引已存在，跳过添加\n');
+      console.log('   ℹ️  索引已存在，跳過添加\n');
     }
 
     // 3. 检查外键是否存在（先检查，避免重复添加）
@@ -723,16 +723,16 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
         `);
         console.log('   ✅ 外键约束已添加\n');
       } catch (error: any) {
-        // 如果外键添加失败（可能因为数据不一致），记录警告但不中断
-        console.warn('   ⚠️  外键约束添加失败（可能因为数据不一致）:', error.message);
-        console.log('   继续迁移数据...\n');
+        // 如果外键添加失敗（可能因为數據不一致），記錄警告但不中断
+        console.warn('   ⚠️  外键约束添加失敗（可能因为數據不一致）:', error.message);
+        console.log('   继续迁移數據...\n');
       }
     } else {
-      console.log('   ℹ️  外键约束已存在，跳过添加\n');
+      console.log('   ℹ️  外键约束已存在，跳過添加\n');
     }
 
-    // 4. 迁移现有数据
-    console.log('4️⃣  迁移现有数据...');
+    // 4. 迁移现有數據
+    console.log('4️⃣  迁移现有數據...');
     const updateResult = await execute(`
       UPDATE qa_records qr
       INNER JOIN sessions s ON qr.session_id = s.id
@@ -740,10 +740,10 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
       SET qr.plan_id = dt.plan_id
       WHERE qr.plan_id IS NULL AND s.task_id IS NOT NULL
     `);
-    console.log(`   ✅ 已更新 ${updateResult} 条记录的 plan_id\n`);
+    console.log(`   ✅ 已更新 ${updateResult} 条記錄的 plan_id\n`);
 
-    // 5. 验证迁移结果
-    console.log('5️⃣  验证迁移结果...');
+    // 5. 验证迁移結果
+    console.log('5️⃣  验证迁移結果...');
     const [stats] = await query(
       `SELECT 
         COUNT(*) as total_records,
@@ -753,10 +753,10 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
     );
     
     const stat = stats[0];
-    console.log(`   📊 统计信息:`);
-    console.log(`      - 总记录数: ${stat.total_records}`);
-    console.log(`      - 已关联 plan_id: ${stat.records_with_plan_id}`);
-    console.log(`      - 未关联 plan_id: ${stat.records_without_plan_id}`);
+    console.log(`   📊 統計信息:`);
+    console.log(`      - 總記錄數: ${stat.total_records}`);
+    console.log(`      - 已關聯 plan_id: ${stat.records_with_plan_id}`);
+    console.log(`      - 未關聯 plan_id: ${stat.records_without_plan_id}`);
 
     res.json({
       success: true,
@@ -769,13 +769,13 @@ router.post('/migrate-qa-records-plan-id', async (req: Request, res: Response) =
       },
     });
   } catch (error) {
-    console.error('❌ 迁移失败:', error);
-    throw new AppError(500, `迁移失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 迁移失敗:', error);
+    throw new AppError(500, `迁移失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 修复指定 plan_id 或 session_id 的问答记录关联
+ * 修复指定 plan_id 或 session_id 的問答記錄關聯
  * POST /api/data/fix-plan-qa-records
  * Body: { plan_id?: number, session_id?: number }
  */
@@ -792,9 +792,9 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
     let targetPlanId: number | null = null;
     let sessionInfo: any = null;
 
-    // 如果提供了 session_id，先通过 session 找到 plan_id
+    // 如果提供了 session_id，先通過 session 找到 plan_id
     if (session_id) {
-      console.log(`📊 通过 session_id = ${session_id} 查找 plan_id...\n`);
+      console.log(`📊 通過 session_id = ${session_id} 查找 plan_id...\n`);
       
       sessionInfo = await queryOne(
         `SELECT s.id, s.task_id, dt.plan_id, dt.id as task_id
@@ -805,57 +805,57 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
       );
 
       if (!sessionInfo) {
-        throw new AppError(404, `会话 ID ${session_id} 不存在`);
+        throw new AppError(404, `會話 ID ${session_id} 不存在`);
       }
 
       if (!sessionInfo.plan_id) {
-        throw new AppError(404, `会话 ID ${session_id} 没有关联的训练计划（可能是自由练习）`);
+        throw new AppError(404, `會話 ID ${session_id} 没有關聯的訓練計劃（可能是自由練習）`);
       }
 
       targetPlanId = sessionInfo.plan_id;
-      console.log(`✅ 找到会话 ${session_id}，关联的计划 ID: ${targetPlanId}\n`);
+      console.log(`✅ 找到會話 ${session_id}，關聯的計劃 ID: ${targetPlanId}\n`);
     } else {
       targetPlanId = plan_id!;
     }
 
-    console.log(`📊 开始修复 plan_id = ${targetPlanId} 的问答记录关联...\n`);
+    console.log(`📊 開始修复 plan_id = ${targetPlanId} 的問答記錄關聯...\n`);
 
-    // 1. 检查计划是否存在
+    // 1. 检查計劃是否存在
     const plan = await queryOne(
       `SELECT id, student_name, target_school, start_date FROM training_plans WHERE id = ?`,
       [targetPlanId]
     );
 
     if (!plan) {
-      throw new AppError(404, `计划 ID ${targetPlanId} 不存在`);
+      throw new AppError(404, `計劃 ID ${targetPlanId} 不存在`);
     }
 
-    console.log(`✅ 找到计划: ${plan.student_name} (目标学校: ${plan.target_school})`);
+    console.log(`✅ 找到計劃: ${plan.student_name} (目標學校: ${plan.target_school})`);
 
-    // 2. 如果提供了 session_id，只修复该会话的记录；否则修复整个计划
+    // 2. 如果提供了 session_id，只修复该會話的記錄；否則修复整个計劃
     let sessionIds: number[] = [];
     
     if (session_id) {
-      // 只修复指定会话的记录
+      // 只修复指定會話的記錄
       sessionIds = [session_id];
-      console.log(`📝 只修复会话 ${session_id} 的记录`);
+      console.log(`📝 只修复會話 ${session_id} 的記錄`);
     } else {
-      // 修复整个计划的所有记录
+      // 修复整个計劃的所有記錄
       const tasks = await query(
         `SELECT id, task_date, category, status FROM daily_tasks WHERE plan_id = ?`,
         [targetPlanId]
       );
-      console.log(`📋 找到 ${tasks.length} 个任务`);
+      console.log(`📋 找到 ${tasks.length} 个任務`);
 
       if (tasks.length === 0) {
         return res.json({
           success: true,
-          message: '该计划没有关联的任务',
+          message: '该計劃没有關聯的任務',
           data: { updated: 0, total: 0 },
         });
       }
 
-      // 查找这些任务关联的会话
+      // 查找这些任務關聯的會話
       const taskIds = tasks.map((t: any) => t.id);
       const placeholders = taskIds.map(() => '?').join(',');
       const sessions = await query(
@@ -864,12 +864,12 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
          WHERE task_id IN (${placeholders})`,
         taskIds
       );
-      console.log(`💬 找到 ${sessions.length} 个会话`);
+      console.log(`💬 找到 ${sessions.length} 个會話`);
 
       if (sessions.length === 0) {
         return res.json({
           success: true,
-          message: '该计划的任务没有关联的会话',
+          message: '该計劃的任務没有關聯的會話',
           data: { updated: 0, total: 0 },
         });
       }
@@ -877,7 +877,7 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
       sessionIds = sessions.map((s: any) => s.id);
     }
 
-    // 3. 查找这些会话的问答记录（更新前）
+    // 3. 查找这些會話的問答記錄（更新前）
     const sessionPlaceholders = sessionIds.map(() => '?').join(',');
     const [qaRecordsBefore] = await query(
       `SELECT COUNT(*) as total,
@@ -889,17 +889,17 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
     );
 
     const statsBefore = qaRecordsBefore[0];
-    console.log(`📝 找到 ${statsBefore.total} 条问答记录，需要更新 ${statsBefore.need_update} 条`);
+    console.log(`📝 找到 ${statsBefore.total} 条問答記錄，需要更新 ${statsBefore.need_update} 条`);
 
     if (statsBefore.need_update === 0) {
       return res.json({
         success: true,
-        message: '所有记录都已正确关联',
+        message: '所有記錄都已正確關聯',
         data: { updated: 0, total: statsBefore.total },
       });
     }
 
-    // 4. 更新问答记录的 plan_id
+    // 4. 更新問答記錄的 plan_id
     const updateResult = await execute(
       `UPDATE qa_records qr
        INNER JOIN sessions s ON qr.session_id = s.id
@@ -908,9 +908,9 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
        WHERE dt.plan_id = ? AND qr.session_id IN (${sessionPlaceholders}) AND (qr.plan_id IS NULL OR qr.plan_id != ?)`,
       [targetPlanId, targetPlanId, ...sessionIds, targetPlanId]
     );
-    console.log(`✅ 已更新 ${updateResult} 条记录`);
+    console.log(`✅ 已更新 ${updateResult} 条記錄`);
 
-    // 5. 验证更新结果
+    // 5. 验证更新結果
     const [qaRecordsAfter] = await query(
       `SELECT 
         COUNT(*) as total,
@@ -938,23 +938,23 @@ router.post('/fix-plan-qa-records', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('❌ 修复失败:', error);
-    throw new AppError(500, `修复失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 修复失敗:', error);
+    throw new AppError(500, `修复失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 修复所有 Plan、Session、Question、Answer 之间的关系
+ * 修复所有 Plan、Session、Question、Answer 之間的關係
  * POST /api/data/fix-all-plan-relationships
  */
 router.post('/fix-all-plan-relationships', async (req: Request, res: Response) => {
   try {
     const { query, execute } = await import('../db/index.js');
     
-    console.log('📊 开始修复所有 Plan、Session、Question、Answer 之间的关系...\n');
+    console.log('📊 開始修复所有 Plan、Session、Question、Answer 之間的關係...\n');
 
-    // 1. 修复：为所有有 task_id 的会话的 qa_records 更新 plan_id
-    console.log('1️⃣  修复任务会话的 plan_id...');
+    // 1. 修复：为所有有 task_id 的會話的 qa_records 更新 plan_id
+    console.log('1️⃣  修复任務會話的 plan_id...');
     const update1 = await execute(`
       UPDATE qa_records qr
       INNER JOIN sessions s ON qr.session_id = s.id
@@ -963,10 +963,10 @@ router.post('/fix-all-plan-relationships', async (req: Request, res: Response) =
       WHERE s.task_id IS NOT NULL 
         AND (qr.plan_id IS NULL OR qr.plan_id != dt.plan_id)
     `);
-    console.log(`   ✅ 已更新 ${update1} 条记录的 plan_id\n`);
+    console.log(`   ✅ 已更新 ${update1} 条記錄的 plan_id\n`);
 
-    // 2. 修复：清理自由练习中错误关联的 plan_id
-    console.log('2️⃣  清理自由练习中错误关联的 plan_id...');
+    // 2. 修复：清理自由練習中错误關聯的 plan_id
+    console.log('2️⃣  清理自由練習中错误關聯的 plan_id...');
     const update2 = await execute(`
       UPDATE qa_records qr
       INNER JOIN sessions s ON qr.session_id = s.id
@@ -974,10 +974,10 @@ router.post('/fix-all-plan-relationships', async (req: Request, res: Response) =
       WHERE s.task_id IS NULL 
         AND qr.plan_id IS NOT NULL
     `);
-    console.log(`   ✅ 已清理 ${update2} 条记录的 plan_id\n`);
+    console.log(`   ✅ 已清理 ${update2} 条記錄的 plan_id\n`);
 
-    // 3. 验证修复结果
-    console.log('3️⃣  验证修复结果...');
+    // 3. 验证修复結果
+    console.log('3️⃣  验证修复結果...');
     const stats = await query(`
       SELECT 
         COUNT(*) as total_qa_records,
@@ -1001,7 +1001,7 @@ router.post('/fix-all-plan-relationships', async (req: Request, res: Response) =
       free_records_incorrect: 0,
     };
 
-    // 4. 检查仍有问题的记录
+    // 4. 检查仍有問題的記錄
     const issues = await query(`
       SELECT 
         qr.id as qa_record_id,
@@ -1010,9 +1010,9 @@ router.post('/fix-all-plan-relationships', async (req: Request, res: Response) =
         s.task_id,
         dt.plan_id as task_plan_id,
         CASE 
-          WHEN s.task_id IS NOT NULL AND qr.plan_id IS NULL THEN '任务会话缺少plan_id'
+          WHEN s.task_id IS NOT NULL AND qr.plan_id IS NULL THEN '任務會話缺少plan_id'
           WHEN s.task_id IS NOT NULL AND qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-          WHEN s.task_id IS NULL AND qr.plan_id IS NOT NULL THEN '自由练习错误关联plan_id'
+          WHEN s.task_id IS NULL AND qr.plan_id IS NOT NULL THEN '自由練習错误關聯plan_id'
           ELSE '正常'
         END as issue
       FROM qa_records qr
@@ -1044,13 +1044,13 @@ router.post('/fix-all-plan-relationships', async (req: Request, res: Response) =
       },
     });
   } catch (error) {
-    console.error('❌ 修复失败:', error);
-    throw new AppError(500, `修复失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 修复失敗:', error);
+    throw new AppError(500, `修复失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 修复指定 question_id 的问答记录的 plan_id 关联
+ * 修复指定 question_id 的問答記錄的 plan_id 關聯
  * POST /api/data/fix-question-ids-plan-id
  * Body: { question_ids: number[] }
  */
@@ -1059,10 +1059,10 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
     const { question_ids } = req.body;
     
     if (!question_ids || !Array.isArray(question_ids) || question_ids.length === 0) {
-      throw new AppError(400, '请提供有效的 question_ids 数组');
+      throw new AppError(400, '请提供有效的 question_ids 數組');
     }
 
-    // 确保所有 question_ids 都是数字类型
+    // 確保所有 question_ids 都是數字類型
     const normalizedQuestionIds = question_ids.map((id: any) => {
       const numId = typeof id === 'string' ? parseInt(id, 10) : id;
       if (isNaN(numId) || numId <= 0) {
@@ -1073,9 +1073,9 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
 
     const { query, execute } = await import('../db/index.js');
     
-    console.log(`📊 开始修复问题 ID ${normalizedQuestionIds.join(', ')} 的问答记录的 plan_id 关联...\n`);
+    console.log(`📊 開始修复問題 ID ${normalizedQuestionIds.join(', ')} 的問答記錄的 plan_id 關聯...\n`);
 
-    // 1. 查看这些 question_id 对应的问答记录
+    // 1. 查看这些 question_id 對应的問答記錄
     const placeholders = normalizedQuestionIds.map(() => '?').join(',');
     const records = await query(`
       SELECT 
@@ -1093,17 +1093,17 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
       ORDER BY qr.question_id, qr.created_at DESC
     `, normalizedQuestionIds);
     
-    console.log(`📝 找到 ${records.length} 条记录`);
+    console.log(`📝 找到 ${records.length} 条記錄`);
 
     if (records.length === 0) {
       return res.json({
         success: true,
-        message: '没有找到对应的记录',
+        message: '没有找到對应的記錄',
         data: { updated: 0, total: 0 },
       });
     }
 
-    // 2. 更新这些记录的 plan_id
+    // 2. 更新这些記錄的 plan_id
     const updateResult = await execute(`
       UPDATE qa_records qr
       INNER JOIN sessions s ON qr.session_id = s.id
@@ -1113,9 +1113,9 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
         AND s.task_id IS NOT NULL
         AND (qr.plan_id IS NULL OR qr.plan_id != dt.plan_id)
     `, normalizedQuestionIds);
-    console.log(`✅ 已更新 ${updateResult} 条记录`);
+    console.log(`✅ 已更新 ${updateResult} 条記錄`);
 
-    // 3. 验证更新结果
+    // 3. 验证更新結果
     const verifyRecords = await query(`
       SELECT 
         qr.id as qa_record_id,
@@ -1125,11 +1125,11 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
         s.task_id,
         dt.plan_id as task_plan_id,
         CASE 
-          WHEN qr.plan_id = dt.plan_id THEN '已关联'
+          WHEN qr.plan_id = dt.plan_id THEN '已關聯'
           WHEN qr.plan_id IS NULL AND dt.plan_id IS NOT NULL THEN '缺少plan_id'
           WHEN qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-          WHEN s.task_id IS NULL THEN '自由练习（无plan_id）'
-          ELSE '未知状态'
+          WHEN s.task_id IS NULL THEN '自由練習（无plan_id）'
+          ELSE '未知狀態'
         END as status
       FROM qa_records qr
       INNER JOIN sessions s ON qr.session_id = s.id
@@ -1138,7 +1138,7 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
       ORDER BY qr.question_id, qr.created_at DESC
     `, normalizedQuestionIds);
 
-    const correctCount = verifyRecords.filter((r: any) => r.status === '已关联').length;
+    const correctCount = verifyRecords.filter((r: any) => r.status === '已關聯').length;
     const incorrectCount = verifyRecords.length - correctCount;
 
     res.json({
@@ -1154,13 +1154,13 @@ router.post('/fix-question-ids-plan-id', async (req: Request, res: Response) => 
       },
     });
   } catch (error) {
-    console.error('❌ 修复失败:', error);
-    throw new AppError(500, `修复失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 修复失敗:', error);
+    throw new AppError(500, `修复失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 检查并修复指定 session_id 的问答记录关联
+ * 检查并修复指定 session_id 的問答記錄關聯
  * POST /api/data/check-session-records
  * Body: { session_id: number }
  */
@@ -1174,9 +1174,9 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
 
     const { query, queryOne, execute } = await import('../db/index.js');
     
-    console.log(`📊 检查 session_id = ${session_id} 的问答记录关联情况...\n`);
+    console.log(`📊 检查 session_id = ${session_id} 的問答記錄關聯情况...\n`);
 
-    // 1. 查看会话基本信息
+    // 1. 查看會話基本信息
     const session = await queryOne(
       `SELECT 
         s.id as session_id,
@@ -1198,12 +1198,12 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
     );
 
     if (!session) {
-      throw new AppError(404, `会话 ID ${session_id} 不存在`);
+      throw new AppError(404, `會話 ID ${session_id} 不存在`);
     }
 
-    console.log(`✅ 找到会话: task_id=${session.task_id || 'null'}, plan_id=${session.task_plan_id || 'null'}`);
+    console.log(`✅ 找到會話: task_id=${session.task_id || 'null'}, plan_id=${session.task_plan_id || 'null'}`);
 
-    // 2. 查看所有问答记录
+    // 2. 查看所有問答記錄
     const records = await query(
       `SELECT 
         qr.id as qa_record_id,
@@ -1216,11 +1216,11 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
         s.task_id,
         dt.plan_id as task_plan_id,
         CASE 
-          WHEN qr.plan_id = dt.plan_id THEN '已正确关联'
+          WHEN qr.plan_id = dt.plan_id THEN '已正確關聯'
           WHEN qr.plan_id IS NULL AND dt.plan_id IS NOT NULL THEN '缺少plan_id'
           WHEN qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-          WHEN s.task_id IS NULL THEN '自由练习（无plan_id）'
-          ELSE '未知状态'
+          WHEN s.task_id IS NULL THEN '自由練習（无plan_id）'
+          ELSE '未知狀態'
         END as status
        FROM qa_records qr
        INNER JOIN sessions s ON qr.session_id = s.id
@@ -1230,16 +1230,16 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
       [session_id]
     );
 
-    console.log(`📝 找到 ${records.length} 条问答记录`);
+    console.log(`📝 找到 ${records.length} 条問答記錄`);
 
-    // 3. 统计关联情况
+    // 3. 統計關聯情况
     const stats = {
       total_records: records.length,
       records_with_plan_id: records.filter((r: any) => r.qa_record_plan_id !== null).length,
-      records_correctly_linked: records.filter((r: any) => r.status === '已正确关联').length,
+      records_correctly_linked: records.filter((r: any) => r.status === '已正確關聯').length,
       records_missing_plan_id: records.filter((r: any) => r.status === '缺少plan_id').length,
       records_wrong_plan_id: records.filter((r: any) => r.status === 'plan_id不一致').length,
-      free_practice: records.filter((r: any) => r.status === '自由练习（无plan_id）').length,
+      free_practice: records.filter((r: any) => r.status === '自由練習（无plan_id）').length,
     };
 
     // 4. 如果需要修复，执行修复
@@ -1256,7 +1256,7 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
         [session_id]
       );
       fixed = fixResult;
-      console.log(`✅ 修复了 ${fixed} 条记录的 plan_id`);
+      console.log(`✅ 修复了 ${fixed} 条記錄的 plan_id`);
     }
 
     // 5. 如果修复了，重新查询验证
@@ -1274,11 +1274,11 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
           s.task_id,
           dt.plan_id as task_plan_id,
           CASE 
-            WHEN qr.plan_id = dt.plan_id THEN '已正确关联'
+            WHEN qr.plan_id = dt.plan_id THEN '已正確關聯'
             WHEN qr.plan_id IS NULL AND dt.plan_id IS NOT NULL THEN '缺少plan_id'
             WHEN qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-            WHEN s.task_id IS NULL THEN '自由练习（无plan_id）'
-            ELSE '未知状态'
+            WHEN s.task_id IS NULL THEN '自由練習（无plan_id）'
+            ELSE '未知狀態'
           END as status
          FROM qa_records qr
          INNER JOIN sessions s ON qr.session_id = s.id
@@ -1291,7 +1291,7 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: fixed > 0 ? '检查完成，已自动修复' : '检查完成',
+      message: fixed > 0 ? '检查完成，已自動修复' : '检查完成',
       data: {
         session: {
           id: session.session_id,
@@ -1308,13 +1308,13 @@ router.post('/check-session-records', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('❌ 检查失败:', error);
-    throw new AppError(500, `检查失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 检查失敗:', error);
+    throw new AppError(500, `检查失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 将指定 question_ids 的记录移动到目标 session（不需要知道源 session）
+ * 将指定 question_ids 的記錄移動到目標 session（不需要知道源 session）
  * POST /api/data/move-questions-to-session
  * Body: { to_session_id: number, question_ids: number[] }
  */
@@ -1323,10 +1323,10 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
     const { to_session_id, question_ids } = req.body;
     
     if (!to_session_id || !question_ids || !Array.isArray(question_ids) || question_ids.length === 0) {
-      throw new AppError(400, '请提供 to_session_id 和 question_ids 数组');
+      throw new AppError(400, '请提供 to_session_id 和 question_ids 數組');
     }
 
-    // 规范化 question_ids
+    // 規范化 question_ids
     const normalizedQuestionIds = question_ids.map((id: any) => {
       const numId = typeof id === 'string' ? parseInt(id, 10) : id;
       if (isNaN(numId) || numId <= 0) {
@@ -1337,9 +1337,9 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
 
     const { query, queryOne, execute } = await import('../db/index.js');
     
-    console.log(`📊 将 question_ids [${normalizedQuestionIds.join(', ')}] 的记录移动到 session ${to_session_id}...\n`);
+    console.log(`📊 将 question_ids [${normalizedQuestionIds.join(', ')}] 的記錄移動到 session ${to_session_id}...\n`);
 
-    // 1. 验证目标会话存在
+    // 1. 验证目標會話存在
     const toSession = await queryOne(
       `SELECT s.id, s.task_id, dt.plan_id
        FROM sessions s
@@ -1349,10 +1349,10 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
     );
 
     if (!toSession) {
-      throw new AppError(404, `目标会话 ${to_session_id} 不存在`);
+      throw new AppError(404, `目標會話 ${to_session_id} 不存在`);
     }
 
-    // 2. 查找需要移动的记录（所有关联到这些 question_id 的记录）
+    // 2. 查找需要移動的記錄（所有關聯到这些 question_id 的記錄）
     const placeholders = normalizedQuestionIds.map(() => '?').join(',');
     const recordsToMove = await query(
       `SELECT 
@@ -1367,17 +1367,17 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
       normalizedQuestionIds
     );
 
-    console.log(`📝 找到 ${recordsToMove.length} 条需要移动的记录`);
+    console.log(`📝 找到 ${recordsToMove.length} 条需要移動的記錄`);
 
     if (recordsToMove.length === 0) {
       return res.json({
         success: true,
-        message: '没有找到需要移动的记录',
+        message: '没有找到需要移動的記錄',
         data: { moved: 0, records: [] },
       });
     }
 
-    // 显示当前关联情况
+    // 显示当前關聯情况
     const sessionGroups = new Map<number, number[]>();
     recordsToMove.forEach((r: any) => {
       const sessionId = r.current_session_id;
@@ -1387,12 +1387,12 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
       sessionGroups.get(sessionId)!.push(r.question_id);
     });
 
-    console.log(`📋 当前关联情况:`);
+    console.log(`📋 当前關聯情况:`);
     sessionGroups.forEach((questionIds, sessionId) => {
       console.log(`   Session ${sessionId}: question_ids [${questionIds.join(', ')}]`);
     });
 
-    // 3. 更新记录的 session_id 和 plan_id
+    // 3. 更新記錄的 session_id 和 plan_id
     const updateResult = await execute(
       `UPDATE qa_records qr
        SET qr.session_id = ?,
@@ -1401,9 +1401,9 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
       [to_session_id, toSession.plan_id || null, ...normalizedQuestionIds]
     );
 
-    console.log(`✅ 已移动 ${updateResult} 条记录到 session ${to_session_id}`);
+    console.log(`✅ 已移動 ${updateResult} 条記錄到 session ${to_session_id}`);
 
-    // 4. 验证移动结果
+    // 4. 验证移動結果
     const verifyRecords = await query(
       `SELECT 
         qr.id,
@@ -1416,11 +1416,11 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
         s.task_id,
         dt.plan_id as task_plan_id,
         CASE 
-          WHEN qr.plan_id = dt.plan_id THEN '已正确关联'
+          WHEN qr.plan_id = dt.plan_id THEN '已正確關聯'
           WHEN qr.plan_id IS NULL AND dt.plan_id IS NOT NULL THEN '缺少plan_id'
           WHEN qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-          WHEN s.task_id IS NULL THEN '自由练习（无plan_id）'
-          ELSE '未知状态'
+          WHEN s.task_id IS NULL THEN '自由練習（无plan_id）'
+          ELSE '未知狀態'
         END as status
        FROM qa_records qr
        INNER JOIN sessions s ON qr.session_id = s.id
@@ -1432,7 +1432,7 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
 
     res.json({
       success: true,
-      message: `已成功将 ${updateResult} 条记录移动到 session ${to_session_id}`,
+      message: `已成功将 ${updateResult} 条記錄移動到 session ${to_session_id}`,
       data: {
         moved: updateResult,
         target_session_id: to_session_id,
@@ -1444,13 +1444,13 @@ router.post('/move-questions-to-session', async (req: Request, res: Response) =>
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('移动记录失败:', error);
-    throw new AppError(500, '移动记录失败');
+    console.error('移動記錄失敗:', error);
+    throw new AppError(500, '移動記錄失敗');
   }
 });
 
 /**
- * 查找指定 session_id 或 question_ids 的所有相关记录
+ * 查找指定 session_id 或 question_ids 的所有相關記錄
  * POST /api/data/find-session-answers
  * Body: { session_id?: number, question_ids?: number[] }
  */
@@ -1468,9 +1468,9 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
 
     // 如果提供了 session_id
     if (session_id) {
-      console.log(`📊 查找 session_id = ${session_id} 的所有相关记录...\n`);
+      console.log(`📊 查找 session_id = ${session_id} 的所有相關記錄...\n`);
 
-      // 1. 查看会话信息
+      // 1. 查看會話信息
       const session = await queryOne(
         `SELECT 
           s.id as session_id,
@@ -1491,7 +1491,7 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
 
       results.session = session;
 
-      // 2. 查看该会话的所有问答记录
+      // 2. 查看该會話的所有問答記錄
       const records = await query(
         `SELECT 
           qr.id,
@@ -1509,7 +1509,7 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
 
       results.qa_records = records;
 
-      // 3. 查看该 task_id 的所有会话
+      // 3. 查看该 task_id 的所有會話
       if (session?.task_id) {
         const taskSessions = await query(
           `SELECT 
@@ -1527,7 +1527,7 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
         );
         results.task_sessions = taskSessions;
 
-        // 4. 查看该 task_id 的所有问答记录
+        // 4. 查看该 task_id 的所有問答記錄
         const taskRecords = await query(
           `SELECT 
             qr.id,
@@ -1550,7 +1550,7 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
 
     // 如果提供了 question_ids
     if (question_ids && Array.isArray(question_ids) && question_ids.length > 0) {
-      console.log(`📊 查找 question_ids = ${question_ids.join(', ')} 的所有记录...\n`);
+      console.log(`📊 查找 question_ids = ${question_ids.join(', ')} 的所有記錄...\n`);
 
       const normalizedQuestionIds = question_ids.map((id: any) => {
         const numId = typeof id === 'string' ? parseInt(id, 10) : id;
@@ -1605,13 +1605,13 @@ router.post('/find-session-answers', async (req: Request, res: Response) => {
       data: results,
     });
   } catch (error) {
-    console.error('❌ 查找失败:', error);
-    throw new AppError(500, `查找失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 查找失敗:', error);
+    throw new AppError(500, `查找失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 将指定 question_ids 的记录从一个 session 移动到另一个 session
+ * 将指定 question_ids 的記錄從一个 session 移動到另一个 session
  * POST /api/data/move-records-to-session
  * Body: { from_session_id: number, to_session_id: number, question_ids: number[] }
  */
@@ -1620,10 +1620,10 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
     const { from_session_id, to_session_id, question_ids } = req.body;
     
     if (!from_session_id || !to_session_id || !question_ids || !Array.isArray(question_ids) || question_ids.length === 0) {
-      throw new AppError(400, '请提供 from_session_id, to_session_id 和 question_ids 数组');
+      throw new AppError(400, '请提供 from_session_id, to_session_id 和 question_ids 數組');
     }
 
-    // 规范化 question_ids
+    // 規范化 question_ids
     const normalizedQuestionIds = question_ids.map((id: any) => {
       const numId = typeof id === 'string' ? parseInt(id, 10) : id;
       if (isNaN(numId) || numId <= 0) {
@@ -1634,21 +1634,21 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
 
     const { query, queryOne, execute } = await import('../db/index.js');
     
-    console.log(`📊 将 session ${from_session_id} 的记录移动到 session ${to_session_id}...\n`);
-    console.log(`   目标 question_ids: ${normalizedQuestionIds.join(', ')}\n`);
+    console.log(`📊 将 session ${from_session_id} 的記錄移動到 session ${to_session_id}...\n`);
+    console.log(`   目標 question_ids: ${normalizedQuestionIds.join(', ')}\n`);
 
-    // 1. 验证两个会话都存在
+    // 1. 验证两个會話都存在
     const fromSession = await queryOne('SELECT id, task_id FROM sessions WHERE id = ?', [from_session_id]);
     const toSession = await queryOne('SELECT id, task_id FROM sessions WHERE id = ?', [to_session_id]);
 
     if (!fromSession) {
-      throw new AppError(404, `源会话 ${from_session_id} 不存在`);
+      throw new AppError(404, `源會話 ${from_session_id} 不存在`);
     }
     if (!toSession) {
-      throw new AppError(404, `目标会话 ${to_session_id} 不存在`);
+      throw new AppError(404, `目標會話 ${to_session_id} 不存在`);
     }
 
-    // 2. 查看需要移动的记录
+    // 2. 查看需要移動的記錄
     const placeholders = normalizedQuestionIds.map(() => '?').join(',');
     const recordsToMove = await query(
       `SELECT 
@@ -1662,17 +1662,17 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
       [from_session_id, ...normalizedQuestionIds]
     );
 
-    console.log(`📝 找到 ${recordsToMove.length} 条需要移动的记录`);
+    console.log(`📝 找到 ${recordsToMove.length} 条需要移動的記錄`);
 
     if (recordsToMove.length === 0) {
       return res.json({
         success: true,
-        message: '没有找到需要移动的记录',
+        message: '没有找到需要移動的記錄',
         data: { moved: 0 },
       });
     }
 
-    // 3. 更新记录的 session_id
+    // 3. 更新記錄的 session_id
     const updateResult = await execute(
       `UPDATE qa_records qr
        SET qr.session_id = ?
@@ -1681,9 +1681,9 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
       [to_session_id, from_session_id, ...normalizedQuestionIds]
     );
 
-    console.log(`✅ 已移动 ${updateResult} 条记录`);
+    console.log(`✅ 已移動 ${updateResult} 条記錄`);
 
-    // 4. 更新 plan_id（确保关联正确）
+    // 4. 更新 plan_id（確保關聯正確）
     let planIdUpdated = 0;
     if (toSession.task_id) {
       const planUpdateResult = await execute(
@@ -1696,10 +1696,10 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
         [to_session_id]
       );
       planIdUpdated = planUpdateResult;
-      console.log(`✅ 已更新 ${planIdUpdated} 条记录的 plan_id`);
+      console.log(`✅ 已更新 ${planIdUpdated} 条記錄的 plan_id`);
     }
 
-    // 5. 验证移动结果
+    // 5. 验证移動結果
     const verifyRecords = await query(
       `SELECT 
         qr.id,
@@ -1712,11 +1712,11 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
         s.task_id,
         dt.plan_id as task_plan_id,
         CASE 
-          WHEN qr.plan_id = dt.plan_id THEN '已正确关联'
+          WHEN qr.plan_id = dt.plan_id THEN '已正確關聯'
           WHEN qr.plan_id IS NULL AND dt.plan_id IS NOT NULL THEN '缺少plan_id'
           WHEN qr.plan_id != dt.plan_id THEN 'plan_id不一致'
-          WHEN s.task_id IS NULL THEN '自由练习（无plan_id）'
-          ELSE '未知状态'
+          WHEN s.task_id IS NULL THEN '自由練習（无plan_id）'
+          ELSE '未知狀態'
         END as status
        FROM qa_records qr
        INNER JOIN sessions s ON qr.session_id = s.id
@@ -1726,7 +1726,7 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
       [to_session_id]
     );
 
-    // 6. 查看两个会话的最终状态
+    // 6. 查看两个會話的最终狀態
     const [fromSessionFinal] = await query(
       `SELECT 
         s.id as session_id,
@@ -1751,7 +1751,7 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '移动完成',
+      message: '移動完成',
       data: {
         moved_count: updateResult,
         plan_id_updated: planIdUpdated,
@@ -1761,13 +1761,13 @@ router.post('/move-records-to-session', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('❌ 移动失败:', error);
-    throw new AppError(500, `移动失败: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('❌ 移動失敗:', error);
+    throw new AppError(500, `移動失敗: ${error instanceof Error ? error.message : String(error)}`);
   }
 });
 
 /**
- * 检查并修复 question_id 和 question_text 不匹配的问题
+ * 检查并修复 question_id 和 question_text 不匹配的問題
  * POST /api/data/fix-question-id-mismatch
  * Body: { session_id: number, question_ids: number[] }
  */
@@ -1776,7 +1776,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
     const { session_id, question_ids } = req.body;
     
     if (!session_id || !question_ids || !Array.isArray(question_ids) || question_ids.length === 0) {
-      throw new AppError(400, '请提供 session_id 和 question_ids 数组');
+      throw new AppError(400, '请提供 session_id 和 question_ids 數組');
     }
 
     const normalizedQuestionIds = question_ids.map((id: any) => {
@@ -1789,9 +1789,9 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
 
     const { query, queryOne, execute } = await import('../db/index.js');
     
-    console.log(`📊 检查 session ${session_id} 中 question_ids [${normalizedQuestionIds.join(', ')}] 的数据匹配情况...\n`);
+    console.log(`📊 检查 session ${session_id} 中 question_ids [${normalizedQuestionIds.join(', ')}] 的數據匹配情况...\n`);
 
-    // 1. 获取这些题目的实际内容
+    // 1. 获取这些題目的实际內容
     const placeholders = normalizedQuestionIds.map(() => '?').join(',');
     const questions = await query(
       `SELECT id, question_text FROM questions WHERE id IN (${placeholders})`,
@@ -1803,7 +1803,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       questionTextMap.set(q.id, q.question_text);
     });
 
-    // 2. 检查 qa_records 中的记录
+    // 2. 检查 qa_records 中的記錄
     const records = await query(
       `SELECT 
         qr.id,
@@ -1816,7 +1816,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       [session_id, ...normalizedQuestionIds]
     );
 
-    console.log(`📝 找到 ${records.length} 条记录\n`);
+    console.log(`📝 找到 ${records.length} 条記錄\n`);
 
     const mismatches: any[] = [];
     const fixes: any[] = [];
@@ -1824,7 +1824,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
     records.forEach((record: any) => {
       const expectedText = questionTextMap.get(record.question_id);
       if (!expectedText) {
-        console.warn(`⚠️  题目 ${record.question_id} 在题库中不存在`);
+        console.warn(`⚠️  題目 ${record.question_id} 在題庫中不存在`);
         return;
       }
 
@@ -1833,7 +1833,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       const expectedTextStart = expectedText.substring(0, 30);
       
       if (recordTextStart !== expectedTextStart) {
-        // 检查是否可能是另一个题目的内容
+        // 检查是否可能是另一个題目的內容
         let possibleCorrectId: number | null = null;
         normalizedQuestionIds.forEach((qid: number) => {
           if (qid !== record.question_id) {
@@ -1862,7 +1862,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       }
     });
 
-    console.log(`🔍 发现 ${mismatches.length} 个不匹配的记录`);
+    console.log(`🔍 發现 ${mismatches.length} 个不匹配的記錄`);
     mismatches.forEach((m: any) => {
       console.log(`  - Record ID=${m.record_id}, question_id=${m.current_question_id}`);
       console.log(`    当前文本: ${m.current_question_text}...`);
@@ -1872,10 +1872,10 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       }
     });
 
-    // 3. 如果发现可以修复的记录，执行修复
+    // 3. 如果發现可以修复的記錄，执行修复
     let fixed = 0;
     if (fixes.length > 0) {
-      console.log(`\n🔧 开始修复 ${fixes.length} 条记录...`);
+      console.log(`\n🔧 開始修复 ${fixes.length} 条記錄...`);
       
       for (const fix of fixes) {
         const updateResult = await execute(
@@ -1892,7 +1892,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
       }
     }
 
-    // 4. 验证修复结果
+    // 4. 验证修复結果
     const verifyRecords = await query(
       `SELECT 
         qr.id,
@@ -1913,7 +1913,7 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
 
     res.json({
       success: true,
-      message: fixed > 0 ? `已修复 ${fixed} 条记录` : '未发现需要修复的记录',
+      message: fixed > 0 ? `已修复 ${fixed} 条記錄` : '未發现需要修复的記錄',
       data: {
         session_id,
         question_ids: normalizedQuestionIds,
@@ -1927,8 +1927,8 @@ router.post('/fix-question-id-mismatch', async (req: Request, res: Response) => 
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('检查修复失败:', error);
-    throw new AppError(500, '检查修复失败');
+    console.error('检查修复失敗:', error);
+    throw new AppError(500, '检查修复失敗');
   }
 });
 
@@ -1967,7 +1967,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
           ? JSON.parse(session.question_ids)
           : session.question_ids;
       } catch (e) {
-        console.warn('解析 question_ids 失败:', e);
+        console.warn('解析 question_ids 失敗:', e);
       }
     }
 
@@ -1983,7 +1983,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
       questionIds.push(to_question_id);
     }
 
-    console.log(`📋 更新后的 question_ids:`, questionIds);
+    console.log(`📋 更新後的 question_ids:`, questionIds);
 
     // 4. 更新 session 的 question_ids
     const updateResult = await execute(
@@ -2004,7 +2004,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
     if (recordsToUpdate.length > 0) {
       console.log(`📝 找到 ${recordsToUpdate.length} 条需要更新的 qa_records`);
       
-      // 获取新题目的 question_text（如果存在）
+      // 获取新題目的 question_text（如果存在）
       const newQuestion = await queryOne(
         `SELECT question_text FROM questions WHERE id = ?`,
         [to_question_id]
@@ -2014,7 +2014,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
         const updateFields: string[] = ['question_id = ?'];
         const updateParams: any[] = [to_question_id];
         
-        // 如果新题目存在，更新 question_text
+        // 如果新題目存在，更新 question_text
         if (newQuestion) {
           updateFields.push('question_text = ?');
           updateParams.push(newQuestion.question_text);
@@ -2030,7 +2030,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
       console.log(`✅ 已更新 ${recordsUpdated} 条 qa_records`);
     }
 
-    // 6. 验证结果
+    // 6. 验证結果
     const updatedSession = await queryOne(
       `SELECT id, question_ids FROM sessions WHERE id = ?`,
       [session_id]
@@ -2043,7 +2043,7 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
           ? JSON.parse(updatedSession.question_ids)
           : updatedSession.question_ids;
       } catch (e) {
-        console.warn('解析更新后的 question_ids 失败:', e);
+        console.warn('解析更新後的 question_ids 失敗:', e);
       }
     }
 
@@ -2061,8 +2061,8 @@ router.post('/fix-session-question-id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('修正失败:', error);
-    throw new AppError(500, '修正失败');
+    console.error('修正失敗:', error);
+    throw new AppError(500, '修正失敗');
   }
 });
 

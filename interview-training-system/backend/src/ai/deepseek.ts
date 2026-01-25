@@ -42,7 +42,7 @@ export class DeepSeekClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
       },
-      // AI接口不设置超时，允许长时间处理
+      // AI接口不设置超時，允许長時間处理
       timeout: 0,
     })
 
@@ -50,7 +50,7 @@ export class DeepSeekClient {
   }
 
   /**
-   * 调用DeepSeek Chat API
+   * 調用DeepSeek Chat API
    */
   async chat(messages: DeepSeekMessage[], temperature?: number, maxTokens?: number): Promise<string> {
     if (!this.apiKey) {
@@ -100,7 +100,7 @@ export class DeepSeekClient {
   }
 
   /**
-   * 测试API连接
+   * 测試API连接
    */
   async test(): Promise<boolean> {
     try {

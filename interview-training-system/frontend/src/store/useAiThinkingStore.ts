@@ -1,6 +1,6 @@
 /**
- * AI思考状态管理
- * 使用Zustand管理全局AI思考过程展示
+ * AI思考狀態管理
+ * 使用Zustand管理全局AI思考過程展示
  */
 import { create } from 'zustand'
 
@@ -23,7 +23,7 @@ export type AiTaskType =
   | 'save-weaknesses'
 
 interface AiThinkingState {
-  // 当前任务信息
+  // 当前任務信息
   currentTask: {
     type: AiTaskType | null
     name: string
@@ -31,7 +31,7 @@ interface AiThinkingState {
     currentStepIndex: number
   } | null
 
-  // 组件状态
+  // 組件狀態
   visible: boolean
   minimized: boolean
 
@@ -53,61 +53,61 @@ interface AiThinkingState {
 function getThinkingStepsTemplate(taskType: AiTaskType): string[] {
   const templates: Record<AiTaskType, string[]> = {
     'generate-questions': [
-      '分析题目要求（类别、难度、学校特点）',
-      '搜索相关知识点和参考题目',
-      '生成题目内容',
-      '验证题目质量和语言规范',
+      '分析題目要求（類別、難度、學校特點）',
+      '搜索相關知識點和參考題目',
+      '生成題目內容',
+      '验证題目质量和語言規范',
       '完成',
     ],
     'generate-feedback': [
-      '分析学生回答内容',
-      '评估语言表达质量',
-      '评估内容深度和相关性',
-      '识别弱点和改进点',
-      '生成针对性建议',
+      '分析學生回答內容',
+      '評估語言表達质量',
+      '評估內容深度和相關性',
+      '識別弱點和改進點',
+      '生成針對性建議',
       '完成',
     ],
     'generate-plan': [
-      '分析学生信息和目标学校',
-      '制定训练策略和时间分配',
-      '生成每日任务安排',
-      '优化时间分配和专项比例',
+      '分析學生信息和目標學校',
+      '制定訓練策略和時間分配',
+      '生成每日任務安排',
+      '優化時間分配和專項比例',
       '完成',
     ],
     'generate-school': [
-      '搜索学校基本信息',
-      '分析学校特色和面试风格',
-      '整理学校关注重点',
-      '生成学校档案内容',
+      '搜索學校基本信息',
+      '分析學校特色和面試風格',
+      '整理學校關注重點',
+      '生成學校檔案內容',
       '完成',
     ],
     'extract-interview-memory': [
-      '解析面试回忆内容',
-      '提取题目和关键信息',
-      '分类和标记题目',
-      '识别弱点和改进点',
-      '保存到数据库',
+      '解析面試回憶內容',
+      '提取題目和關键信息',
+      '分類和標記題目',
+      '識別弱點和改進點',
+      '保存到數據庫',
       '完成',
     ],
     'generate-learning-material': [
-      '分析弱点类型和特点',
-      '搜索相关学习资源',
-      '生成学习素材内容',
-      '优化素材结构和可读性',
+      '分析弱點類型和特點',
+      '搜索相關學習資源',
+      '生成學習素材內容',
+      '優化素材結构和可读性',
       '完成',
     ],
     'save-interview-questions': [
-      '验证题目数据格式',
-      '检查题目重复性',
-      '保存题目到数据库',
-      '关联面试回忆',
+      '验证題目數據格式',
+      '检查題目重复性',
+      '保存題目到數據庫',
+      '關聯面試回憶',
       '完成',
     ],
     'save-weaknesses': [
-      '分析弱点数据',
-      '验证弱点类型和严重程度',
-      '保存弱点到数据库',
-      '更新学生弱点统计',
+      '分析弱點數據',
+      '验证弱點類型和嚴重程度',
+      '保存弱點到數據庫',
+      '更新學生弱點統計',
       '完成',
     ],
   }
@@ -116,18 +116,18 @@ function getThinkingStepsTemplate(taskType: AiTaskType): string[] {
 }
 
 /**
- * 获取任务类型的中文名称
+ * 获取任務類型的中文名称
  */
 function getTaskTypeName(taskType: AiTaskType): string {
   const names: Record<AiTaskType, string> = {
-    'generate-questions': '生成题目',
+    'generate-questions': '生成題目',
     'generate-feedback': '生成反馈',
-    'generate-plan': '生成训练计划',
-    'generate-school': '生成学校档案',
-    'extract-interview-memory': '提取面试回忆',
-    'generate-learning-material': '生成学习素材',
-    'save-interview-questions': '保存面试题目',
-    'save-weaknesses': '保存弱点分析',
+    'generate-plan': '生成訓練計劃',
+    'generate-school': '生成學校檔案',
+    'extract-interview-memory': '提取面試回憶',
+    'generate-learning-material': '生成學習素材',
+    'save-interview-questions': '保存面試題目',
+    'save-weaknesses': '保存弱點分析',
   }
   return names[taskType] || 'AI处理'
 }
@@ -161,8 +161,8 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       minimized: false,
     })
 
-    // 自动更新步骤（模拟AI处理过程）
-    // 每2-3秒自动推进到下一步，直到最后一步
+    // 自動更新步骤（模拟AI处理過程）
+    // 每2-3秒自動推進到下一步，直到最後一步
     let stepIndex = 0
     const updateInterval = setInterval(() => {
       const currentState = get()
@@ -174,7 +174,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       const { steps } = currentState.currentTask
       stepIndex++
 
-      // 如果还没到最后一步，继续推进
+      // 如果还没到最後一步，继续推進
       if (stepIndex < steps.length - 1) {
         set({
           currentTask: {
@@ -192,7 +192,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
           },
         })
       } else {
-        // 到达最后一步，停止自动更新（等待completeThinking调用）
+        // 到達最後一步，停止自動更新（等待completeThinking調用）
         clearInterval(updateInterval)
         ;(get() as any).updateInterval = null
       }
@@ -211,7 +211,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       if (idx === stepIndex) {
         return { ...step, status }
       }
-      // 如果当前步骤完成，下一个步骤开始处理
+      // 如果当前步骤完成，下一个步骤開始处理
       if (idx === stepIndex + 1 && status === 'completed') {
         return { ...step, status: 'processing' as ThinkingStepStatus }
       }
@@ -263,7 +263,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       stateAny.updateInterval = null
     }
 
-    // 标记所有步骤为完成
+    // 標記所有步骤为完成
     const completedSteps = state.currentTask.steps.map((step) => ({
       ...step,
       status: 'completed' as ThinkingStepStatus,
@@ -277,7 +277,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       },
     })
 
-    // 3秒后自动隐藏
+    // 3秒後自動隐藏
     setTimeout(() => {
       get().hide()
     }, 3000)

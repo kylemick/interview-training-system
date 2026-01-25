@@ -1,5 +1,5 @@
 /**
- * 学习素材管理路由
+ * 學習素材管理路由
  */
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute } from '../db/index.js';
@@ -8,7 +8,7 @@ import { AppError } from '../middleware/errorHandler.js';
 const router = Router();
 
 /**
- * 获取学习素材列表
+ * 獲取學習素材列表
  * GET /api/learning-materials?weakness_id=&category=&weakness_type=&material_type=&search=&page=&pageSize=
  */
 router.get('/', async (req: Request, res: Response) => {
@@ -52,15 +52,15 @@ router.get('/', async (req: Request, res: Response) => {
       params.push(searchPattern, searchPattern);
     }
 
-    // 获取总数
+    // 获取總數
     const countSql = sql.replace('SELECT *', 'SELECT COUNT(*) as total');
     const [countResult] = await query<{ total: number }>(countSql, params);
     const total = countResult?.total || 0;
 
     // 分页
-    // 注意：LIMIT 和 OFFSET 不能使用参数绑定，必须直接拼接，但需要确保是安全的数字
+    // 注意：LIMIT 和 OFFSET 不能使用參數绑定，必须直接拼接，但需要確保是安全的數字
     const pageNum = Math.max(1, parseInt(page as string) || 1);
-    const pageSizeNum = Math.max(1, Math.min(parseInt(pageSize as string) || 20, 100)); // 限制在1-100之间
+    const pageSizeNum = Math.max(1, Math.min(parseInt(pageSize as string) || 20, 100)); // 限制在1-100之間
     const offset = Math.max(0, (pageNum - 1) * pageSizeNum);
 
     sql += ` ORDER BY created_at DESC LIMIT ${pageSizeNum} OFFSET ${offset}`;
@@ -84,13 +84,13 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('获取学习素材列表失败:', error);
-    throw new AppError(500, '获取学习素材列表失败');
+    console.error('獲取學習素材列表失敗:', error);
+    throw new AppError(500, '獲取學習素材列表失敗');
   }
 });
 
 /**
- * 获取单个学习素材详情
+ * 獲取單個學習素材詳情
  * GET /api/learning-materials/:id
  */
 router.get('/:id', async (req: Request, res: Response) => {
@@ -103,7 +103,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     );
 
     if (!material) {
-      throw new AppError(404, '学习素材不存在');
+      throw new AppError(404, '學習素材不存在');
     }
 
     // 解析JSON字段
@@ -112,7 +112,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       tags: material.tags ? (typeof material.tags === 'string' ? JSON.parse(material.tags) : material.tags) : [],
     };
 
-    // 如果关联了弱点，获取弱点信息
+    // 如果關聯了弱點，獲取弱點信息
     if (material.weakness_id) {
       const weakness = await queryOne(
         'SELECT id, category, weakness_type, description, severity, status FROM student_weaknesses WHERE id = ?',
@@ -127,13 +127,13 @@ router.get('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('获取学习素材详情失败:', error);
-    throw new AppError(500, '获取学习素材详情失败');
+    console.error('獲取學習素材詳情失敗:', error);
+    throw new AppError(500, '獲取學習素材詳情失敗');
   }
 });
 
 /**
- * 创建学习素材
+ * 創建學習素材
  * POST /api/learning-materials
  */
 router.post('/', async (req: Request, res: Response) => {
@@ -154,14 +154,14 @@ router.post('/', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category, weakness_type, title, content');
     }
 
-    // 如果提供了weakness_id，验证弱点是否存在
+    // 如果提供了weakness_id，验证弱點是否存在
     if (weakness_id) {
       const weakness = await queryOne(
         'SELECT id FROM student_weaknesses WHERE id = ?',
         [weakness_id]
       );
       if (!weakness) {
-        throw new AppError(404, '关联的弱点不存在');
+        throw new AppError(404, '關聯的弱點不存在');
       }
     }
 
@@ -181,7 +181,7 @@ router.post('/', async (req: Request, res: Response) => {
       ]
     );
 
-    // 获取创建的素材
+    // 獲取創建的素材
     const newMaterial = await queryOne(
       'SELECT * FROM learning_materials WHERE id = ?',
       [materialId]
@@ -189,7 +189,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: '学习素材创建成功',
+      message: '學習素材創建成功',
       data: {
         ...newMaterial,
         tags: newMaterial.tags ? (typeof newMaterial.tags === 'string' ? JSON.parse(newMaterial.tags) : newMaterial.tags) : [],
@@ -197,13 +197,13 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('创建学习素材失败:', error);
-    throw new AppError(500, '创建学习素材失败');
+    console.error('創建學習素材失敗:', error);
+    throw new AppError(500, '創建學習素材失敗');
   }
 });
 
 /**
- * 更新学习素材
+ * 更新學習素材
  * PUT /api/learning-materials/:id
  */
 router.put('/:id', async (req: Request, res: Response) => {
@@ -211,17 +211,17 @@ router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, content, material_type, tags, weakness_id } = req.body;
 
-    // 检查素材是否存在
+    // 檢查素材是否存在
     const existing = await queryOne(
       'SELECT id FROM learning_materials WHERE id = ?',
       [id]
     );
 
     if (!existing) {
-      throw new AppError(404, '学习素材不存在');
+      throw new AppError(404, '學習素材不存在');
     }
 
-    // 构建更新SQL
+    // 構建更新SQL
     const updates: string[] = [];
     const params: any[] = [];
 
@@ -247,13 +247,13 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     if (weakness_id !== undefined) {
       if (weakness_id) {
-        // 验证弱点是否存在
+        // 驗證弱點是否存在
         const weakness = await queryOne(
           'SELECT id FROM student_weaknesses WHERE id = ?',
           [weakness_id]
         );
         if (!weakness) {
-          throw new AppError(404, '关联的弱点不存在');
+          throw new AppError(404, '關聯的弱點不存在');
         }
       }
       updates.push('weakness_id = ?');
@@ -261,7 +261,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     if (updates.length === 0) {
-      throw new AppError(400, '没有提供要更新的字段');
+      throw new AppError(400, '沒有提供要更新的字段');
     }
 
     params.push(id);
@@ -271,7 +271,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       params
     );
 
-    // 获取更新后的素材
+    // 獲取更新後的素材
     const updatedMaterial = await queryOne(
       'SELECT * FROM learning_materials WHERE id = ?',
       [id]
@@ -279,7 +279,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '学习素材更新成功',
+      message: '學習素材更新成功',
       data: {
         ...updatedMaterial,
         tags: updatedMaterial.tags ? (typeof updatedMaterial.tags === 'string' ? JSON.parse(updatedMaterial.tags) : updatedMaterial.tags) : [],
@@ -287,58 +287,58 @@ router.put('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('更新学习素材失败:', error);
-    throw new AppError(500, '更新学习素材失败');
+    console.error('更新學習素材失敗:', error);
+    throw new AppError(500, '更新學習素材失敗');
   }
 });
 
 /**
- * 删除学习素材
+ * 刪除學習素材
  * DELETE /api/learning-materials/:id
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // 检查素材是否存在
+    // 檢查素材是否存在
     const existing = await queryOne(
       'SELECT id FROM learning_materials WHERE id = ?',
       [id]
     );
 
     if (!existing) {
-      throw new AppError(404, '学习素材不存在');
+      throw new AppError(404, '學習素材不存在');
     }
 
     await execute('DELETE FROM learning_materials WHERE id = ?', [id]);
 
     res.json({
       success: true,
-      message: '学习素材删除成功',
+      message: '學習素材刪除成功',
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('删除学习素材失败:', error);
-    throw new AppError(500, '删除学习素材失败');
+    console.error('刪除學習素材失敗:', error);
+    throw new AppError(500, '刪除學習素材失敗');
   }
 });
 
 /**
- * 获取弱点关联的学习素材
+ * 獲取弱點關聯的學習素材
  * GET /api/learning-materials/by-weakness/:weaknessId
  */
 router.get('/by-weakness/:weaknessId', async (req: Request, res: Response) => {
   try {
     const { weaknessId } = req.params;
 
-    // 验证弱点是否存在
+    // 驗證弱點是否存在
     const weakness = await queryOne(
       'SELECT id FROM student_weaknesses WHERE id = ?',
       [weaknessId]
     );
 
     if (!weakness) {
-      throw new AppError(404, '弱点不存在');
+      throw new AppError(404, '弱點不存在');
     }
 
     const materials = await query(
@@ -358,13 +358,13 @@ router.get('/by-weakness/:weaknessId', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('获取弱点关联的学习素材失败:', error);
-    throw new AppError(500, '获取弱点关联的学习素材失败');
+    console.error('獲取弱點關聯的學習素材失敗:', error);
+    throw new AppError(500, '獲取弱點關聯的學習素材失敗');
   }
 });
 
 /**
- * 增加素材使用次数
+ * 增加素材使用次數
  * POST /api/learning-materials/:id/increment-usage
  */
 router.post('/:id/increment-usage', async (req: Request, res: Response) => {
@@ -378,11 +378,11 @@ router.post('/:id/increment-usage', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '使用次数已更新',
+      message: '使用次數已更新',
     });
   } catch (error) {
-    console.error('更新使用次数失败:', error);
-    throw new AppError(500, '更新使用次数失败');
+    console.error('更新使用次數失敗:', error);
+    throw new AppError(500, '更新使用次數失敗');
   }
 });
 

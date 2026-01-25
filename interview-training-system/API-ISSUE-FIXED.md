@@ -1,14 +1,14 @@
-# API接口调用问题 - 已修复 ✅
+# API接口調用問題 - 已修复 ✅
 
-## 问题描述
+## 問題描述
 
-用户报告"接口调用都失败了"。
+用户报告"接口調用都失敗了"。
 
 ## 根本原因
 
-1. **端口冲突**：前端Vite可能占用了3001端口，导致后端无法正常监听
-2. **前端API配置**：前端直接使用 `http://localhost:3001/api`，应该使用相对路径 `/api` 通过Vite代理
-3. **后端进程崩溃**：某些请求导致后端崩溃，需要重启
+1. **端口冲突**：前端Vite可能占用了3001端口，導致後端无法正常监听
+2. **前端API配置**：前端直接使用 `http://localhost:3001/api`，应该使用相對路径 `/api` 通過Vite代理
+3. **後端進程崩溃**：某些请求導致後端崩溃，需要重启
 
 ## 已实施的修复
 
@@ -21,30 +21,30 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 ```
 
-**修改后**:
+**修改後**:
 ```typescript
-// 在开发环境中，使用相对路径通过Vite代理访问后端
+// 在開發环境中，使用相對路径通過Vite代理访問後端
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 ```
 
-**说明**：
-- 使用相对路径 `/api` 可以让Vite自动代理到 `http://localhost:3001/api`
-- 这样避免了CORS问题
-- 生产环境可以通过 `VITE_API_URL` 环境变量配置
+**說明**：
+- 使用相對路径 `/api` 可以让Vite自動代理到 `http://localhost:3001/api`
+- 这樣避免了CORS問題
+- 生产环境可以通過 `VITE_API_URL` 环境变量配置
 
-### 2. 后端服务重启 ✅
+### 2. 後端服務重启 ✅
 
-后端已重新启动并正常运行：
+後端已重新启動并正常运行：
 - ✅ 健康检查：http://localhost:3001/health
 - ✅ API接口：http://localhost:3001/api/schools
 
-### 3. 创建修复脚本 ✅
+### 3. 創建修复脚本 ✅
 
-创建了 `fix-api.sh` 脚本，可以一键修复API问题。
+創建了 `fix-api.sh` 脚本，可以一键修复API問題。
 
-## 当前状态
+## 当前狀態
 
-✅ **后端正常运行**
+✅ **後端正常运行**
 ```bash
 $ curl http://localhost:3001/health
 {"status":"ok","timestamp":"2026-01-24T18:50:40.864Z"}
@@ -54,10 +54,10 @@ $ curl http://localhost:3001/api/schools
 ```
 
 ✅ **前端配置已更新**
-- API基础URL改为 `/api`（相对路径）
-- Vite代理配置正确：`/api` → `http://localhost:3001/api`
+- API基础URL改为 `/api`（相對路径）
+- Vite代理配置正確：`/api` → `http://localhost:3001/api`
 
-## 使用说明
+## 使用說明
 
 ### 方式1: 使用修复脚本（推荐）
 
@@ -66,18 +66,18 @@ cd /Users/chenkan/project/plans/interview-training-system
 ./fix-api.sh
 ```
 
-### 方式2: 手动修复
+### 方式2: 手動修复
 
 ```bash
-# 1. 清理进程
+# 1. 清理進程
 pkill -f "tsx watch"
 pkill -f "vite"
 
-# 2. 启动后端
+# 2. 启動後端
 cd backend
 npm run dev
 
-# 3. 启动前端（新终端）
+# 3. 启動前端（新终端）
 cd frontend
 npm run dev
 ```
@@ -90,52 +90,52 @@ npm run dev
 
 ## 验证步骤
 
-1. **检查后端健康状态**：
+1. **检查後端健康狀態**：
    ```bash
    curl http://localhost:3001/health
    ```
    应该返回：`{"status":"ok","timestamp":"..."}`
 
-2. **检查后端API**：
+2. **检查後端API**：
    ```bash
    curl http://localhost:3001/api/schools
    ```
-   应该返回学校列表JSON
+   应该返回學校列表JSON
 
 3. **检查前端代理**：
    ```bash
    curl http://localhost:3000/api/schools
    ```
-   应该返回学校列表JSON（通过前端代理）
+   应该返回學校列表JSON（通過前端代理）
 
-4. **浏览器测试**：
-   - 打开 http://localhost:3000
-   - 打开浏览器开发者工具 → Network
+4. **浏览器测試**：
+   - 打開 http://localhost:3000
+   - 打開浏览器開發者工具 → Network
    - 查看API请求是否成功
-   - 如果失败，刷新页面（前端配置已更新）
+   - 如果失敗，刷新页面（前端配置已更新）
 
-## 常见问题
+## 常见問題
 
-### Q1: 浏览器中API仍然失败
+### Q1: 浏览器中API仍然失敗
 
 **解决**：
 1. 刷新页面（Ctrl+R 或 Cmd+R）
 2. 清除浏览器缓存
 3. 检查浏览器控制台的网络请求
-4. 确认请求URL是 `/api/...` 而不是 `http://localhost:3001/api/...`
+4. 確认请求URL是 `/api/...` 而不是 `http://localhost:3001/api/...`
 
 ### Q2: 前端代理返回500错误
 
 **解决**：
-1. 检查后端是否正常运行：`curl http://localhost:3001/health`
-2. 查看后端日志：`tail -f /tmp/backend-final.log`
-3. 重启后端服务
+1. 检查後端是否正常运行：`curl http://localhost:3001/health`
+2. 查看後端日志：`tail -f /tmp/backend-final.log`
+3. 重启後端服務
 
 ### Q3: CORS错误
 
 **解决**：
-- 确保使用相对路径 `/api`，不要直接访问 `http://localhost:3001`
-- 后端已配置CORS，但通过代理访问更安全
+- 確保使用相對路径 `/api`，不要直接访問 `http://localhost:3001`
+- 後端已配置CORS，但通過代理访問更安全
 
 ### Q4: 端口被占用
 
@@ -145,11 +145,11 @@ npm run dev
 lsof -i :3001
 lsof -i :3000
 
-# 杀掉占用进程
+# 杀掉占用進程
 kill -9 <PID>
 ```
 
-## 技术细节
+## 技術细节
 
 ### Vite代理配置
 
@@ -166,39 +166,39 @@ server: {
 }
 ```
 
-### API调用流程
+### API調用流程
 
 ```
 浏览器请求: /api/schools
     ↓
 Vite代理: http://localhost:3001/api/schools
     ↓
-Express后端: /api/schools 路由
+Express後端: /api/schools 路由
     ↓
 返回JSON响应
 ```
 
-### 为什么使用相对路径？
+### 为什么使用相對路径？
 
-1. **避免CORS问题**：通过代理访问，浏览器认为请求来自同一源
+1. **避免CORS問題**：通過代理访問，浏览器认为请求來自同一源
 2. **环境适配**：生产环境可以配置不同的API地址
-3. **简化配置**：不需要硬编码端口号
+3. **简化配置**：不需要硬编碼端口號
 
 ## 预防措施
 
-1. **使用统一启动脚本**：`dev.sh` 或 `quick-start.sh`
-2. **检查端口冲突**：启动前检查端口是否被占用
-3. **查看日志**：遇到问题时查看后端和前端日志
-4. **验证配置**：确保前后端配置一致
+1. **使用統一启動脚本**：`dev.sh` 或 `quick-start.sh`
+2. **检查端口冲突**：启動前检查端口是否被占用
+3. **查看日志**：遇到問題時查看後端和前端日志
+4. **验证配置**：確保前後端配置一致
 
-## 相关文档
+## 相關文檔
 
 - `API-FIX-GUIDE.md` - 详细的API修复指南
-- `DEV-SCRIPT-FIX.md` - dev.sh问题修复文档
-- `TROUBLESHOOTING.md` - 常见问题排查
+- `DEV-SCRIPT-FIX.md` - dev.sh問題修复文檔
+- `TROUBLESHOOTING.md` - 常见問題排查
 
 ---
 
 **修复日期**: 2026-01-24
-**状态**: ✅ 已修复
-**验证**: 后端和前端API调用正常
+**狀態**: ✅ 已修复
+**验证**: 後端和前端API調用正常

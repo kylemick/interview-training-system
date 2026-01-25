@@ -12,7 +12,7 @@ interface AppState {
   settings: AppSettings
   updateSettings: (settings: Partial<AppSettings>) => void
 
-  // 加载状态
+  // 加载狀態
   loading: boolean
   setLoading: (loading: boolean) => void
 
@@ -35,7 +35,7 @@ export const useAppStore = create<AppState>()(
           settings: { ...state.settings, ...newSettings },
         })),
 
-      // 加载状态
+      // 加载狀態
       loading: false,
       setLoading: (loading) => set({ loading }),
 

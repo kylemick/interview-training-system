@@ -1,5 +1,5 @@
 /**
- * 练习会话路由
+ * 練習會話路由
  */
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
@@ -8,7 +8,7 @@ import { ensureQuestionsAvailable, generateSchoolRoundQuestions } from '../utils
 
 const router = Router();
 
-// 创建练习会话
+// 創建練習會話
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { task_id, category, mode = 'text_qa', question_count = 10 } = req.body;
@@ -17,7 +17,7 @@ router.post('/', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category');
     }
 
-    // 如果有关联任务，检查是否已有进行中的会话（防止重复创建）
+    // 如果有關聯任務，檢查是否已有進行中的會話（防止重複創建）
     if (task_id) {
       const existingSession = await queryOne(
         `SELECT id FROM sessions WHERE task_id = ? AND status = 'in_progress'`,
@@ -25,39 +25,39 @@ router.post('/', async (req: Request, res: Response) => {
       );
       
       if (existingSession) {
-        throw new AppError(409, '该任务已有进行中的会话，请继续现有会话');
+        throw new AppError(409, '該任務已有進行中的會話，請繼續現有會話');
       }
     }
 
-    // 使用自动生成函数确保有可用题目
+    // 使用自動生成函數確保有可用題目
     const questionCount = parseInt(question_count as string) || 10;
     const questions = await ensureQuestionsAvailable(
       category,
       questionCount,
-      undefined, // 自由模式不指定学校
+      undefined, // 自由模式不指定學校
       'medium'
     );
 
     if (questions.length === 0) {
-      // 如果自动生成也失败，返回友好错误但不导致服务崩溃
-      console.error(`❌ 无法为类别 ${category} 获取或生成题目`);
-      throw new AppError(500, `无法为类别(${category})生成题目，请稍后重试或手动添加题目`);
+      // 如果自動生成也失敗，返回友好錯誤但不導致服務崩潰
+      console.error(`❌ 無法為類別 ${category} 獲取或生成題目`);
+      throw new AppError(500, `無法為類別(${category})生成題目，請稍後重試或手動添加題目`);
     }
 
     const questionIds = questions.map((q: any) => q.id);
 
-    // 创建会话，保存题目ID列表
+    // 創建會話，保存題目ID列表
     const sessionId = await insert(
       `INSERT INTO sessions (task_id, category, mode, status, question_ids)
        VALUES (?, ?, ?, ?, ?)`,
       [task_id || null, category, mode, 'in_progress', JSON.stringify(questionIds)]
     );
 
-    console.log(`✅ 创建练习会话: ID=${sessionId}, 类别=${category}, 题目数=${questionIds.length}, 任务ID=${task_id || '无'}`);
+    console.log(`✅ 創建練習會話: ID=${sessionId}, 類別=${category}, 題目數=${questionIds.length}, 任務ID=${task_id || '無'}`);
 
     res.status(201).json({
       success: true,
-      message: '会话创建成功',
+      message: '會話創建成功',
       data: {
         session_id: sessionId,
         category,
@@ -68,12 +68,12 @@ router.post('/', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('创建练习会话失败:', error);
-    throw new AppError(500, '创建练习会话失败');
+    console.error('創建練習會話失敗:', error);
+    throw new AppError(500, '創建練習會話失敗');
   }
 });
 
-// 创建学校-轮次模拟面试会话
+// 創建學校-輪次模擬面試會話
 router.post('/school-round-mock', async (req: Request, res: Response) => {
   try {
     const { school_code, interview_round, question_count = 10 } = req.body;
@@ -83,11 +83,11 @@ router.post('/school-round-mock', async (req: Request, res: Response) => {
     }
 
     const questionCount = parseInt(question_count as string) || 10;
-    const safeCount = Math.max(1, Math.min(questionCount, 50)); // 限制在1-50之间
+    const safeCount = Math.max(1, Math.min(questionCount, 50)); // 限制在1-50之間
 
-    console.log(`🎯 创建学校-轮次模拟面试会话: 学校=${school_code}, 轮次=${interview_round || '未指定'}, 题目数=${safeCount}`);
+    console.log(`🎯 創建學校-輪次模擬面試會話: 學校=${school_code}, 輪次=${interview_round || '未指定'}, 題目數=${safeCount}`);
 
-    // 使用基于轮次的题目生成函数
+    // 使用基於輪次的題目生成函數
     const questions = await generateSchoolRoundQuestions(
       school_code,
       interview_round,
@@ -95,26 +95,26 @@ router.post('/school-round-mock', async (req: Request, res: Response) => {
     );
 
     if (questions.length === 0) {
-      throw new AppError(500, `无法为学校(${school_code})${interview_round ? `轮次(${interview_round})` : ''}生成题目，请稍后重试`);
+      throw new AppError(500, `無法為學校(${school_code})${interview_round ? `輪次(${interview_round})` : ''}生成題目，請稍後重試`);
     }
 
     const questionIds = questions.map((q: any) => q.id);
 
-    // 创建会话，使用特殊的mode标识这是学校-轮次模拟面试
-    // category设置为mixed，因为可能包含多个类别
+    // 創建會話，使用特殊的mode標識這是學校-輪次模擬面試
+    // category設置為mixed，因為可能包含多個類別
     const sessionId = await insert(
       `INSERT INTO sessions (task_id, category, mode, status, question_ids)
        VALUES (?, ?, ?, ?, ?)`,
       [null, 'mixed', 'school_round_mock', 'in_progress', JSON.stringify(questionIds)]
     );
 
-    // 在question_ids的JSON中存储额外的元数据（通过扩展字段或注释）
-    // 这里我们通过返回数据传递元数据
-    console.log(`✅ 创建学校-轮次模拟面试会话: ID=${sessionId}, 题目数=${questionIds.length}`);
+    // 在question_ids的JSON中存儲額外的元數據（通過擴展字段或註釋）
+    // 這裡我們通過返回數據傳遞元數據
+    console.log(`✅ 創建學校-輪次模擬面試會話: ID=${sessionId}, 題目數=${questionIds.length}`);
 
     res.status(201).json({
       success: true,
-      message: '学校-轮次模拟面试会话创建成功',
+      message: '學校-輪次模擬面試會話創建成功',
       data: {
         session_id: sessionId,
         school_code,
@@ -132,12 +132,12 @@ router.post('/school-round-mock', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('创建学校-轮次模拟面试会话失败:', error);
-    throw new AppError(500, '创建学校-轮次模拟面试会话失败');
+    console.error('創建學校-輪次模擬面試會話失敗:', error);
+    throw new AppError(500, '創建學校-輪次模擬面試會話失敗');
   }
 });
 
-// 获取会话详情
+// 獲取會話詳情
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -154,39 +154,39 @@ router.get('/:id', async (req: Request, res: Response) => {
     );
 
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
-    // 统一类别名称：将 logical-thinking 转换为 logic-thinking（兼容旧数据）
+    // 統一類別名稱：將 logical-thinking 轉換為 logic-thinking（兼容舊數據）
     if (session.category === 'logical-thinking') {
       session.category = 'logic-thinking';
     }
 
-    // 获取问答记录
-    // 确保 id 是数字类型（MySQL 需要数字类型匹配）
+    // 獲取問答記錄
+    // 確保 id 是數字類型（MySQL 需要數字類型匹配）
     const sessionIdNum = parseInt(id, 10)
     if (isNaN(sessionIdNum)) {
-      console.error(`❌ 无效的会话ID: ${id}`)
-      throw new AppError(400, '无效的会话ID')
+      console.error(`❌ 無效的會話ID: ${id}`)
+      throw new AppError(400, '無效的會話ID')
     }
     
-    console.log(`🔍 查询问答记录: session_id = ${sessionIdNum} (原始: ${id})`)
-    console.log(`📋 会话信息: id=${session.id}, question_ids=${JSON.stringify(session.question_ids)}`)
+    console.log(`🔍 查詢問答記錄: session_id = ${sessionIdNum} (原始: ${id})`)
+    console.log(`📋 會話信息: id=${session.id}, question_ids=${JSON.stringify(session.question_ids)}`)
     
-    // 先检查 question_ids 是否存在
+    // 先檢查 question_ids 是否存在
     let questionIds: number[] = [];
     if (session.question_ids) {
       try {
         questionIds = typeof session.question_ids === 'string'
           ? JSON.parse(session.question_ids)
           : session.question_ids;
-        console.log(`📋 解析后的 question_ids:`, questionIds)
+        console.log(`📋 解析後的 question_ids:`, questionIds)
       } catch (e) {
-        console.warn(`解析会话 ${session.id} 的 question_ids 失败:`, e);
+        console.warn(`解析會話 ${session.id} 的 question_ids 失敗:`, e);
       }
     }
     
-    // 查询问答记录
+    // 查詢問答記錄
     const qaRecords = await query(
       `SELECT id, question_id, question_text, answer_text, response_time, ai_feedback, created_at
        FROM qa_records WHERE session_id = ?
@@ -194,14 +194,14 @@ router.get('/:id', async (req: Request, res: Response) => {
       [sessionIdNum]
     );
     
-    console.log(`📊 查询结果: 找到 ${qaRecords.length} 条问答记录`)
+    console.log(`📊 查詢結果: 找到 ${qaRecords.length} 條問答記錄`)
     
-    // 如果 question_ids 有数据但 qa_records 为空，可能是数据不一致
+    // 如果 question_ids 有數據但 qa_records 為空，可能是數據不一致
     if (questionIds.length > 0 && qaRecords.length === 0) {
-      console.warn(`⚠️  警告: 会话 ${sessionIdNum} 有 ${questionIds.length} 个 question_ids，但没有对应的 qa_records`)
+      console.warn(`⚠️  警告: 會話 ${sessionIdNum} 有 ${questionIds.length} 個 question_ids，但沒有對應的 qa_records`)
       console.warn(`    question_ids:`, questionIds)
       
-      // 检查这些 question_id 是否在其他 session_id 中
+      // 檢查這些 question_id 是否在其他 session_id 中
       if (questionIds.length > 0) {
         const placeholders = questionIds.map(() => '?').join(',')
         const checkOtherSessions = await query(
@@ -212,12 +212,12 @@ router.get('/:id', async (req: Request, res: Response) => {
            LIMIT 20`,
           questionIds
         )
-        console.log(`🔍 这些 question_id 在其他会话中的记录:`, checkOtherSessions)
+        console.log(`🔍 這些 question_id 在其他會話中的記錄:`, checkOtherSessions)
       }
     }
     
     if (qaRecords.length === 0) {
-      // 检查数据库中是否真的没有记录（使用字符串和数字两种方式）
+      // 檢查數據庫中是否真的沒有記錄（使用字符串和數字兩種方式）
       const checkQueryNum = await query(
         `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
         [sessionIdNum]
@@ -226,10 +226,10 @@ router.get('/:id', async (req: Request, res: Response) => {
         `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
         [String(sessionIdNum)]
       )
-      console.log(`🔍 数据库检查 (数字): session_id=${sessionIdNum} 的记录数 = ${checkQueryNum[0]?.count || 0}`)
-      console.log(`🔍 数据库检查 (字符串): session_id="${String(sessionIdNum)}" 的记录数 = ${checkQueryStr[0]?.count || 0}`)
+      console.log(`🔍 數據庫檢查 (數字): session_id=${sessionIdNum} 的記錄數 = ${checkQueryNum[0]?.count || 0}`)
+      console.log(`🔍 數據庫檢查 (字符串): session_id="${String(sessionIdNum)}" 的記錄數 = ${checkQueryStr[0]?.count || 0}`)
       
-      // 检查所有 qa_records 的 session_id 类型和值
+      // 檢查所有 qa_records 的 session_id 類型和值
       const allSessionIds = await query(
         `SELECT DISTINCT session_id, COUNT(*) as count 
          FROM qa_records 
@@ -237,9 +237,9 @@ router.get('/:id', async (req: Request, res: Response) => {
          ORDER BY session_id 
          LIMIT 20`
       )
-      console.log(`📋 数据库中所有会话的问答记录统计:`, allSessionIds)
+      console.log(`📋 數據庫中所有會話的問答記錄統計:`, allSessionIds)
       
-      // 检查是否有接近的 session_id（可能是数据错误）
+      // 檢查是否有接近的 session_id（可能是數據錯誤）
       const nearbySessions = await query(
         `SELECT session_id, COUNT(*) as count 
          FROM qa_records 
@@ -250,12 +250,12 @@ router.get('/:id', async (req: Request, res: Response) => {
       console.log(`🔍 附近的 session_id (${sessionIdNum - 2} 到 ${sessionIdNum + 2}):`, nearbySessions)
     }
 
-    // 解析 JSON 字段（添加错误处理）
+    // 解析 JSON 字段（添加錯誤處理）
     const formattedRecords = qaRecords.map((record: any) => {
       let ai_feedback = null;
       try {
         if (record.ai_feedback) {
-          // 处理字符串和对象两种情况
+          // 处理字符串和對象两種情况
           if (typeof record.ai_feedback === 'string') {
             ai_feedback = JSON.parse(record.ai_feedback);
           } else if (typeof record.ai_feedback === 'object' && record.ai_feedback !== null) {
@@ -263,14 +263,14 @@ router.get('/:id', async (req: Request, res: Response) => {
           }
         }
       } catch (error) {
-        console.warn(`解析记录 ${record.id} 的 ai_feedback 失败:`, error);
-        console.warn(`原始数据:`, record.ai_feedback);
+        console.warn(`解析記錄 ${record.id} 的 ai_feedback 失敗:`, error);
+        console.warn(`原始數據:`, record.ai_feedback);
         ai_feedback = null;
       }
       return { ...record, ai_feedback };
     });
 
-    // 组织任务信息（包含计划名称）
+    // 組織任務信息（包含計劃名稱）
     const taskInfo = session.task_id ? {
       task_id: session.task_id,
       duration: session.duration,
@@ -279,16 +279,16 @@ router.get('/:id', async (req: Request, res: Response) => {
       student_name: session.student_name,
       target_school: session.target_school,
       plan_name: session.student_name && session.target_school 
-        ? `${session.student_name}的${session.target_school}冲刺计划`
+        ? `${session.student_name}的${session.target_school}衝刺計劃`
         : null,
     } : null;
 
-    // questionIds 已在上面解析，这里不需要重复声明
+    // questionIds 已在上面解析，這裡不需要重複聲明
 
-    // 计算实际题目数量：使用question_ids的长度，如果为空则从qa_records统计唯一题目
+    // 計算實際題目數量：使用question_ids的長度，如果為空則從qa_records統計唯一題目
     let actualQuestionCount = questionIds.length;
     if (actualQuestionCount === 0 && formattedRecords.length > 0) {
-      // 如果没有question_ids，从qa_records中统计唯一的题目ID
+      // 如果沒有question_ids，從qa_records中統計唯一的題目ID
       const uniqueQuestionIds = new Set(
         formattedRecords
           .map((r: any) => r.question_id)
@@ -311,15 +311,15 @@ router.get('/:id', async (req: Request, res: Response) => {
         },
         task_info: taskInfo,
         qa_records: formattedRecords,
-        total_answered: formattedRecords.length, // 已回答的记录数
-        total_questions: actualQuestionCount, // 实际题目数量
-        question_ids: questionIds, // 返回题目ID列表
+        total_answered: formattedRecords.length, // 已回答的記錄數
+        total_questions: actualQuestionCount, // 實際題目數量
+        question_ids: questionIds, // 返回題目ID列表
       },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('获取会话详情失败:', error);
-    throw new AppError(500, '获取会话详情失败');
+    console.error('獲取會話詳情失敗:', error);
+    throw new AppError(500, '獲取會話詳情失敗');
   }
 });
 
@@ -333,25 +333,25 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：question_text, answer_text');
     }
 
-    // 验证会话存在且未完成
+    // 驗證會話存在且未完成
     const session = await queryOne('SELECT id, status FROM sessions WHERE id = ?', [id]);
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
     if (session.status === 'completed') {
-      throw new AppError(400, '会话已完成，无法继续提交答案');
+      throw new AppError(400, '會話已完成，無法繼續提交答案');
     }
 
-    // 确保 id 是数字类型（MySQL 需要数字类型匹配）
+    // 確保 id 是數字類型（MySQL 需要數字類型匹配）
     const sessionIdNum = parseInt(id, 10)
     if (isNaN(sessionIdNum)) {
-      console.error(`❌ 无效的会话ID: ${id}`)
-      throw new AppError(400, '无效的会话ID')
+      console.error(`❌ 無效的會話ID: ${id}`)
+      throw new AppError(400, '無效的會話ID')
     }
     
-    // 获取会话信息，包括关联的 plan_id（通过 task_id 获取）
-    // 确保 plan_id 正确关联：session -> task -> plan
+    // 獲取會話信息，包括關聯的 plan_id（通過 task_id 獲取）
+    // 確保 plan_id 正確關聯：session -> task -> plan
     const sessionInfo = await queryOne(
       `SELECT s.id, s.task_id, s.category, dt.plan_id, dt.id as task_id_verified
        FROM sessions s
@@ -361,46 +361,46 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
     );
     
     if (!sessionInfo) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
     
-    // 验证 plan_id 的关联关系
+    // 驗證 plan_id 的關聯關係
     let finalPlanId = null;
     if (sessionInfo.task_id) {
-      // 有 task_id，必须从 task 获取 plan_id
+      // 有 task_id，必須從 task 獲取 plan_id
       if (!sessionInfo.plan_id) {
-        console.warn(`⚠️  警告: 会话 ${sessionIdNum} 有 task_id=${sessionInfo.task_id}，但无法获取 plan_id，可能是任务已删除`)
+        console.warn(`⚠️  警告: 會話 ${sessionIdNum} 有 task_id=${sessionInfo.task_id}，但無法獲取 plan_id，可能是任務已刪除`)
       } else {
         finalPlanId = sessionInfo.plan_id;
       }
     }
-    // 如果没有 task_id，plan_id 保持为 null（自由练习）
+    // 如果沒有 task_id，plan_id 保持為 null（自由練習）
     
-    // 保存问答记录，包含 plan_id 和 question_id
+    // 保存問答記錄，包含 plan_id 和 question_id
     const recordId = await insert(
       `INSERT INTO qa_records (session_id, plan_id, question_id, question_text, answer_text, response_time)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         sessionIdNum, 
-        finalPlanId,              // 从 task 关联的 plan_id（如果有）
-        question_id || null,       // 题目ID
+        finalPlanId,              // 從 task 關聯的 plan_id（如果有）
+        question_id || null,       // 題目ID
         question_text, 
         answer_text, 
         response_time || null
       ]
     );
 
-    console.log(`✅ 保存答案: 会话=${sessionIdNum}, 记录=${recordId}, plan_id=${finalPlanId || 'null'}, question_id=${question_id || 'null'}, task_id=${sessionInfo.task_id || 'null'}`)
+    console.log(`✅ 保存答案: 會話=${sessionIdNum}, 記錄=${recordId}, plan_id=${finalPlanId || 'null'}, question_id=${question_id || 'null'}, task_id=${sessionInfo.task_id || 'null'}`)
     
-    // 验证记录是否成功插入
+    // 驗證記錄是否成功插入
     const verifyRecord = await queryOne(
       `SELECT id, session_id, plan_id, question_id FROM qa_records WHERE id = ?`,
       [recordId]
     )
     if (verifyRecord) {
-      console.log(`✅ 验证成功: 记录 ${recordId} 已保存，session_id=${verifyRecord.session_id}, plan_id=${verifyRecord.plan_id || 'null'}, question_id=${verifyRecord.question_id || 'null'}`)
+      console.log(`✅ 驗證成功: 記錄 ${recordId} 已保存，session_id=${verifyRecord.session_id}, plan_id=${verifyRecord.plan_id || 'null'}, question_id=${verifyRecord.question_id || 'null'}`)
     } else {
-      console.error(`❌ 验证失败: 记录 ${recordId} 未找到`)
+      console.error(`❌ 驗證失敗: 記錄 ${recordId} 未找到`)
     }
 
     res.status(201).json({
@@ -412,17 +412,17 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('提交答案失败:', error);
-    throw new AppError(500, '提交答案失败');
+    console.error('提交答案失敗:', error);
+    throw new AppError(500, '提交答案失敗');
   }
 });
 
-// 完成会话
+// 完成會話
 router.patch('/:id/complete', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // 验证会话存在并获取关联的任务ID和计划ID
+    // 驗證會話存在並獲取關聯的任務ID和計劃ID
     const session = await queryOne(
       `SELECT s.id, s.status, s.task_id, s.category, dt.plan_id
        FROM sessions s
@@ -431,20 +431,20 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
       [id]
     );
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
     if (session.status === 'completed') {
-      throw new AppError(400, '会话已完成');
+      throw new AppError(400, '會話已完成');
     }
 
-    // 更新会话状态
+    // 更新會話狀態
     await execute(
       'UPDATE sessions SET status = ?, end_time = CURRENT_TIMESTAMP WHERE id = ?',
       ['completed', id]
     );
 
-    // 如果会话关联了任务,自动标记任务完成
+    // 如果會話關聯了任務,自動標記任務完成
     let taskCompleted = false;
     let planId = null;
     if (session.task_id) {
@@ -456,11 +456,11 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
       planId = session.plan_id;
       
       if (taskCompleted) {
-        console.log(`✅ 任务自动完成: 任务ID=${session.task_id}, 计划ID=${planId || 'null'}`);
+        console.log(`✅ 任務自動完成: 任務ID=${session.task_id}, 計劃ID=${planId || 'null'}`);
       }
     }
 
-    // 验证并修复 qa_records 的 plan_id（确保所有记录都正确关联）
+    // 驗證並修復 qa_records 的 plan_id（確保所有記錄都正確關聯）
     if (session.task_id && session.plan_id) {
       const fixResult = await execute(
         `UPDATE qa_records qr
@@ -470,15 +470,15 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
         [session.plan_id, id, session.plan_id]
       );
       if (fixResult > 0) {
-        console.log(`✅ 修复了 ${fixResult} 条问答记录的 plan_id: 会话=${id}, plan_id=${session.plan_id}`);
+        console.log(`✅ 修復了 ${fixResult} 條問答記錄的 plan_id: 會話=${id}, plan_id=${session.plan_id}`);
       }
     }
 
-    console.log(`✅ 会话完成: ID=${id}, 类别=${session.category}, 关联任务=${session.task_id || '无'}, 计划ID=${planId || '无'}`);
+    console.log(`✅ 會話完成: ID=${id}, 類別=${session.category}, 關聯任務=${session.task_id || '無'}, 計劃ID=${planId || '無'}`);
 
     res.json({
       success: true,
-      message: taskCompleted ? '会话已完成,任务已标记为完成' : '会话已完成',
+      message: taskCompleted ? '會話已完成,任務已標記為完成' : '會話已完成',
       data: {
         session_id: id,
         task_id: session.task_id,
@@ -488,21 +488,21 @@ router.patch('/:id/complete', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('完成会话失败:', error);
-    throw new AppError(500, '完成会话失败');
+    console.error('完成會話失敗:', error);
+    throw new AppError(500, '完成會話失敗');
   }
 });
 
-// 获取最近会话列表
+// 獲取最近會話列表
 router.get('/recent/list', async (req: Request, res: Response) => {
   try {
     const { limit = '10' } = req.query;
     const limitNum = Math.min(parseInt(limit as string) || 10, 100);
 
-    // 查询所有会话，计算题目数量
-    // 优先使用question_ids的长度，如果为空则从qa_records统计唯一题目数
-    // 注意：包含所有会话（包括自由练习），只要它们有题目或问答记录
-    const queryLimit = limitNum * 2; // 多查询一些，因为后面会去重
+    // 查詢所有會話，計算題目數量
+    // 優先使用question_ids的長度，如果為空則從qa_records統計唯一題目數
+    // 注意：包含所有會話（包括自由練習），只要它們有題目或問答記錄
+    const queryLimit = limitNum * 2; // 多查詢一些，因為後面會去重
     const allSessions = await query(
       `SELECT s.id, s.category, s.mode, s.start_time, s.end_time, s.status, s.task_id, s.question_ids,
               COALESCE(JSON_LENGTH(s.question_ids), 0) as question_ids_count,
@@ -511,26 +511,26 @@ router.get('/recent/list', async (req: Request, res: Response) => {
        FROM sessions s
        WHERE (s.question_ids IS NOT NULL AND JSON_LENGTH(s.question_ids) > 0)
           OR EXISTS (SELECT 1 FROM qa_records qr WHERE qr.session_id = s.id)
-          OR s.status = 'in_progress'  -- 包含进行中的会话（即使还没有题目或记录）
+          OR s.status = 'in_progress'  -- 包含進行中的會話（即使還沒有題目或記錄）
        ORDER BY s.start_time DESC
        LIMIT ${queryLimit}`,
-      [] // LIMIT不使用参数绑定
+      [] // LIMIT不使用參數绑定
     );
     
-    // 计算正确的题目数量：优先使用question_ids，如果为0则使用qa_records的唯一题目数
-    // 对于自由练习，如果没有question_ids但有qa_records，使用qa_records的唯一题目数
+    // 計算正確的題目數量：優先使用question_ids，如果為0則使用qa_records的唯一題目數
+    // 對於自由練習，如果沒有question_ids但有qa_records，使用qa_records的唯一題目數
     const sessionsWithCount = allSessions.map((session: any) => {
       let questionCount = 0;
       
       if (session.question_ids_count > 0) {
-        // 优先使用question_ids的长度
+        // 優先使用question_ids的長度
         questionCount = session.question_ids_count;
       } else if (session.qa_records_count > 0) {
-        // 如果没有question_ids，使用qa_records的唯一题目数
+        // 如果沒有question_ids，使用qa_records的唯一題目數
         questionCount = session.qa_records_count;
       } else if (session.total_qa_records > 0) {
-        // 如果qa_records_count为0但total_qa_records > 0，说明有记录但question_id为NULL
-        // 这种情况下，使用总记录数作为题目数（兼容旧数据）
+        // 如果qa_records_count為0但total_qa_records > 0，說明有記錄但question_id為NULL
+        // 這種情況下，使用總記錄數作為題目數（兼容舊數據）
         questionCount = session.total_qa_records;
       }
       
@@ -540,17 +540,17 @@ router.get('/recent/list', async (req: Request, res: Response) => {
       };
     });
 
-    // 去重：如果有相同task_id的多个会话，只保留最新的一个（优先保留进行中的）
+    // 去重：如果有相同task_id的多個會話，只保留最新的一個（優先保留進行中的）
     const sessionMap = new Map<string, any>();
     sessionsWithCount.forEach((session: any) => {
       if (session.task_id) {
-        // 任务关联的会话：每个任务只保留一个
+        // 任務關聯的會話：每個任務只保留一個
         const key = `task_${session.task_id}`;
         const existing = sessionMap.get(key);
         if (!existing) {
           sessionMap.set(key, session);
         } else {
-          // 优先保留进行中的会话，否则保留最新的
+          // 優先保留進行中的會話，否則保留最新的
           if (session.status === 'in_progress' && existing.status !== 'in_progress') {
             sessionMap.set(key, session);
           } else if (existing.status !== 'in_progress' && 
@@ -559,20 +559,20 @@ router.get('/recent/list', async (req: Request, res: Response) => {
           }
         }
       } else {
-        // 自由练习会话：每个会话ID都是唯一的
+        // 自由練習會話：每個會話ID都是唯一的
         sessionMap.set(`free_${session.id}`, session);
       }
     });
 
-    // 转换为数组，过滤掉没有题目且没有问答记录的会话，并按时间排序
-    // 注意：保留有question_ids、qa_records或正在进行中的会话
+    // 轉換為數組，過濾掉沒有題目且沒有問答記錄的會話，並按時間排序
+    // 注意：保留有question_ids、qa_records或正在進行中的會話
     const uniqueSessions = Array.from(sessionMap.values())
       .filter((s: any) => {
-        // 保留有题目的会话，或者有问答记录的会话，或者正在进行中的会话
+        // 保留有題目的會話，或者有問答記錄的會話，或者正在進行中的會話
         return s.question_count > 0 || s.status === 'in_progress';
       })
       .sort((a: any, b: any) => {
-        // 先按状态排序（进行中的在前），再按时间排序
+        // 先按狀態排序（進行中的在前），再按時間排序
         if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
         if (a.status !== 'in_progress' && b.status === 'in_progress') return 1;
         return new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
@@ -585,41 +585,41 @@ router.get('/recent/list', async (req: Request, res: Response) => {
       total: uniqueSessions.length,
     });
   } catch (error) {
-    console.error('获取最近会话失败:', error);
-    throw new AppError(500, '获取最近会话失败');
+    console.error('獲取最近會話失敗:', error);
+    throw new AppError(500, '獲取最近會話失敗');
   }
 });
 
-// 删除会话
+// 删除會話
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // 检查会话是否存在
+    // 檢查會話是否存在
     const session = await queryOne('SELECT id, category FROM sessions WHERE id = ?', [id]);
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
-    // 先删除问答记录（外键约束）
+    // 先刪除問答記錄（外鍵約束）
     await execute('DELETE FROM qa_records WHERE session_id = ?', [id]);
     
-    // 删除会话总结（如果有）
+    // 刪除會話總結（如果有）
     await execute('DELETE FROM session_summaries WHERE session_id = ?', [id]);
 
-    // 删除会话
+    // 刪除會話
     await execute('DELETE FROM sessions WHERE id = ?', [id]);
 
-    console.log(`🗑️  练习记录已删除: 会话ID=${id}, 类别=${session.category}`);
+    console.log(`🗑️  練習記錄已刪除: 會話ID=${id}, 類別=${session.category}`);
 
     res.json({
       success: true,
-      message: '练习记录已删除',
+      message: '練習記錄已刪除',
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('删除练习记录失败:', error);
-    throw new AppError(500, '删除练习记录失败');
+    console.error('刪除練習記錄失敗:', error);
+    throw new AppError(500, '刪除練習記錄失敗');
   }
 });
 

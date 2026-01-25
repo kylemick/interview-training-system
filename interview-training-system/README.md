@@ -1,23 +1,23 @@
-# 升中面试训练系统
+# 升中面試訓練係統
 
-为香港小学生提供升读顶尖中学（SPCC、QC、LSC等）的面试训练平台。
+为香港小學生提供升读顶尖中學（SPCC、QC、LSC等）的面試訓練平台。
 
-## 功能特点
+## 功能特點
 
-- ✅ **七大专项训练**：英文口语、中文表达、逻辑思维、时事常识、科学常识、个人成长、小组讨论
-- 🤖 **AI智能辅助**：自动生成训练计划、题目和个性化反馈
-- 📊 **进度追踪**：可视化学习进度，识别弱点并自适应调整
-- 🏫 **学校针对性**：根据目标学校特点定制训练内容
-- 🔒 **数据隐私**：本地运行，所有数据存储在本地
+- ✅ **七大專項訓練**：英文口語、中文表達、邏輯思維、時事常識、科學常識、个人成長、小組討論
+- 🤖 **AI智能辅助**：自動生成訓練計劃、題目和个性化反馈
+- 📊 **進度追踪**：可视化學習進度，識別弱點并自适应調整
+- 🏫 **學校針對性**：根據目標學校特點定制訓練內容
+- 🔒 **數據隐私**：本地运行，所有數據存储在本地
 - ⚡ **高性能**：页面加载 < 1 秒，API 响应 < 500ms（简单查询）
 
-## 技术栈
+## 技術栈
 
 **前端**：React 18 + TypeScript + Vite + Ant Design
-**后端**：Node.js + Express + MySQL
+**後端**：Node.js + Express + MySQL
 **AI**：DeepSeek API
 
-## 🚀 快速开始
+## 🚀 快速開始
 
 ### 方法1：一键安装（最简单，强烈推荐！）
 
@@ -35,22 +35,22 @@ cd /Users/chenkan/project/plans/interview-training-system
 setup.bat
 ```
 
-**安装脚本会自动：**
+**安装脚本會自動：**
 - ✅ 检测并安装 MySQL（macOS 使用 Homebrew）
-- ✅ 交互式配置 MySQL 密码
+- ✅ 交互式配置 MySQL 密碼
 - ✅ 交互式配置 DeepSeek API Key
-- ✅ 自动创建 `.env` 配置文件
+- ✅ 自動創建 `.env` 配置文件
 - ✅ 安装所有依赖
-- ✅ 创建和初始化数据库
-- ✅ 询问是否立即启动应用
+- ✅ 創建和初始化數據庫
+- ✅ 询問是否立即启動应用
 
-**只需要回答几个问题，其他全自动！** 🎉
+**只需要回答几个問題，其他全自動！** 🎉
 
 ---
 
-### 方法2：一键启动（已配置好环境）
+### 方法2：一键启動（已配置好环境）
 
-如果已经运行过 `setup.sh/setup.bat`，直接启动：
+如果已经运行過 `setup.sh/setup.bat`，直接启動：
 
 ```bash
 # macOS/Linux
@@ -60,16 +60,16 @@ setup.bat
 dev.bat
 ```
 
-脚本会自动：
+脚本會自動：
 - ✅ 检查 Node.js 环境
 - ✅ 安装所有依赖
-- ✅ 创建和初始化 MySQL 数据库
-- ✅ 启动前后端服务
+- ✅ 創建和初始化 MySQL 數據庫
+- ✅ 启動前後端服務
 - ✅ 显示所有日志输出
 
-**启动后访问**：http://localhost:3000
+**启動後访問**：http://localhost:3000
 
-### 方法3：手动安装（不推荐）
+### 方法3：手動安装（不推荐）
 
 #### 前置要求
 - Node.js >= 18 (推荐 LTS 版本)
@@ -88,7 +88,7 @@ dev.bat
 # 一键安装所有依赖
 npm run install:all
 
-# 或分别安装
+# 或分別安装
 cd backend && npm install
 cd ../frontend && npm install
 ```
@@ -97,22 +97,22 @@ cd ../frontend && npm install
 
 ```bash
 cp backend/.env.example backend/.env
-# 编辑 .env 文件，设置 DB_PASSWORD 和 DEEPSEEK_API_KEY
+# 编輯 .env 文件，设置 DB_PASSWORD 和 DEEPSEEK_API_KEY
 ```
 
-#### 4. 初始化数据库
+#### 4. 初始化數據庫
 
 ```bash
 npm run db:init
 ```
 
-#### 5. 启动服务
+#### 5. 启動服務
 
 ```bash
-# 同时启动前后端（推荐）
+# 同時启動前後端（推荐）
 npm run dev
 
-# 或分别启动
+# 或分別启動
 # 终端1
 cd backend && npm run dev
 
@@ -120,67 +120,67 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
-## 📚 项目结构
+## 📚 項目結构
 
 ```
 interview-training-system/
 ├── frontend/           # React前端应用
-├── backend/            # Node.js后端服务
-├── docs/               # 文档
-├── dev.sh             # 一键启动（Mac/Linux）
-├── dev.bat            # 一键启动（Windows）
+├── backend/            # Node.js後端服務
+├── docs/               # 文檔
+├── dev.sh             # 一键启動（Mac/Linux）
+├── dev.bat            # 一键启動（Windows）
 └── package.json       # 根配置
 ```
 
-## 🧪 测试
+## 🧪 测試
 
-访问以下链接验证：
-- 后端健康检查：http://localhost:3001/health
+访問以下链接验证：
+- 後端健康检查：http://localhost:3001/health
 - 前端应用：http://localhost:3000
 
-详见：[测试文档](./docs/TESTING.md)
+详见：[测試文檔](./docs/TESTING.md)
 
-## 📖 文档
+## 📖 文檔
 
 - [MySQL 安装指南](./docs/MYSQL_SETUP.md) - **必读**
-- [快速开始](./QUICKSTART.md)
-- [API文档](./docs/API.md)
-- [开发指南](./docs/DEVELOPMENT.md)
-- [开发规范](./docs/DEVELOPMENT_GUIDE.md) - **开发必读**
-- [性能优化](./docs/PERFORMANCE.md) - 性能要求和优化指南
-- [测试指南](./docs/TESTING.md)
+- [快速開始](./QUICKSTART.md)
+- [API文檔](./docs/API.md)
+- [開發指南](./docs/DEVELOPMENT.md)
+- [開發規范](./docs/DEVELOPMENT_GUIDE.md) - **開發必读**
+- [性能優化](./docs/PERFORMANCE.md) - 性能要求和優化指南
+- [测試指南](./docs/TESTING.md)
 
 ## 🎯 功能模块
 
-- [x] 项目基础设施
-- [ ] 学校特征库（SPCC、QC、LSC等）
-- [ ] 题库管理（七大专项）
-- [ ] 训练计划生成
-- [ ] 面试练习
-- [ ] AI反馈系统
-- [ ] 进度追踪
-- [ ] 面试回忆录入
+- [x] 項目基础设施
+- [ ] 學校特征庫（SPCC、QC、LSC等）
+- [ ] 題庫管理（七大專項）
+- [ ] 訓練計劃生成
+- [ ] 面試練習
+- [ ] AI反馈係統
+- [ ] 進度追踪
+- [ ] 面試回憶錄入
 
-## 开发
+## 開發
 
-### 代码规范
+### 代碼規范
 
 ```bash
 # Lint检查
 npm run lint
 
-# 代码格式化
+# 代碼格式化
 npm run format
 ```
 
 ### 常用命令
 
 ```bash
-npm run dev              # 启动开发服务器
+npm run dev              # 启動開發服務器
 npm run install:all      # 安装所有依赖
-npm run db:init          # 初始化数据库
-npm run lint             # 代码检查
-npm run format           # 代码格式化
+npm run db:init          # 初始化數據庫
+npm run lint             # 代碼检查
+npm run format           # 代碼格式化
 ```
 
 ## License

@@ -1,5 +1,5 @@
 /**
- * MySQL 数据库连接和初始化
+ * MySQL 數據庫连接和初始化
  */
 import mysql from 'mysql2/promise';
 import { readFileSync } from 'fs';
@@ -12,7 +12,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// 数据库配置
+// 數據庫配置
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306'),
@@ -26,10 +26,10 @@ const dbConfig = {
   keepAliveInitialDelay: 0,
 };
 
-// 创建连接池
+// 創建连接池
 let pool: mysql.Pool;
 
-// 查询缓存：简单的内存缓存，5分钟TTL
+// 查询缓存：简单的內存缓存，5分鐘TTL
 interface CacheEntry {
   data: any
   timestamp: number
@@ -37,7 +37,7 @@ interface CacheEntry {
 }
 
 const queryCache = new Map<string, CacheEntry>()
-const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+const CACHE_TTL = 5 * 60 * 1000 // 5分鐘
 
 // 慢查询阈值（毫秒）
 const SLOW_QUERY_THRESHOLD = 100
@@ -67,20 +67,20 @@ export function clearQueryCache(pattern?: string) {
 }
 
 /**
- * 解析 JSON 字段（统一处理）
+ * 解析 JSON 字段（統一处理）
  */
 export function parseJsonField(value: any, fieldName: string): any {
   if (!value) return []
   try {
     return typeof value === 'string' ? JSON.parse(value) : value
   } catch (error) {
-    console.warn(`解析 ${fieldName} JSON 字段失败:`, error)
+    console.warn(`解析 ${fieldName} JSON 字段失敗:`, error)
     return []
   }
 }
 
 /**
- * 获取数据库连接池
+ * 获取數據庫连接池
  */
 export function getPool(): mysql.Pool {
   if (!pool) {
@@ -90,22 +90,22 @@ export function getPool(): mysql.Pool {
 }
 
 /**
- * 获取数据库连接
+ * 获取數據庫连接
  */
 export async function getConnection(): Promise<mysql.PoolConnection> {
   return await getPool().getConnection();
 }
 
 /**
- * 规范化查询参数，确保类型兼容 MySQL2
+ * 規范化查询參數，確保類型兼容 MySQL2
  * 
  * MySQL2 的 prepared statement 要求：
- * - 所有参数类型必须一致或兼容
- * - number 类型可以直接传递
- * - string 类型会被正确处理
+ * - 所有參數類型必须一致或兼容
+ * - number 類型可以直接傳递
+ * - string 類型會被正確处理
  * 
- * @param params 原始参数数组
- * @returns 规范化后的参数数组
+ * @param params 原始參數數組
+ * @returns 規范化後的參數數組
  */
 function normalizeParams(params: any[]): any[] {
   return params.map(param => {
@@ -113,11 +113,11 @@ function normalizeParams(params: any[]): any[] {
     if (param === null || param === undefined) {
       return param;
     }
-    // 确保 number 类型保持为 number（不转字符串）
+    // 確保 number 類型保持为 number（不转字符串）
     if (typeof param === 'number') {
       return param;
     }
-    // 其他类型保持原样
+    // 其他類型保持原樣
     return param;
   });
 }
@@ -125,10 +125,10 @@ function normalizeParams(params: any[]): any[] {
 /**
  * 执行查询（使用 prepared statement）
  * 
- * 注意：对于包含 LIMIT/OFFSET 的分页查询，请使用 queryWithPagination() 函数
+ * 注意：對于包含 LIMIT/OFFSET 的分页查询，请使用 queryWithPagination() 函數
  * 
- * @param sql SQL 语句
- * @param params 查询参数
+ * @param sql SQL 語句
+ * @param params 查询參數
  * @param useCache 是否使用缓存（默认 false，仅用于读多写少的查询）
  * 
  * @example
@@ -153,26 +153,26 @@ export async function query<T = any>(sql: string, params?: any[], useCache = fal
     }
   }
   
-  // 记录查询开始时间
+  // 記錄查询開始時間
   const startTime = Date.now();
   
-  // 开发环境下记录详细日志
+  // 開發环境下記錄详细日志
   if (process.env.NODE_ENV === 'development') {
     console.log('执行查询 - SQL:', sql.substring(0, 100));
-    console.log('参数:', finalParams, '类型:', finalParams.map(p => typeof p));
+    console.log('參數:', finalParams, '類型:', finalParams.map(p => typeof p));
   }
   
   try {
     const [rows] = await getPool().execute(sql, finalParams);
     const duration = Date.now() - startTime;
     
-    // 记录慢查询
+    // 記錄慢查询
     if (duration > SLOW_QUERY_THRESHOLD) {
       console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
-      console.warn('   参数:', finalParams);
+      console.warn('   參數:', finalParams);
     }
     
-    // 缓存结果（仅用于读查询且启用缓存）
+    // 缓存結果（仅用于读查询且启用缓存）
     if (useCache && sql.trim().toUpperCase().startsWith('SELECT')) {
       queryCache.set(cacheKey, {
         data: rows,
@@ -184,8 +184,8 @@ export async function query<T = any>(sql: string, params?: any[], useCache = fal
     return rows as T[];
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ 查询失败 (${duration}ms):`, sql.substring(0, 100));
-    console.error('   参数:', finalParams);
+    console.error(`❌ 查询失敗 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   參數:', finalParams);
     throw error;
   }
 }
@@ -193,13 +193,13 @@ export async function query<T = any>(sql: string, params?: any[], useCache = fal
 /**
  * 执行包含 LIMIT/OFFSET 的分页查询
  * 
- * 由于 MySQL2 的 execute() 方法对 LIMIT/OFFSET 参数类型处理有已知问题，
- * 此函数使用 query() 方法并通过字符串拼接处理分页参数（已验证安全性）
+ * 由于 MySQL2 的 execute() 方法對 LIMIT/OFFSET 參數類型处理有已知問題，
+ * 此函數使用 query() 方法并通過字符串拼接处理分页參數（已验证安全性）
  * 
- * @param sql SQL 语句（不包含 LIMIT/OFFSET）
- * @param params SQL 参数
- * @param limit 限制数量（已验证为正整数）
- * @param offset 偏移量（已验证为非负整数）
+ * @param sql SQL 語句（不包含 LIMIT/OFFSET）
+ * @param params SQL 參數
+ * @param limit 限制數量（已验证为正整數）
+ * @param offset 偏移量（已验证为非负整數）
  * @param useCache 是否使用缓存（默认 false）
  * 
  * @example
@@ -217,37 +217,37 @@ export async function queryWithPagination<T = any>(
   offset: number,
   useCache = false
 ): Promise<T[]> {
-  // 验证分页参数（防止 SQL 注入）
+  // 验证分页參數（防止 SQL 注入）
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 1000));
   const safeOffset = Math.max(0, Math.floor(offset));
   
-  // 使用 query() 而不是 execute() 来避免 LIMIT/OFFSET 参数类型问题
+  // 使用 query() 而不是 execute() 來避免 LIMIT/OFFSET 參數類型問題
   const finalParams = params ? normalizeParams(params) : [];
   const fullSql = `${sql} LIMIT ${safeLimit} OFFSET ${safeOffset}`;
   
-  // 记录查询开始时间
+  // 記錄查询開始時間
   const startTime = Date.now();
   
   if (process.env.NODE_ENV === 'development') {
     console.log('执行分页查询 - SQL:', fullSql.substring(0, 150));
-    console.log('参数:', finalParams);
+    console.log('參數:', finalParams);
   }
   
   try {
     const [rows] = await getPool().query(fullSql, finalParams);
     const duration = Date.now() - startTime;
     
-    // 记录慢查询
+    // 記錄慢查询
     if (duration > SLOW_QUERY_THRESHOLD) {
       console.warn(`⚠️  慢查询 (${duration}ms):`, fullSql.substring(0, 150));
-      console.warn('   参数:', finalParams);
+      console.warn('   參數:', finalParams);
     }
     
     return rows as T[];
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ 分页查询失败 (${duration}ms):`, fullSql.substring(0, 100));
-    console.error('   参数:', finalParams);
+    console.error(`❌ 分页查询失敗 (${duration}ms):`, fullSql.substring(0, 100));
+    console.error('   參數:', finalParams);
     throw error;
   }
 }
@@ -255,8 +255,8 @@ export async function queryWithPagination<T = any>(
 /**
  * 执行单条查询
  * 
- * @param sql SQL 语句
- * @param params 查询参数
+ * @param sql SQL 語句
+ * @param params 查询參數
  * @param useCache 是否使用缓存（默认 false）
  * 
  * @example
@@ -273,7 +273,7 @@ export async function queryOne<T = any>(sql: string, params?: any[], useCache = 
 /**
  * 执行插入并返回插入的 ID
  * 
- * 注意：执行插入操作后会自动清除相关缓存
+ * 注意：执行插入操作後會自動清除相關缓存
  * 
  * @example
  * const id = await insert(
@@ -290,13 +290,13 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
     const duration = Date.now() - startTime;
     const insertId = (result as mysql.ResultSetHeader).insertId;
     
-    // 记录慢查询
+    // 記錄慢查询
     if (duration > SLOW_QUERY_THRESHOLD) {
       console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
-      console.warn('   参数:', finalParams);
+      console.warn('   參數:', finalParams);
     }
     
-    // 清除相关缓存（插入操作会影响数据）
+    // 清除相關缓存（插入操作會影响數據）
     const tableMatch = sql.match(/INTO\s+(\w+)/i);
     if (tableMatch) {
       const tableName = tableMatch[1];
@@ -306,16 +306,16 @@ export async function insert(sql: string, params?: any[]): Promise<number> {
     return insertId;
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ 插入失败 (${duration}ms):`, sql.substring(0, 100));
-    console.error('   参数:', finalParams);
+    console.error(`❌ 插入失敗 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   參數:', finalParams);
     throw error;
   }
 }
 
 /**
- * 执行更新/删除并返回影响的行数
+ * 执行更新/删除并返回影响的行數
  * 
- * 注意：执行更新/删除操作后会自动清除相关缓存
+ * 注意：执行更新/删除操作後會自動清除相關缓存
  * 
  * @example
  * const affected = await execute(
@@ -332,15 +332,15 @@ export async function execute(sql: string, params?: any[]): Promise<number> {
     const duration = Date.now() - startTime;
     const affectedRows = (result as mysql.ResultSetHeader).affectedRows;
     
-    // 记录慢查询
+    // 記錄慢查询
     if (duration > SLOW_QUERY_THRESHOLD) {
       console.warn(`⚠️  慢查询 (${duration}ms):`, sql.substring(0, 150));
-      console.warn('   参数:', finalParams);
+      console.warn('   參數:', finalParams);
     }
     
-    // 清除相关缓存（更新/删除操作会影响数据）
+    // 清除相關缓存（更新/删除操作會影响數據）
     if (affectedRows > 0) {
-      // 根据表名清除缓存
+      // 根據表名清除缓存
       const tableMatch = sql.match(/FROM\s+(\w+)|UPDATE\s+(\w+)|INTO\s+(\w+)/i);
       if (tableMatch) {
         const tableName = tableMatch[1] || tableMatch[2] || tableMatch[3];
@@ -351,20 +351,20 @@ export async function execute(sql: string, params?: any[]): Promise<number> {
     return affectedRows;
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ 执行失败 (${duration}ms):`, sql.substring(0, 100));
-    console.error('   参数:', finalParams);
+    console.error(`❌ 执行失敗 (${duration}ms):`, sql.substring(0, 100));
+    console.error('   參數:', finalParams);
     throw error;
   }
 }
 
 /**
- * 初始化数据库（创建数据库和表）
+ * 初始化數據庫（創建數據庫和表）
  */
 export async function initDatabase(): Promise<void> {
-  console.log('🗄️  初始化 MySQL 数据库...');
+  console.log('🗄️  初始化 MySQL 數據庫...');
 
   try {
-    // 首先连接到 MySQL 服务器（不指定数据库）
+    // 首先连接到 MySQL 服務器（不指定數據庫）
     const connectionWithoutDb = await mysql.createConnection({
       host: dbConfig.host,
       port: dbConfig.port,
@@ -372,14 +372,14 @@ export async function initDatabase(): Promise<void> {
       password: dbConfig.password,
     });
 
-    // 创建数据库（如果不存在）
+    // 創建數據庫（如果不存在）
     await connectionWithoutDb.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
-    console.log(`✅ 数据库 ${dbConfig.database} 已准备就绪`);
+    console.log(`✅ 數據庫 ${dbConfig.database} 已準備就绪`);
     await connectionWithoutDb.end();
 
-    // 连接到指定数据库
+    // 连接到指定數據庫
     const connection = await mysql.createConnection({
       ...dbConfig,
       database: dbConfig.database,
@@ -389,7 +389,7 @@ export async function initDatabase(): Promise<void> {
     const schemaPath = join(__dirname, 'schema.sql');
     const schema = readFileSync(schemaPath, 'utf-8');
 
-    // 分割并执行每个 SQL 语句
+    // 分割并执行每个 SQL 語句
     const statements = schema
       .split(';')
       .map((stmt) => stmt.trim())
@@ -399,31 +399,31 @@ export async function initDatabase(): Promise<void> {
       await connection.query(statement);
     }
 
-    console.log('✅ 数据表创建成功');
+    console.log('✅ 數據表創建成功');
 
     await connection.end();
 
-    console.log('✅ 数据库初始化完成');
+    console.log('✅ 數據庫初始化完成');
     console.log('');
-    console.log('数据库配置:');
+    console.log('數據庫配置:');
     console.log(`  主机: ${dbConfig.host}`);
     console.log(`  端口: ${dbConfig.port}`);
-    console.log(`  数据库: ${dbConfig.database}`);
+    console.log(`  數據庫: ${dbConfig.database}`);
     console.log(`  用户: ${dbConfig.user}`);
     console.log('');
-    console.log('ℹ️  种子数据不会自动导入');
-    console.log('   - 题目：请使用 AI 生成题目功能');
-    console.log('   - 学校：如需导入，请调用 POST /api/data/seed-schools');
-    console.log('   - 题目：如需导入，请调用 POST /api/data/seed-questions');
+    console.log('ℹ️  種子數據不會自動導入');
+    console.log('   - 題目：请使用 AI 生成題目功能');
+    console.log('   - 學校：如需導入，请調用 POST /api/data/seed-schools');
+    console.log('   - 題目：如需導入，请調用 POST /api/data/seed-questions');
     console.log('');
   } catch (error) {
-    console.error('❌ 数据库初始化失败:', error);
+    console.error('❌ 數據庫初始化失敗:', error);
     throw error;
   }
 }
 
 /**
- * 获取数据库统计信息
+ * 获取數據庫統計信息
  */
 export async function getStats(): Promise<{
   schools: number;
@@ -444,18 +444,18 @@ export async function getStats(): Promise<{
       sessions: sessions?.count || 0,
     };
   } catch (error) {
-    console.error('获取统计信息失败:', error);
+    console.error('获取統計信息失敗:', error);
     return { schools: 0, questions: 0, plans: 0, sessions: 0 };
   }
 }
 
 /**
- * 关闭数据库连接池
+ * 關闭數據庫连接池
  */
 export async function closePool(): Promise<void> {
   if (pool) {
     await pool.end();
-    console.log('✅ 数据库连接池已关闭');
+    console.log('✅ 數據庫连接池已關闭');
   }
 }
 
@@ -467,7 +467,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ 初始化失败:', error);
+      console.error('❌ 初始化失敗:', error);
       process.exit(1);
     });
 }

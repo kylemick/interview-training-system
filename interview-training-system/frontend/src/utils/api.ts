@@ -2,20 +2,20 @@ import axios, { AxiosError, AxiosRequestConfig, CancelTokenSource } from 'axios'
 import { message } from 'antd'
 
 // API 基础URL
-// 在开发环境中，使用相对路径通过Vite代理访问后端
+// 在開發环境中，使用相對路径通過Vite代理访問後端
 // 在生产环境中，可以设置 VITE_API_URL 环境变量
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-// 创建axios实例
+// 創建axios实例
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 优化：从30秒降低到10秒
+  timeout: 10000, // 優化：從30秒降低到10秒
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// 请求缓存：简单的内存缓存，5分钟TTL
+// 请求缓存：简单的內存缓存，5分鐘TTL
 interface CacheEntry {
   data: any
   timestamp: number
@@ -23,9 +23,9 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>()
-const CACHE_TTL = 5 * 60 * 1000 // 5分钟
+const CACHE_TTL = 5 * 60 * 1000 // 5分鐘
 
-// 请求去重：相同请求在pending时不重复发送
+// 请求去重：相同请求在pending時不重复發送
 const pendingRequests = new Map<string, Promise<any>>()
 
 // 请求取消：存储每个请求的取消token
@@ -42,7 +42,7 @@ function getRequestKey(config: AxiosRequestConfig): string {
 }
 
 /**
- * 清除缓存（用于数据变更操作后）
+ * 清除缓存（用于數據变更操作後）
  */
 export function clearCache(pattern?: string) {
   if (!pattern) {
@@ -66,7 +66,7 @@ apiClient.interceptors.request.use(
     //   config.headers.Authorization = `Bearer ${token}`
     // }
     
-    // 为每个请求创建取消token
+    // 为每个请求創建取消token
     const source = axios.CancelToken.source()
     config.cancelToken = source.token
     const requestKey = getRequestKey(config)
@@ -83,11 +83,11 @@ apiClient.interceptors.request.use(
 // 响应拦截器
 apiClient.interceptors.response.use(
   (response) => {
-    // 缓存GET请求的响应（5分钟TTL）
+    // 缓存GET请求的响应（5分鐘TTL）
     const config = response.config
     if (config.method?.toLowerCase() === 'get') {
       const requestKey = getRequestKey(config)
-      // 缓存整个响应数据对象
+      // 缓存整个响应數據對象
       cache.set(requestKey, {
         data: response.data,
         timestamp: Date.now(),
@@ -115,16 +115,16 @@ apiClient.interceptors.response.use(
       cancelTokens.delete(requestKey)
     }
     
-    // 统一错误处理
-    const errorMessage = error.response?.data?.message || error.message || '请求失败'
+    // 統一错误处理
+    const errorMessage = error.response?.data?.message || error.message || '请求失敗'
     
     if (error.response?.status === 401) {
-      message.error('未授权，请重新登录')
-      // 这里可以跳转到登录页
+      message.error('未授权，请重新登錄')
+      // 这里可以跳转到登錄页
     } else if (error.response?.status === 404) {
-      message.error('资源不存在')
+      message.error('資源不存在')
     } else if (error.response?.status && error.response.status >= 500) {
-      message.error('服务器错误，请稍后重试')
+      message.error('服務器错误，请稍後重試')
     } else {
       message.error(errorMessage)
     }
@@ -134,12 +134,12 @@ apiClient.interceptors.response.use(
 )
 
 /**
- * 增强的请求函数：支持缓存、去重、取消和重试
+ * 增强的请求函數：支持缓存、去重、取消和重試
  * 
  * 返回格式：{ success: true, data: ... } 或 { success: false, message: ... }
  * 
  * @param config 请求配置
- * @param retries 重试次数（默认 1 次）
+ * @param retries 重試次數（默认 1 次）
  */
 async function enhancedRequest<T = any>(
   config: AxiosRequestConfig, 
@@ -162,7 +162,7 @@ async function enhancedRequest<T = any>(
     return pending as Promise<{ success: boolean; data: T; [key: string]: any }>
   }
   
-  // 3. 创建新请求（带重试机制）
+  // 3. 創建新请求（带重試机制）
   const requestPromise = (async () => {
     let lastError: any
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -178,23 +178,23 @@ async function enhancedRequest<T = any>(
           throw error
         }
         
-        // 如果是客户端错误（4xx），不重试
+        // 如果是客户端错误（4xx），不重試
         if (error.response?.status >= 400 && error.response?.status < 500) {
           throw error
         }
         
-        // 如果是最后一次尝试，抛出错误
+        // 如果是最後一次尝試，抛出错误
         if (attempt === retries) {
           break
         }
         
-        // 等待一段时间后重试（指数退避）
+        // 等待一段時間後重試（指數退避）
         const delay = Math.min(1000 * Math.pow(2, attempt), 5000)
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
     
-    // 所有重试都失败，抛出最后一个错误
+    // 所有重試都失敗，抛出最後一个错误
     pendingRequests.delete(requestKey)
     throw lastError
   })()
@@ -204,11 +204,11 @@ async function enhancedRequest<T = any>(
 }
 
 /**
- * 取消所有pending请求（用于组件卸载时）
+ * 取消所有pending请求（用于組件卸载時）
  */
 export function cancelAllPendingRequests() {
   for (const [key, source] of cancelTokens.entries()) {
-    source.cancel('组件卸载，取消请求')
+    source.cancel('組件卸载，取消请求')
     cancelTokens.delete(key)
     pendingRequests.delete(key)
   }
@@ -216,7 +216,7 @@ export function cancelAllPendingRequests() {
 
 // API接口定义
 export const api = {
-  // 学校相关
+  // 學校相關
   schools: {
     list: () => enhancedRequest({ method: 'get', url: '/schools' }),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/schools/${id}` }),
@@ -234,32 +234,32 @@ export const api = {
     },
   },
 
-  // 题库相关
+  // 題庫相關
   questions: {
     list: (params?: any) => enhancedRequest({ method: 'get', url: '/questions', params }),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/questions/${id}` }),
     create: (data: any) => {
-      clearCache('questions') // 清除相关缓存
+      clearCache('questions') // 清除相關缓存
       return apiClient.post('/questions', data).then(res => res.data)
     },
     update: (id: string, data: any) => {
-      clearCache('questions') // 清除相关缓存
+      clearCache('questions') // 清除相關缓存
       return apiClient.put(`/questions/${id}`, data).then(res => res.data)
     },
     delete: (id: string) => {
-      clearCache('questions') // 清除相关缓存
+      clearCache('questions') // 清除相關缓存
       return apiClient.delete(`/questions/${id}`).then(res => res.data)
     },
     stats: () => enhancedRequest({ method: 'get', url: '/questions/stats/summary' }),
   },
 
-  // 训练计划相关
+  // 訓練計劃相關
   plans: {
     list: (params?: any) => enhancedRequest({ method: 'get', url: '/plans', params }),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/plans/${id}` }),
     create: (data: any) => {
       clearCache('plans')
-      // 创建训练计划会调用AI生成，不设置超时
+      // 創建訓練計劃會調用AI生成，不设置超時
       return apiClient.post('/plans', data, { timeout: 0 }).then(res => res.data)
     },
     updateStatus: (id: string, status: string) => {
@@ -285,7 +285,7 @@ export const api = {
     },
   },
 
-  // 练习会话相关
+  // 練習會話相關
   sessions: {
     create: (data: any) => apiClient.post('/sessions', data).then(res => res.data),
     createSchoolRoundMock: (data: any) => 
@@ -305,7 +305,7 @@ export const api = {
     },
   },
 
-  // 反馈相关
+  // 反馈相關
   feedback: {
     generate: (data: any) => apiClient.post('/feedback/generate', data, { timeout: 0 }).then(res => res.data),
     list: (sessionId: string) => 
@@ -322,7 +322,7 @@ export const api = {
     },
   },
 
-  // AI服务相关（不设置超时，允许长时间处理）
+  // AI服務相關（不设置超時，允许長時間处理）
   ai: {
     generateQuestions: (data: any) => {
       clearCache('questions')
@@ -356,7 +356,7 @@ export const api = {
     },
   },
 
-  // 数据管理相关
+  // 數據管理相關
   data: {
     stats: () => enhancedRequest({ method: 'get', url: '/data/stats' }),
     export: (type: string) => 
@@ -389,7 +389,7 @@ export const api = {
     },
   },
 
-  // 弱点管理相关
+  // 弱點管理相關
   weaknesses: {
     list: (params?: any) => enhancedRequest({ method: 'get', url: '/weaknesses', params }),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/weaknesses/${id}` }),
@@ -410,7 +410,7 @@ export const api = {
     },
   },
 
-  // 设置相关
+  // 设置相關
   settings: {
     get: () => enhancedRequest({ method: 'get', url: '/settings' }),
     update: (data: any) => {
@@ -419,7 +419,7 @@ export const api = {
     },
   },
 
-  // 学习素材相关
+  // 學習素材相關
   learningMaterials: {
     list: (params?: {
       weakness_id?: number;

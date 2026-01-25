@@ -1,5 +1,5 @@
 /**
- * AI 反馈生成服务
+ * AI 反馈生成服務
  */
 import { deepseekClient } from './deepseek.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -18,22 +18,22 @@ export interface AIFeedback {
   language_score: number;
   content_score: number;
   overall_score: number;
-  score?: number; // 简化的综合评分 0-10
+  score?: number; // 简化的综合評分 0-10
   strengths: string | string[];
   weaknesses: string | string[];
   suggestions: string;
-  reference_thinking?: string; // 参考回答思路
+  reference_thinking?: string; // 參考回答思路
   reference_answer?: string;
   school_specific_tips?: string;
 }
 
 /**
- * 生成单题反馈
+ * 生成单題反馈
  */
 export async function generateFeedback(params: FeedbackRequest): Promise<AIFeedback> {
   const { question_text, answer_text, category, target_school, reference_answer } = params;
 
-  // 获取学校信息（如果有）
+  // 获取學校信息（如果有）
   let schoolContext = '';
   if (target_school) {
     const school = await queryOne(
@@ -46,16 +46,16 @@ export async function generateFeedback(params: FeedbackRequest): Promise<AIFeedb
 Interview Style: ${school.interview_style}
 School Characteristics: ${school.notes}`;
       } else {
-        schoolContext = `\n目标学校：${school.name_zh} (${target_school})
-面试风格：${school.interview_style}
-学校特点：${school.notes}`;
+        schoolContext = `\n目標學校：${school.name_zh} (${target_school})
+面試風格：${school.interview_style}
+學校特點：${school.notes}`;
       }
     }
   }
 
   let prompt: string;
 
-  // 英文口语类别使用全英文提示词
+  // 英文口語類別使用全英文提示詞
   if (category === 'english-oral') {
     prompt = `IMPORTANT: You MUST respond in English ONLY. All feedback content must be in English.
 
@@ -99,50 +99,52 @@ Requirements:
 
 Now analyze and return the feedback:`;
   } else {
-    // 其他类别使用中文提示词
-    prompt = `你是一位资深的香港升中面试辅导老师。请分析学生的回答并给出详细反馈。
+    // 其他類別使用繁體中文提示詞
+    prompt = `⚠️ 重要：你必須使用繁體中文回應。所有反饋內容必須使用繁體中文。
 
-题目信息：
-类别：${getCategoryName(category)}
-问题：${question_text}${schoolContext}
+你是一位資深的香港升中面試輔導老師。請分析學生的回答並給出詳細反饋。
 
-学生回答：
+題目信息：
+類別：${getCategoryName(category)}
+問題：${question_text}${schoolContext}
+
+學生回答：
 ${answer_text}
-${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
+${reference_answer ? `\n題目參考答案：\n${reference_answer}` : ''}
 
-请以 JSON 格式返回详细反馈：
+請以 JSON 格式返回詳細反饋：
 
 {
   "score": 7.5,
-  "strengths": "语法正确，表达流畅",
-  "weaknesses": "词汇较简单，缺少具体例子",
-  "suggestions": "建议增加具体例子来支持观点，可以使用更丰富的词汇...",
-  "reference_thinking": "回答这道题的思路：首先..., 其次..., 最后...",
-  "reference_answer": "优秀回答示例：...",
+  "strengths": "語法正確，表達流暢",
+  "weaknesses": "詞彙較簡單，缺少具體例子",
+  "suggestions": "建議增加具體例子來支持觀點，可以使用更豐富的詞彙...",
+  "reference_thinking": "回答這道題的思路：首先..., 其次..., 最後...",
+  "reference_answer": "優秀回答示例：...",
   "language_score": 85,
   "content_score": 78,
   "overall_score": 82
 }
 
-评分标准：
-- score（简化评分）：0-10分（小数），便于学生理解
-- language_score（语言质量）：0-100分，评估语法、词汇、表达流畅度
-- content_score（内容深度）：0-100分，评估相关性、完整性、见解深度
-- overall_score（综合得分）：0-100分
+評分標準：
+- score（簡化評分）：0-10分（小數），便於學生理解
+- language_score（語言質量）：0-100分，評估語法、詞彙、表達流暢度
+- content_score（內容深度）：0-100分，評估相關性、完整性、見解深度
+- overall_score（綜合得分）：0-100分
 
 要求：
-1. score 是简化版评分（0-10），小学生水平 6-8 分是合理的
-2. strengths 简洁地指出 2-3 个优点，用逗号分隔
-3. weaknesses 简洁地指出 2-3 个不足，用逗号分隔
-4. suggestions 具体可行的改进建议（80-150字）
-5. reference_thinking **必须提供**：清晰的答题思路（3-5个要点）
-6. reference_answer **必须提供**：一个优秀的参考答案（150-250字）
-7. 所有文字内容使用繁体中文
+1. score 是簡化版評分（0-10），小學生水平 6-8 分是合理的
+2. strengths 簡潔地指出 2-3 個優點，用逗號分隔（必須使用繁體中文）
+3. weaknesses 簡潔地指出 2-3 個不足，用逗號分隔（必須使用繁體中文）
+4. suggestions 具體可行的改進建議（80-150字，必須使用繁體中文）
+5. reference_thinking **必須提供**：清晰的答題思路（3-5個要點，必須使用繁體中文）
+6. reference_answer **必須提供**：一個優秀的參考答案（150-250字，必須使用繁體中文）
+7. 所有文字內容必須使用繁體中文
 
-现在请分析并返回反馈：`;
+現在請分析並返回反饋：`;
   }
 
-  console.log(`🤖 生成反馈: 类别=${category}, 学校=${target_school || '无'}`);
+  console.log(`🤖 生成反馈: 類別=${category}, 學校=${target_school || '无'}`);
 
   try {
     const response = await deepseekClient.chat(
@@ -161,7 +163,7 @@ ${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
     // 解析 JSON
     const feedback = JSON.parse(jsonText) as AIFeedback;
 
-    // 规范化 strengths 和 weaknesses（可能是字符串或数组）
+    // 規范化 strengths 和 weaknesses（可能是字符串或數組）
     if (typeof feedback.strengths === 'string') {
       feedback.strengths = feedback.strengths;
     } else if (Array.isArray(feedback.strengths)) {
@@ -174,7 +176,7 @@ ${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
       feedback.weaknesses = feedback.weaknesses.join('，');
     }
 
-    // 计算简化评分（如果没有）
+    // 計算简化評分（如果没有）
     if (!feedback.score && feedback.overall_score) {
       feedback.score = Math.round((feedback.overall_score / 10) * 10) / 10;
     }
@@ -183,22 +185,22 @@ ${reference_answer ? `\n题目参考答案：\n${reference_answer}` : ''}
     if (
       typeof feedback.overall_score !== 'number'
     ) {
-      throw new Error('AI 返回的反馈格式不正确');
+      throw new Error('AI 返回的反馈格式不正確');
     }
 
-    console.log(`✅ 反馈生成成功: 综合得分=${feedback.overall_score}, 简化评分=${feedback.score}`);
+    console.log(`✅ 反馈生成成功: 综合得分=${feedback.overall_score}, 简化評分=${feedback.score}`);
     return feedback;
   } catch (error: any) {
-    console.error('❌ AI 生成反馈失败:', error.message);
-    throw new AppError(500, `AI 生成反馈失败: ${error.message}`);
+    console.error('❌ AI 生成反馈失敗:', error.message);
+    throw new AppError(500, `AI 生成反馈失敗: ${error.message}`);
   }
 }
 
 /**
- * 生成会话总结
+ * 生成會話總結
  */
 export async function generateSessionSummary(sessionId: number): Promise<any> {
-  // 获取会话的所有问答记录
+  // 获取會話的所有問答記錄
   const qaRecords = await query(
     `SELECT question_text, answer_text, ai_feedback
      FROM qa_records WHERE session_id = ?`,
@@ -206,10 +208,10 @@ export async function generateSessionSummary(sessionId: number): Promise<any> {
   );
 
   if (qaRecords.length === 0) {
-    throw new AppError(400, '会话没有问答记录');
+    throw new AppError(400, '會話没有問答記錄');
   }
 
-  // 计算平均分
+  // 計算平均分
   let totalScore = 0;
   let count = 0;
 
@@ -226,42 +228,44 @@ export async function generateSessionSummary(sessionId: number): Promise<any> {
 
   const averageScore = count > 0 ? Math.round(totalScore / count) : 0;
 
-  // 构建提示词
+  // 构建提示詞
   const qaText = qaRecords
     .map(
       (record, index) =>
-        `问题${index + 1}：${record.question_text}\n回答：${record.answer_text}\n`
+        `問題${index + 1}：${record.question_text}\n回答：${record.answer_text}\n`
     )
     .join('\n');
 
-  const prompt = `你是一位资深的香港升中面试辅导老师。请根据学生本次练习会话的所有问答记录，生成一个总结报告。
+  const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-本次会话包含 ${qaRecords.length} 道题目：
+你是一位資深的香港升中面試輔導老師。請根據學生本次練習會話的所有問答記錄，生成一個總結報告。
+
+本次會話包含 ${qaRecords.length} 道題目：
 
 ${qaText}
 
 平均得分：${averageScore} 分
 
-请以 JSON 格式返回总结：
+請以 JSON 格式返回總結：
 
 {
   "total_questions": ${qaRecords.length},
   "average_score": ${averageScore},
-  "strengths": ["优点1", "优点2"],
+  "strengths": ["優點1", "優點2"],
   "weaknesses": ["不足1", "不足2", "不足3"],
-  "suggestions": "总体改进建议...",
-  "progress_comment": "与之前表现对比..."
+  "suggestions": "總體改進建議...（必須使用繁體中文）",
+  "progress_comment": "與之前表現對比...（必須使用繁體中文）"
 }
 
 要求：
-1. strengths：列出 2-3 个突出优点
-2. weaknesses：列出 2-3 个需要改进的方面
-3. suggestions：具体可行的训练建议（150-250字）
-4. progress_comment：鼓励性的进步评价（50-100字）
+1. strengths：列出 2-3 個突出優點（必須使用繁體中文）
+2. weaknesses：列出 2-3 個需要改進的方面（必須使用繁體中文）
+3. suggestions：具體可行的訓練建議（150-250字，必須使用繁體中文）
+4. progress_comment：鼓勵性的進步評價（50-100字，必須使用繁體中文）
 
-现在请生成总结：`;
+現在請生成總結：`;
 
-  console.log(`🤖 生成会话总结: 会话ID=${sessionId}, 题数=${qaRecords.length}`);
+  console.log(`🤖 生成會話總結: 會話ID=${sessionId}, 題數=${qaRecords.length}`);
 
   try {
     const response = await deepseekClient.chat(
@@ -279,23 +283,23 @@ ${qaText}
 
     const summary = JSON.parse(jsonText);
 
-    console.log(`✅ 会话总结生成成功`);
+    console.log(`✅ 會話總結生成成功`);
     return summary;
   } catch (error: any) {
-    console.error('❌ AI 生成会话总结失败:', error.message);
-    throw new AppError(500, `AI 生成会话总结失败: ${error.message}`);
+    console.error('❌ AI 生成會話總結失敗:', error.message);
+    throw new AppError(500, `AI 生成會話總結失敗: ${error.message}`);
   }
 }
 
 function getCategoryName(category: string): string {
   const map: Record<string, string> = {
-    'english-oral': '英文口语',
-    'chinese-oral': '中文表达',
-    'logic-thinking': '逻辑思维',
-    'current-affairs': '时事常识',
-    'science-knowledge': '科学常识',
-    'personal-growth': '个人成长',
-    'group-discussion': '小组讨论',
+    'english-oral': '英文口語',
+    'chinese-oral': '中文表達',
+    'logic-thinking': '邏輯思維',
+    'current-affairs': '時事常識',
+    'science-knowledge': '科學常識',
+    'personal-growth': '个人成長',
+    'group-discussion': '小組討論',
   };
   return map[category] || category;
 }

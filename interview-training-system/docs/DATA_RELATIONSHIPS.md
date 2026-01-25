@@ -1,120 +1,120 @@
-# 数据关系梳理：Plan、Session、Question、Answer
+# 數據關係梳理：Plan、Session、Question、Answer
 
-## 数据关系图
+## 數據關係图
 
 ```
-training_plans (训练计划)
+training_plans (訓練計劃)
     │
-    │ 1:N (一个计划有多个任务)
-    │
-    ▼
-daily_tasks (每日任务)
-    │
-    │ 1:N (一个任务可以有多个会话，但通常只有一个进行中的)
+    │ 1:N (一个計劃有多个任務)
     │
     ▼
-sessions (练习会话)
+daily_tasks (每日任務)
     │
-    │ 1:N (一个会话有多条问答记录)
-    │
-    ▼
-qa_records (问答记录)
-    │
-    │ N:1 (多条记录关联一个题目)
+    │ 1:N (一个任務可以有多个會話，但通常只有一个進行中的)
     │
     ▼
-questions (题目)
+sessions (練習會話)
+    │
+    │ 1:N (一个會話有多条問答記錄)
+    │
+    ▼
+qa_records (問答記錄)
+    │
+    │ N:1 (多条記錄關聯一个題目)
+    │
+    ▼
+questions (題目)
 ```
 
-## 详细关系说明
+## 详细關係說明
 
-### 1. training_plans (训练计划)
+### 1. training_plans (訓練計劃)
 - **主键**: `id`
-- **关联**: 
+- **關聯**: 
   - 1:N → `daily_tasks.plan_id`
-  - 1:N → `qa_records.plan_id` (直接关联，用于快速查询)
+  - 1:N → `qa_records.plan_id` (直接關聯，用于快速查询)
 
-### 2. daily_tasks (每日任务)
+### 2. daily_tasks (每日任務)
 - **主键**: `id`
 - **外键**: `plan_id` → `training_plans.id` (NOT NULL)
-- **关联**:
+- **關聯**:
   - N:1 → `training_plans.id`
-  - 1:N → `sessions.task_id` (可选，自由练习时为空)
+  - 1:N → `sessions.task_id` (可選，自由練習時为空)
 
-### 3. sessions (练习会话)
+### 3. sessions (練習會話)
 - **主键**: `id`
-- **外键**: `task_id` → `daily_tasks.id` (可选，自由练习时为空)
-- **字段**: `question_ids` (JSON数组，保存会话创建时选择的题目ID列表)
-- **关联**:
-  - N:1 → `daily_tasks.id` (可选)
+- **外键**: `task_id` → `daily_tasks.id` (可選，自由練習時为空)
+- **字段**: `question_ids` (JSON數組，保存會話創建時選擇的題目ID列表)
+- **關聯**:
+  - N:1 → `daily_tasks.id` (可選)
   - 1:N → `qa_records.session_id`
 
-### 4. questions (题目)
+### 4. questions (題目)
 - **主键**: `id`
-- **关联**:
-  - 1:N → `qa_records.question_id` (可选)
+- **關聯**:
+  - 1:N → `qa_records.question_id` (可選)
 
-### 5. qa_records (问答记录)
+### 5. qa_records (問答記錄)
 - **主键**: `id`
 - **外键**:
   - `session_id` → `sessions.id` (NOT NULL)
-  - `plan_id` → `training_plans.id` (可选，自由练习时为空)
-  - `question_id` → `questions.id` (可选)
+  - `plan_id` → `training_plans.id` (可選，自由練習時为空)
+  - `question_id` → `questions.id` (可選)
 - **字段**:
-  - `question_text`: 问题内容（冗余存储，避免题目被删除后丢失）
-  - `answer_text`: 回答内容
+  - `question_text`: 問題內容（冗余存储，避免題目被删除後丢失）
+  - `answer_text`: 回答內容
   - `ai_feedback`: AI反馈（JSON格式）
 
-## 数据流转流程
+## 數據流转流程
 
-### 流程1: 从任务创建会话（任务练习）
+### 流程1: 從任務創建會話（任務練習）
 
 ```
-1. 用户点击"开始任务"
+1. 用户點击"開始任務"
    ↓
 2. POST /api/plans/tasks/:taskId/start-practice
-   - 获取任务信息（包含 plan_id）
-   - 检查是否有进行中的会话
-   - 如果没有，创建新会话：INSERT INTO sessions (task_id, category, question_ids, ...)
+   - 获取任務信息（包含 plan_id）
+   - 检查是否有進行中的會話
+   - 如果没有，創建新會話：INSERT INTO sessions (task_id, category, question_ids, ...)
    ↓
-3. 会话创建成功，返回 session_id 和 questions
+3. 會話創建成功，返回 session_id 和 questions
    ↓
 4. 用户提交答案
    POST /api/sessions/:id/answer
-   - 获取会话信息：SELECT s.task_id, dt.plan_id FROM sessions s LEFT JOIN daily_tasks dt ON s.task_id = dt.id
-   - 保存问答记录：INSERT INTO qa_records (session_id, plan_id, question_id, ...)
+   - 获取會話信息：SELECT s.task_id, dt.plan_id FROM sessions s LEFT JOIN daily_tasks dt ON s.task_id = dt.id
+   - 保存問答記錄：INSERT INTO qa_records (session_id, plan_id, question_id, ...)
    ↓
-5. 完成会话
+5. 完成會話
    PATCH /api/sessions/:id/complete
-   - 更新会话状态：UPDATE sessions SET status = 'completed'
-   - 如果有关联任务：UPDATE daily_tasks SET status = 'completed'
+   - 更新會話狀態：UPDATE sessions SET status = 'completed'
+   - 如果有關聯任務：UPDATE daily_tasks SET status = 'completed'
 ```
 
-### 流程2: 自由练习（无任务）
+### 流程2: 自由練習（无任務）
 
 ```
-1. 用户选择"自由练习"
+1. 用户選擇"自由練習"
    ↓
 2. POST /api/sessions
-   - 创建会话：INSERT INTO sessions (task_id=NULL, category, question_ids, ...)
+   - 創建會話：INSERT INTO sessions (task_id=NULL, category, question_ids, ...)
    ↓
 3. 用户提交答案
    POST /api/sessions/:id/answer
-   - 获取会话信息：SELECT s.task_id, dt.plan_id FROM sessions s LEFT JOIN daily_tasks dt ON s.task_id = dt.id
+   - 获取會話信息：SELECT s.task_id, dt.plan_id FROM sessions s LEFT JOIN daily_tasks dt ON s.task_id = dt.id
    - task_id 为 NULL，所以 plan_id 也为 NULL
-   - 保存问答记录：INSERT INTO qa_records (session_id, plan_id=NULL, question_id, ...)
+   - 保存問答記錄：INSERT INTO qa_records (session_id, plan_id=NULL, question_id, ...)
    ↓
-4. 完成会话
+4. 完成會話
    PATCH /api/sessions/:id/complete
-   - 更新会话状态：UPDATE sessions SET status = 'completed'
-   - 没有关联任务，不更新任务状态
+   - 更新會話狀態：UPDATE sessions SET status = 'completed'
+   - 没有關聯任務，不更新任務狀態
 ```
 
-## 关键约束和验证
+## 關键约束和验证
 
-### 1. plan_id 的获取逻辑
+### 1. plan_id 的获取邏輯
 
-**在提交答案时** (`POST /api/sessions/:id/answer`):
+**在提交答案時** (`POST /api/sessions/:id/answer`):
 ```sql
 SELECT s.id, s.task_id, dt.plan_id
 FROM sessions s
@@ -122,22 +122,22 @@ LEFT JOIN daily_tasks dt ON s.task_id = dt.id
 WHERE s.id = ?
 ```
 
-**规则**:
-- 如果 `session.task_id` 不为 NULL → 通过 `daily_tasks.plan_id` 获取
-- 如果 `session.task_id` 为 NULL → `plan_id` 为 NULL（自由练习）
+**規則**:
+- 如果 `session.task_id` 不为 NULL → 通過 `daily_tasks.plan_id` 获取
+- 如果 `session.task_id` 为 NULL → `plan_id` 为 NULL（自由練習）
 
-### 2. question_id 的关联
+### 2. question_id 的關聯
 
-**在提交答案时**:
-- 前端传递 `question_id`（来自 `questions` 表）
-- 后端保存到 `qa_records.question_id`
-- 同时保存 `question_text`（冗余存储，避免题目被删除后丢失）
+**在提交答案時**:
+- 前端傳递 `question_id`（來自 `questions` 表）
+- 後端保存到 `qa_records.question_id`
+- 同時保存 `question_text`（冗余存储，避免題目被删除後丢失）
 
-### 3. 数据一致性检查
+### 3. 數據一致性检查
 
-**应该满足的关系**:
+**应该满足的關係**:
 ```sql
--- 检查：所有有 task_id 的会话，其 qa_records 应该有 plan_id
+-- 检查：所有有 task_id 的會話，其 qa_records 应该有 plan_id
 SELECT qr.id, qr.session_id, qr.plan_id, s.task_id, dt.plan_id as task_plan_id
 FROM qa_records qr
 INNER JOIN sessions s ON qr.session_id = s.id
@@ -148,10 +148,10 @@ WHERE s.task_id IS NOT NULL
 
 ## 修复脚本
 
-如果发现数据不一致，可以使用以下脚本修复：
+如果發现數據不一致，可以使用以下脚本修复：
 
 ```sql
--- 修复：为所有有 task_id 的会话的 qa_records 更新 plan_id
+-- 修复：为所有有 task_id 的會話的 qa_records 更新 plan_id
 UPDATE qa_records qr
 INNER JOIN sessions s ON qr.session_id = s.id
 INNER JOIN daily_tasks dt ON s.task_id = dt.id
@@ -159,25 +159,25 @@ SET qr.plan_id = dt.plan_id
 WHERE qr.plan_id IS NULL OR qr.plan_id != dt.plan_id;
 ```
 
-## API 端点说明
+## API 端點說明
 
-### 创建会话
-- `POST /api/sessions` - 自由练习
-- `POST /api/plans/tasks/:taskId/start-practice` - 从任务创建
+### 創建會話
+- `POST /api/sessions` - 自由練習
+- `POST /api/plans/tasks/:taskId/start-practice` - 從任務創建
 
 ### 提交答案
-- `POST /api/sessions/:id/answer` - 自动关联 plan_id 和 question_id
+- `POST /api/sessions/:id/answer` - 自動關聯 plan_id 和 question_id
 
-### 完成会话
-- `PATCH /api/sessions/:id/complete` - 自动更新任务状态（如果有关联）
+### 完成會話
+- `PATCH /api/sessions/:id/complete` - 自動更新任務狀態（如果有關聯）
 
 ### 查询
-- `GET /api/sessions/:id` - 获取会话详情（包含 qa_records）
-- `GET /api/plans/:id` - 获取计划详情（包含任务和会话信息）
+- `GET /api/sessions/:id` - 获取會話详情（包含 qa_records）
+- `GET /api/plans/:id` - 获取計劃详情（包含任務和會話信息）
 
 ## 最佳实践
 
-1. **始终在提交答案时获取 plan_id**：通过 session -> task -> plan 的关联获取
-2. **保存冗余数据**：在 `qa_records` 中保存 `question_text`，避免题目被删除后丢失
-3. **验证数据一致性**：定期检查 `qa_records.plan_id` 是否与 `sessions.task_id -> daily_tasks.plan_id` 一致
-4. **支持自由练习**：允许 `task_id` 和 `plan_id` 为 NULL，表示自由练习
+1. **始终在提交答案時获取 plan_id**：通過 session -> task -> plan 的關聯获取
+2. **保存冗余數據**：在 `qa_records` 中保存 `question_text`，避免題目被删除後丢失
+3. **验证數據一致性**：定期检查 `qa_records.plan_id` 是否与 `sessions.task_id -> daily_tasks.plan_id` 一致
+4. **支持自由練習**：允许 `task_id` 和 `plan_id` 为 NULL，表示自由練習

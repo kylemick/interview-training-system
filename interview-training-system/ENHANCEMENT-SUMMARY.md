@@ -1,37 +1,37 @@
-# 功能增强完成总结
+# 功能增强完成總結
 
 ## 📋 需求
 
 用户要求：
-> 面试回忆AI分析不仅要分析题目，还需要分析学生的问题（弱点），学生问题需要一个单独的表记录，后续可以针对这些问题，来做AI题目生成。
+> 面試回憶AI分析不仅要分析題目，还需要分析學生的問題（弱點），學生問題需要一个单独的表記錄，後续可以針對这些問題，來做AI題目生成。
 
 ## ✅ 已完成
 
-### 1. 数据库Schema更新
+### 1. 數據庫Schema更新
 
 **新增表**: `student_weaknesses`
 
-字段说明：
-- `weakness_type` - 弱点类型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）
-- `severity` - 严重程度（low/medium/high）
-- `description` - 弱点描述
+字段說明：
+- `weakness_type` - 弱點類型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）
+- `severity` - 嚴重程度（low/medium/high）
+- `description` - 弱點描述
 - `example_text` - 示例原文
-- `improvement_suggestions` - 改进建议
-- `practice_count` - 已针对性练习次数
-- `status` - 状态（active/improved/resolved）
+- `improvement_suggestions` - 改進建議
+- `practice_count` - 已針對性練習次數
+- `status` - 狀態（active/improved/resolved）
 
 ### 2. AI分析增强
 
 **更新接口**: `POST /api/ai/extract-interview-memory`
 
 **新的分析能力**：
-- ✅ 提取面试问题（原有功能）
-- 🆕 识别学生弱点（新增）
-- 🆕 评估严重程度
-- 🆕 生成改进建议
-- 🆕 提取相关话题
+- ✅ 提取面試問題（原有功能）
+- 🆕 識別學生弱點（新增）
+- 🆕 評估嚴重程度
+- 🆕 生成改進建議
+- 🆕 提取相關話題
 
-**返回数据示例**：
+**返回數據示例**：
 ```json
 {
   "questions": [...],
@@ -39,10 +39,10 @@
     {
       "category": "english-oral",
       "weakness_type": "vocabulary",
-      "description": "词汇量不足，表达单一",
+      "description": "詞汇量不足，表達单一",
       "example_text": "I think... it's good...",
       "severity": "medium",
-      "improvement_suggestions": "建议多阅读英文原著...",
+      "improvement_suggestions": "建議多阅读英文原著...",
       "related_topics": ["reading", "vocabulary"]
     }
   ],
@@ -52,213 +52,213 @@
 
 ### 3. 新增API接口
 
-#### A. 弱点管理API (`/api/weaknesses`)
+#### A. 弱點管理API (`/api/weaknesses`)
 
-1. **GET /api/weaknesses** - 获取弱点列表
-   - 支持按学生、类别、状态、严重程度筛选
+1. **GET /api/weaknesses** - 获取弱點列表
+   - 支持按學生、類別、狀態、嚴重程度筛選
 
-2. **GET /api/weaknesses/:id** - 获取单个弱点详情
+2. **GET /api/weaknesses/:id** - 获取单个弱點详情
 
-3. **PATCH /api/weaknesses/:id/status** - 更新弱点状态
+3. **PATCH /api/weaknesses/:id/status** - 更新弱點狀態
    - active → improved → resolved
 
-4. **DELETE /api/weaknesses/:id** - 删除弱点记录
+4. **DELETE /api/weaknesses/:id** - 删除弱點記錄
 
-5. **GET /api/weaknesses/stats/summary** - 弱点统计
-   - 按类别、类型、严重程度、状态统计
+5. **GET /api/weaknesses/stats/summary** - 弱點統計
+   - 按類別、類型、嚴重程度、狀態統計
 
 #### B. AI增强API
 
-1. **POST /api/ai/save-weaknesses** - 保存弱点分析
-   - 批量保存识别的弱点
+1. **POST /api/ai/save-weaknesses** - 保存弱點分析
+   - 批量保存識別的弱點
 
 2. **POST /api/ai/generate-questions-from-weaknesses** 🔥
-   - 根据弱点ID生成针对性题目
-   - 或根据类别生成题目
-   - 自动更新练习次数
+   - 根據弱點ID生成針對性題目
+   - 或根據類別生成題目
+   - 自動更新練習次數
 
 ### 4. 前端界面更新
 
-**面试回忆页面增强**：
-- ✅ 显示AI识别的弱点卡片
-- ✅ 严重程度标签（高/中/低）
-- ✅ 弱点描述和示例
-- ✅ 改进建议展示
-- ✅ 相关话题标签
-- ✅ 自动保存问题和弱点
+**面試回憶页面增强**：
+- ✅ 显示AI識別的弱點卡片
+- ✅ 嚴重程度標籤（高/中/低）
+- ✅ 弱點描述和示例
+- ✅ 改進建議展示
+- ✅ 相關話題標籤
+- ✅ 自動保存問題和弱點
 
-### 5. 文档
+### 5. 文檔
 
-- ✅ `FEATURE-WEAKNESS-ANALYSIS.md` - 完整功能文档
-- ✅ 数据库迁移脚本
+- ✅ `FEATURE-WEAKNESS-ANALYSIS.md` - 完整功能文檔
+- ✅ 數據庫迁移脚本
 - ✅ API使用示例
-- ✅ 使用流程说明
+- ✅ 使用流程說明
 
 ## 🎯 核心功能流程
 
 ### 流程 1: 分析与保存
 
 ```
-用户输入面试回忆
+用户输入面試回憶
     ↓
-AI分析提取问题和弱点
+AI分析提取問題和弱點
     ↓
-前端展示分析结果
+前端展示分析結果
     ↓
-用户点击"保存到题库"
+用户點击"保存到題庫"
     ↓
-系统保存：
-  - questions 表 ← 题目
-  - student_weaknesses 表 ← 弱点
+係統保存：
+  - questions 表 ← 題目
+  - student_weaknesses 表 ← 弱點
 ```
 
-### 流程 2: 针对性练习
+### 流程 2: 針對性練習
 
 ```
-查看学生弱点列表
+查看學生弱點列表
     ↓
-选择要加强的弱点
+選擇要加强的弱點
     ↓
-调用 generate-questions-from-weaknesses
+調用 generate-questions-from-weaknesses
     ↓
-AI生成针对性题目
+AI生成針對性題目
     ↓
-题目保存到题库（标记为targeted）
+題目保存到題庫（標記为targeted）
     ↓
-更新弱点的practice_count
+更新弱點的practice_count
 ```
 
-### 流程 3: 进度追踪
+### 流程 3: 進度追踪
 
 ```
-完成针对性练习
+完成針對性練習
     ↓
-系统记录practice_count++
+係統記錄practice_count++
     ↓
-用户/系统更新弱点状态
+用户/係統更新弱點狀態
   - active → improved → resolved
     ↓
-查看弱点改善统计
+查看弱點改善統計
 ```
 
-## 📊 数据关联
+## 📊 數據關聯
 
 ```
 student_weaknesses
-    ↓ (通过category关联)
+    ↓ (通過category關聯)
 questions (source='ai_generated_targeted')
-    ↓ (通过question_id关联)
+    ↓ (通過question_id關聯)
 qa_records
-    ↓ (通过session_id关联)
+    ↓ (通過session_id關聯)
 feedback
 ```
 
-## 🔧 技术实现亮点
+## 🔧 技術实现亮點
 
-### 1. AI提示词优化
+### 1. AI提示詞優化
 
-**多维度分析**：
-- 词汇（vocabulary）
-- 语法（grammar）
-- 逻辑（logic）
-- 知识（knowledge_gap）
+**多維度分析**：
+- 詞汇（vocabulary）
+- 語法（grammar）
+- 邏輯（logic）
+- 知識（knowledge_gap）
 - 信心（confidence）
-- 表达（expression）
+- 表達（expression）
 
-### 2. 针对性题目生成
+### 2. 針對性題目生成
 
 **智能匹配**：
-- 根据弱点类型定制题目
-- 考虑严重程度调整难度
-- 结合相关话题生成内容
+- 根據弱點類型定制題目
+- 考虑嚴重程度調整難度
+- 結合相關話題生成內容
 
-### 3. 数据完整性
+### 3. 數據完整性
 
-**索引优化**：
+**索引優化**：
 ```sql
 INDEX idx_student_category (student_name, category)
 INDEX idx_status_severity (status, severity)
 ```
 
-**外键关系**：
-- questions.source 标记来源
-- practice_count 追踪练习次数
+**外键關係**：
+- questions.source 標記來源
+- practice_count 追踪練習次數
 
 ## 📝 使用示例
 
 ### 示例 1: 完整流程
 
 ```bash
-# 1. 提交面试回忆
+# 1. 提交面試回憶
 curl -X POST http://localhost:3001/api/ai/extract-interview-memory \
-  -d '{"text":"今天面试表现不好，说话总是I think... I think..."}'
+  -d '{"text":"今天面試表现不好，說話總是I think... I think..."}'
 
 # 2. AI返回：
-#    - 问题：Tell me about yourself
-#    - 弱点：vocabulary - 词汇单一，重复使用"I think"
+#    - 問題：Tell me about yourself
+#    - 弱點：vocabulary - 詞汇单一，重复使用"I think"
 
-# 3. 保存（前端自动）
+# 3. 保存（前端自動）
 
-# 4. 查看弱点
+# 4. 查看弱點
 curl http://localhost:3001/api/weaknesses
 
-# 5. 生成针对性题目
+# 5. 生成針對性題目
 curl -X POST http://localhost:3001/api/ai/generate-questions-from-weaknesses \
   -d '{"weakness_ids":[1],"count":5}'
 
-# 6. 练习并标记改善
+# 6. 練習并標記改善
 curl -X PATCH http://localhost:3001/api/weaknesses/1/status \
   -d '{"status":"improved"}'
 ```
 
-## 🎁 带来的价值
+## 🎁 带來的價值
 
-1. **个性化训练**
-   - 不再盲目练习，针对弱点强化
+1. **个性化訓練**
+   - 不再盲目練習，針對弱點强化
 
-2. **进度可视化**
-   - 清晰看到哪些方面需要改进
+2. **進度可视化**
+   - 清晰看到哪些方面需要改進
    - 追踪改善历程
 
 3. **智能推荐**
-   - AI自动生成最合适的练习题
-   - 节省人工挑题时间
+   - AI自動生成最合适的練習題
+   - 节省人工挑題時間
 
-4. **数据驱动**
-   - 基于真实表现识别问题
+4. **數據驱動**
+   - 基于真实表现識別問題
    - 量化改善效果
 
-## 🚀 未来扩展方向
+## 🚀 未來扩展方向
 
-1. **弱点趋势分析**
-   - 时间轴展示弱点变化
-   - 预测需要加强的领域
+1. **弱點趋勢分析**
+   - 時間轴展示弱點变化
+   - 预测需要加强的領域
 
-2. **自动练习推荐**
-   - 登录时自动推荐针对性题目
-   - 智能调整练习难度
+2. **自動練習推荐**
+   - 登錄時自動推荐針對性題目
+   - 智能調整練習難度
 
 3. **综合报告**
-   - 生成弱点分析报告
-   - 导出PDF供家长查看
+   - 生成弱點分析报告
+   - 導出PDF供家長查看
 
 ## ✅ 质量保证
 
 - ✅ 无lint错误
 - ✅ API接口正常
-- ✅ 数据库schema更新
+- ✅ 數據庫schema更新
 - ✅ 前端界面完整
-- ✅ 文档齐全
+- ✅ 文檔齐全
 
-## 🎉 总结
+## 🎉 總結
 
-成功实现了完整的学生弱点分析和针对性题目生成系统！
+成功实现了完整的學生弱點分析和針對性題目生成係統！
 
 **核心成果**：
-- 🆕 1个新数据表（student_weaknesses）
+- 🆕 1个新數據表（student_weaknesses）
 - 🆕 7个新API接口
 - 🔄 1个增强的AI分析接口
-- 🎨 前端界面弱点展示
-- 📚 完整的功能文档
+- 🎨 前端界面弱點展示
+- 📚 完整的功能文檔
 
-系统现在不仅是"练习工具"，更是"智能训练助手"！ 🎓✨
+係統现在不仅是"練習工具"，更是"智能訓練助手"！ 🎓✨

@@ -38,36 +38,36 @@ const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-// 专项类别映射
+// 專項類別映射
 const CATEGORY_MAP: Record<string, string> = {
-  'english-oral': '英文口语',
-  'chinese-expression': '中文表达',
-  'chinese-oral': '中文表达',
-  'logic-thinking': '逻辑思维',
-  'logical-thinking': '逻辑思维',
-  'current-affairs': '时事常识',
-  'science-knowledge': '科学常识',
-  'personal-growth': '个人成长',
-  'group-discussion': '小组讨论',
+  'english-oral': '英文口語',
+  'chinese-expression': '中文表達',
+  'chinese-oral': '中文表達',
+  'logic-thinking': '邏輯思維',
+  'logical-thinking': '邏輯思維',
+  'current-affairs': '時事常識',
+  'science-knowledge': '科學常識',
+  'personal-growth': '个人成長',
+  'group-discussion': '小組討論',
 };
 
-// 弱点类型映射
+// 弱點類型映射
 const WEAKNESS_TYPE_MAP: Record<string, string> = {
-  vocabulary: '词汇量',
-  grammar: '语法',
-  logic: '逻辑思维',
-  knowledge_gap: '知识盲区',
+  vocabulary: '詞汇量',
+  grammar: '語法',
+  logic: '邏輯思維',
+  knowledge_gap: '知識盲区',
   confidence: '自信心',
-  expression: '表达能力',
+  expression: '表達能力',
 };
 
-// 素材类型映射
+// 素材類型映射
 const MATERIAL_TYPE_MAP: Record<string, string> = {
-  text: '知识点讲解',
+  text: '知識點讲解',
   example: '常见错误示例',
-  tip: '改进技巧',
-  practice: '练习建议',
-  link: '相关链接',
+  tip: '改進技巧',
+  practice: '練習建議',
+  link: '相關链接',
 };
 
 interface LearningMaterial {
@@ -95,7 +95,7 @@ export default function LearningMaterials() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [form] = Form.useForm();
   
-  // 筛选条件
+  // 筛選条件
   const [filters, setFilters] = useState<{
     category?: string;
     weakness_type?: string;
@@ -130,8 +130,8 @@ export default function LearningMaterials() {
         }
       }
     } catch (error) {
-      console.error('加载学习素材列表失败:', error);
-      message.error('加载学习素材列表失败');
+      console.error('加载學習素材列表失敗:', error);
+      message.error('加载學習素材列表失敗');
     } finally {
       setLoading(false);
     }
@@ -144,12 +144,12 @@ export default function LearningMaterials() {
       const res = await api.learningMaterials.get(materialId);
       if (res.success) {
         setCurrentMaterial(res.data);
-        // 增加使用次数
+        // 增加使用次數
         await api.learningMaterials.incrementUsage(materialId);
       }
     } catch (error) {
-      console.error('加载素材详情失败:', error);
-      message.error('加载素材详情失败');
+      console.error('加载素材详情失敗:', error);
+      message.error('加载素材详情失敗');
     } finally {
       setLoading(false);
     }
@@ -175,11 +175,11 @@ export default function LearningMaterials() {
       message.success('删除成功');
       loadMaterials();
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   };
 
-  // 编辑素材
+  // 编輯素材
   const handleEdit = (material: LearningMaterial) => {
     setCurrentMaterial(material);
     form.setFieldsValue({
@@ -191,7 +191,7 @@ export default function LearningMaterials() {
     setEditModalOpen(true);
   };
 
-  // 保存编辑
+  // 保存编輯
   const handleSave = async (values: any) => {
     if (!currentMaterial) return;
     
@@ -201,13 +201,13 @@ export default function LearningMaterials() {
       setEditModalOpen(false);
       loadMaterials();
     } catch (error) {
-      message.error('保存失败');
+      message.error('保存失敗');
     }
   };
 
   const columns = [
     {
-      title: '标题',
+      title: '標題',
       dataIndex: 'title',
       key: 'title',
       render: (text: string, record: LearningMaterial) => (
@@ -215,31 +215,31 @@ export default function LearningMaterials() {
       ),
     },
     {
-      title: '类别',
+      title: '類別',
       dataIndex: 'category',
       key: 'category',
       render: (category: string) => <Tag color="blue">{CATEGORY_MAP[category] || category}</Tag>,
     },
     {
-      title: '弱点类型',
+      title: '弱點類型',
       dataIndex: 'weakness_type',
       key: 'weakness_type',
       render: (type: string) => <Tag>{WEAKNESS_TYPE_MAP[type] || type}</Tag>,
     },
     {
-      title: '素材类型',
+      title: '素材類型',
       dataIndex: 'material_type',
       key: 'material_type',
       render: (type: string) => <Tag color="green">{MATERIAL_TYPE_MAP[type] || type}</Tag>,
     },
     {
-      title: '使用次数',
+      title: '使用次數',
       dataIndex: 'usage_count',
       key: 'usage_count',
       sorter: true,
     },
     {
-      title: '创建时间',
+      title: '創建時間',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD'),
@@ -253,9 +253,9 @@ export default function LearningMaterials() {
             查看
           </Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            编辑
+            编輯
           </Button>
-          <Popconfirm title="确定删除此素材？" onConfirm={() => handleDelete(record.id)}>
+          <Popconfirm title="確定删除此素材？" onConfirm={() => handleDelete(record.id)}>
             <Button size="small" danger icon={<DeleteOutlined />}>
               删除
             </Button>
@@ -271,14 +271,14 @@ export default function LearningMaterials() {
         <Breadcrumb.Item>
           <HomeOutlined /> <a onClick={() => navigate('/')}>首页</a>
         </Breadcrumb.Item>
-        <Breadcrumb.Item>学习素材</Breadcrumb.Item>
+        <Breadcrumb.Item>學習素材</Breadcrumb.Item>
       </Breadcrumb>
 
       <Card
         title={
           <Space>
             <BookOutlined />
-            <span>学习素材管理</span>
+            <span>學習素材管理</span>
           </Space>
         }
         extra={
@@ -287,12 +287,12 @@ export default function LearningMaterials() {
           </Button>
         }
       >
-        {/* 筛选器 */}
+        {/* 筛選器 */}
         <Card type="inner" size="small" style={{ marginBottom: 16 }}>
           <Row gutter={16}>
             <Col span={6}>
               <Select
-                placeholder="专项类别"
+                placeholder="專項類別"
                 allowClear
                 style={{ width: '100%' }}
                 value={filters.category}
@@ -305,7 +305,7 @@ export default function LearningMaterials() {
             </Col>
             <Col span={6}>
               <Select
-                placeholder="弱点类型"
+                placeholder="弱點類型"
                 allowClear
                 style={{ width: '100%' }}
                 value={filters.weakness_type}
@@ -318,7 +318,7 @@ export default function LearningMaterials() {
             </Col>
             <Col span={6}>
               <Select
-                placeholder="素材类型"
+                placeholder="素材類型"
                 allowClear
                 style={{ width: '100%' }}
                 value={filters.material_type}
@@ -331,7 +331,7 @@ export default function LearningMaterials() {
             </Col>
             <Col span={6}>
               <Input
-                placeholder="搜索标题或内容"
+                placeholder="搜索標題或內容"
                 prefix={<SearchOutlined />}
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -359,9 +359,9 @@ export default function LearningMaterials() {
         />
       </Card>
 
-      {/* 编辑对话框 */}
+      {/* 编輯對話框 */}
       <Modal
-        title="编辑学习素材"
+        title="编輯學習素材"
         open={editModalOpen}
         onOk={() => form.submit()}
         onCancel={() => {
@@ -372,21 +372,21 @@ export default function LearningMaterials() {
         width={800}
       >
         <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+          <Form.Item name="title" label="標題" rules={[{ required: true, message: '请输入標題' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="material_type" label="素材类型" rules={[{ required: true, message: '请选择素材类型' }]}>
+          <Form.Item name="material_type" label="素材類型" rules={[{ required: true, message: '请選擇素材類型' }]}>
             <Select>
               {Object.entries(MATERIAL_TYPE_MAP).map(([key, label]) => (
                 <Option key={key} value={key}>{label}</Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="content" label="内容（Markdown格式）" rules={[{ required: true, message: '请输入内容' }]}>
+          <Form.Item name="content" label="內容（Markdown格式）" rules={[{ required: true, message: '请输入內容' }]}>
             <TextArea rows={10} />
           </Form.Item>
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="输入标签后按回车">
+          <Form.Item name="tags" label="標籤">
+            <Select mode="tags" placeholder="输入標籤後按回车">
               {currentMaterial?.tags?.map((tag) => (
                 <Option key={tag} value={tag}>{tag}</Option>
               ))}
@@ -398,7 +398,7 @@ export default function LearningMaterials() {
   );
 }
 
-// 素材详情组件
+// 素材详情組件
 function MaterialDetail({
   material,
   loading,
@@ -438,7 +438,7 @@ function MaterialDetail({
       onBack();
       window.location.reload(); // 重新加载页面
     } catch (error) {
-      message.error('保存失败');
+      message.error('保存失敗');
     }
   };
 
@@ -448,7 +448,7 @@ function MaterialDetail({
       message.success('删除成功');
       navigate('/learning-materials');
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   };
 
@@ -459,7 +459,7 @@ function MaterialDetail({
           <HomeOutlined /> <a onClick={() => navigate('/')}>首页</a>
         </Breadcrumb.Item>
         <Breadcrumb.Item>
-          <a onClick={() => navigate('/learning-materials')}>学习素材</a>
+          <a onClick={() => navigate('/learning-materials')}>學習素材</a>
         </Breadcrumb.Item>
         <Breadcrumb.Item>素材详情</Breadcrumb.Item>
       </Breadcrumb>
@@ -474,9 +474,9 @@ function MaterialDetail({
         extra={
           <Space>
             <Button icon={<EditOutlined />} onClick={handleEdit}>
-              编辑
+              编輯
             </Button>
-            <Popconfirm title="确定删除此素材？" onConfirm={handleDelete}>
+            <Popconfirm title="確定删除此素材？" onConfirm={handleDelete}>
               <Button danger icon={<DeleteOutlined />}>
                 删除
               </Button>
@@ -487,31 +487,31 @@ function MaterialDetail({
       >
         <Descriptions column={2} bordered>
           <Descriptions.Item label="ID">{material.id}</Descriptions.Item>
-          <Descriptions.Item label="专项类别">
+          <Descriptions.Item label="專項類別">
             <Tag color="blue">{CATEGORY_MAP[material.category] || material.category}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="弱点类型">
+          <Descriptions.Item label="弱點類型">
             <Tag>{WEAKNESS_TYPE_MAP[material.weakness_type] || material.weakness_type}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="素材类型">
+          <Descriptions.Item label="素材類型">
             <Tag color="green">{MATERIAL_TYPE_MAP[material.material_type] || material.material_type}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="使用次数">{material.usage_count}</Descriptions.Item>
-          <Descriptions.Item label="创建方式">
-            <Tag>{material.created_by === 'ai' ? 'AI生成' : '手动创建'}</Tag>
+          <Descriptions.Item label="使用次數">{material.usage_count}</Descriptions.Item>
+          <Descriptions.Item label="創建方式">
+            <Tag>{material.created_by === 'ai' ? 'AI生成' : '手動創建'}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="创建时间" span={2}>
+          <Descriptions.Item label="創建時間" span={2}>
             {dayjs(material.created_at).format('YYYY-MM-DD HH:mm:ss')}
           </Descriptions.Item>
           {material.weakness && (
-            <Descriptions.Item label="关联弱点" span={2}>
+            <Descriptions.Item label="關聯弱點" span={2}>
               <a onClick={() => navigate(`/weaknesses/${material.weakness_id}`)}>
                 {material.weakness.description?.substring(0, 50)}...
               </a>
             </Descriptions.Item>
           )}
           {material.tags && material.tags.length > 0 && (
-            <Descriptions.Item label="标签" span={2}>
+            <Descriptions.Item label="標籤" span={2}>
               <Space wrap>
                 {material.tags.map((tag, index) => (
                   <Tag key={index}>{tag}</Tag>
@@ -523,15 +523,15 @@ function MaterialDetail({
 
         <Divider />
 
-        <Title level={4}>内容</Title>
+        <Title level={4}>內容</Title>
         <Card>
           <MarkdownRenderer content={material.content} />
         </Card>
       </Card>
 
-      {/* 编辑对话框 */}
+      {/* 编輯對話框 */}
       <Modal
-        title="编辑学习素材"
+        title="编輯學習素材"
         open={editModalOpen}
         onOk={() => form.submit()}
         onCancel={() => {
@@ -541,21 +541,21 @@ function MaterialDetail({
         width={800}
       >
         <Form form={form} layout="vertical" onFinish={handleSave}>
-          <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入标题' }]}>
+          <Form.Item name="title" label="標題" rules={[{ required: true, message: '请输入標題' }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="material_type" label="素材类型" rules={[{ required: true, message: '请选择素材类型' }]}>
+          <Form.Item name="material_type" label="素材類型" rules={[{ required: true, message: '请選擇素材類型' }]}>
             <Select>
               {Object.entries(MATERIAL_TYPE_MAP).map(([key, label]) => (
                 <Option key={key} value={key}>{label}</Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="content" label="内容（Markdown格式）" rules={[{ required: true, message: '请输入内容' }]}>
+          <Form.Item name="content" label="內容（Markdown格式）" rules={[{ required: true, message: '请输入內容' }]}>
             <TextArea rows={15} />
           </Form.Item>
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="输入标签后按回车">
+          <Form.Item name="tags" label="標籤">
+            <Select mode="tags" placeholder="输入標籤後按回车">
               {material.tags?.map((tag) => (
                 <Option key={tag} value={tag}>{tag}</Option>
               ))}

@@ -1,22 +1,22 @@
-# Capability: Interview Practice (面试练习)
+# Capability: Interview Practice (面試練習)
 
 ## MODIFIED Requirements
 
-### Requirement: 练习会话列表查询
-系统SHALL使用安全的分页查询方法。
+### Requirement: 練習會話列表查询
+係統SHALL使用安全的分页查询方法。
 
-#### Scenario: 获取最近会话列表
-- **WHEN** 用户请求最近的练习会话
-- **THEN** 使用 queryWithPagination() 函数处理分页
-- **AND** limit 参数默认为 10，最大不超过 100
-- **AND** 避免 MySQL2 的 LIMIT 参数类型问题
+#### Scenario: 获取最近會話列表
+- **WHEN** 用户请求最近的練習會話
+- **THEN** 使用 queryWithPagination() 函數处理分页
+- **AND** limit 參數默认为 10，最大不超過 100
+- **AND** 避免 MySQL2 的 LIMIT 參數類型問題
 
-### Requirement: 问答记录的 AI 反馈
-系统SHALL健壮地处理 AI 反馈的 JSON 字段。
+### Requirement: 問答記錄的 AI 反馈
+係統SHALL健壮地处理 AI 反馈的 JSON 字段。
 
-#### Scenario: 解析问答记录的 AI 反馈
-- **WHEN** 读取问答记录
-- **THEN** 正确解析 ai_feedback JSON 对象
-- **AND** 处理字符串和对象两种类型
-- **AND** 解析失败时返回 null 并记录警告
-- **AND** 不影响整个记录的返回
+#### Scenario: 解析問答記錄的 AI 反馈
+- **WHEN** 读取問答記錄
+- **THEN** 正確解析 ai_feedback JSON 對象
+- **AND** 处理字符串和對象两種類型
+- **AND** 解析失敗時返回 null 并記錄警告
+- **AND** 不影响整个記錄的返回

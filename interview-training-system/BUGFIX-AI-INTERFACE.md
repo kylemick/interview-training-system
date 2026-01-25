@@ -1,23 +1,23 @@
-# 问题修复：AI分析接口调用失败
+# 問題修复：AI分析接口調用失敗
 
-## 问题描述
+## 問題描述
 
-`/api/ai/extract-interview-memory` 接口调用失败，导致面试回忆录入功能无法正常工作。
+`/api/ai/extract-interview-memory` 接口調用失敗，導致面試回憶錄入功能无法正常工作。
 
 ## 根本原因
 
-**代码使用了不存在的函数名**
+**代碼使用了不存在的函數名**
 
 在 `backend/src/routes/ai.ts` 中：
 ```typescript
-// ❌ 错误：试图导入不存在的 callDeepSeek 函数
+// ❌ 错误：試图導入不存在的 callDeepSeek 函數
 const { callDeepSeek } = await import('../ai/deepseek.js');
 const response = await callDeepSeek(prompt);
 ```
 
-但是 `deepseek.ts` 实际导出的是：
+但是 `deepseek.ts` 实际導出的是：
 ```typescript
-// ✅ 正确：实际导出的是 deepseekClient 实例
+// ✅ 正確：实际導出的是 deepseekClient 实例
 export const deepseekClient = new DeepSeekClient()
 ```
 
@@ -32,7 +32,7 @@ export const deepseekClient = new DeepSeekClient()
 const { callDeepSeek } = await import('../ai/deepseek.js');
 const response = await callDeepSeek(prompt);
 
-// 修复后
+// 修复後
 const { deepseekClient } = await import('../ai/deepseek.js');
 const response = await deepseekClient.chat([
   { role: 'user', content: prompt }
@@ -48,25 +48,25 @@ const response = await deepseekClient.chat([
 const { callDeepSeek } = await import('../ai/deepseek.js');
 const response = await callDeepSeek('请回复"连接成功"');
 
-// 修复后
+// 修复後
 const { deepseekClient } = await import('../ai/deepseek.js');
 const response = await deepseekClient.chat([
   { role: 'user', content: '请回复"连接成功"' }
 ]);
 ```
 
-## 修复后的功能
+## 修复後的功能
 
-### 1. 面试回忆分析接口
+### 1. 面試回憶分析接口
 
-**端点**: `POST /api/ai/extract-interview-memory`
+**端點**: `POST /api/ai/extract-interview-memory`
 
 **请求示例**:
 ```bash
 curl -X POST http://localhost:3001/api/ai/extract-interview-memory \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "今天去了SPCC面试，面试官问：Tell me about your favorite book.",
+    "text": "今天去了SPCC面試，面試官問：Tell me about your favorite book.",
     "category": "english-oral",
     "school_code": "SPCC"
   }'
@@ -76,7 +76,7 @@ curl -X POST http://localhost:3001/api/ai/extract-interview-memory \
 ```json
 {
   "success": true,
-  "message": "成功提取 1 个问题",
+  "message": "成功提取 1 个問題",
   "data": {
     "questions": [
       {
@@ -88,14 +88,14 @@ curl -X POST http://localhost:3001/api/ai/extract-interview-memory \
         "notes": "..."
       }
     ],
-    "summary": "本次面试主要考察英文表达能力..."
+    "summary": "本次面試主要考察英文表達能力..."
   }
 }
 ```
 
-### 2. API连接测试接口
+### 2. API连接测試接口
 
-**端点**: `POST /api/ai/test-connection`
+**端點**: `POST /api/ai/test-connection`
 
 **请求示例**:
 ```bash
@@ -117,9 +117,9 @@ curl -X POST http://localhost:3001/api/ai/test-connection \
 }
 ```
 
-## 测试步骤
+## 测試步骤
 
-### 方法1: 使用测试脚本
+### 方法1: 使用测試脚本
 
 ```bash
 cd interview-training-system
@@ -128,47 +128,47 @@ cd interview-training-system
 
 ### 方法2: 使用浏览器
 
-1. 访问 http://localhost:5173/interview-memory
-2. 输入测试文本：
+1. 访問 http://localhost:5173/interview-memory
+2. 输入测試文本：
    ```
-   今天去了SPCC面试。面试官先问我：Tell me about your favorite book. 
-   我回答了Harry Potter。然后问：What do you think about climate change? 
-   我说这是很严重的问题。
+   今天去了SPCC面試。面試官先問我：Tell me about your favorite book. 
+   我回答了Harry Potter。然後問：What do you think about climate change? 
+   我說这是很嚴重的問題。
    ```
-3. 点击"AI分析并提取问题"
-4. 应该能看到AI提取的问题列表
+3. 點击"AI分析并提取問題"
+4. 应该能看到AI提取的問題列表
 
-### 方法3: 测试API连接
+### 方法3: 测試API连接
 
-1. 访问 http://localhost:5173/settings
-2. 进入"基本设置"标签页
+1. 访問 http://localhost:5173/settings
+2. 進入"基本设置"標籤页
 3. 输入API Key
-4. 点击"测试连接"
+4. 點击"测試连接"
 5. 应该显示"API Key 验证成功"
 
-## 其他相关接口状态
+## 其他相關接口狀態
 
 ### ✅ 正常工作的AI接口
 
-这些接口已经正确使用了 `deepseekClient`:
+这些接口已经正確使用了 `deepseekClient`:
 
-1. **AI生成学校档案**
-   - 端点: `POST /api/ai/generate-school`
-   - 实现: 使用 `generateSchoolProfile()` 函数
+1. **AI生成學校檔案**
+   - 端點: `POST /api/ai/generate-school`
+   - 实现: 使用 `generateSchoolProfile()` 函數
 
-2. **AI生成题目**
-   - 端点: `POST /api/ai/generate-questions`
-   - 实现: 使用 `generateQuestions()` 函数
+2. **AI生成題目**
+   - 端點: `POST /api/ai/generate-questions`
+   - 实现: 使用 `generateQuestions()` 函數
 
-这两个接口使用的是封装好的AI服务函数，它们内部正确调用了 `deepseekClient.chat()`。
+这两个接口使用的是封装好的AI服務函數，它们內部正確調用了 `deepseekClient.chat()`。
 
 ## 预防措施
 
-为避免类似问题，建议：
+为避免類似問題，建議：
 
-1. **使用统一的AI服务封装**
+1. **使用統一的AI服務封装**
    ```typescript
-   // 推荐：创建统一的AI服务函数
+   // 推荐：創建統一的AI服務函數
    // src/ai/services.ts
    export async function callAI(prompt: string): Promise<string> {
      return await deepseekClient.chat([
@@ -177,15 +177,15 @@ cd interview-training-system
    }
    ```
 
-2. **添加类型检查**
+2. **添加類型检查**
    ```typescript
-   // 确保导入的是正确的类型
+   // 確保導入的是正確的類型
    import { deepseekClient, DeepSeekClient } from '../ai/deepseek.js';
    ```
 
-3. **添加单元测试**
+3. **添加单元测試**
    ```typescript
-   // 测试AI接口是否能正确调用
+   // 测試AI接口是否能正確調用
    describe('AI Routes', () => {
      it('should extract interview questions', async () => {
        // ...
@@ -198,53 +198,53 @@ cd interview-training-system
 - [x] 修复 extract-interview-memory 接口
 - [x] 修复 test-connection 接口
 - [x] 检查其他AI接口（都正常）
-- [x] 重启后端服务
-- [x] 测试接口可用性
-- [x] 创建测试脚本
-- [x] 更新文档
+- [x] 重启後端服務
+- [x] 测試接口可用性
+- [x] 創建测試脚本
+- [x] 更新文檔
 
 ## 影响范围
 
 ### 已修复
-- ✅ 面试回忆AI分析功能
-- ✅ API Key连接测试功能
+- ✅ 面試回憶AI分析功能
+- ✅ API Key连接测試功能
 
 ### 无影响（一直正常）
-- ✅ AI生成训练计划
-- ✅ AI生成题目
+- ✅ AI生成訓練計劃
+- ✅ AI生成題目
 - ✅ AI生成反馈
-- ✅ AI生成学校档案
+- ✅ AI生成學校檔案
 
-## 后续建议
+## 後续建議
 
-1. **立即测试**: 使用测试脚本或浏览器测试修复后的功能
-2. **验证网络**: 确保能访问 `api.deepseek.com`
-3. **检查配额**: 确认API Key有足够的调用配额
-4. **监控日志**: 观察后端日志，确保没有其他错误
+1. **立即测試**: 使用测試脚本或浏览器测試修复後的功能
+2. **验证网络**: 確保能访問 `api.deepseek.com`
+3. **检查配额**: 確认API Key有足够的調用配额
+4. **监控日志**: 觀察後端日志，確保没有其他错误
 
-## 问题状态
+## 問題狀態
 
-- **发现时间**: 2026-01-24
-- **修复时间**: 2026-01-24
-- **影响功能**: 面试回忆分析、API连接测试
-- **修复状态**: ✅ 已完成
-- **测试状态**: ✅ 待用户验证
+- **發现時間**: 2026-01-24
+- **修复時間**: 2026-01-24
+- **影响功能**: 面試回憶分析、API连接测試
+- **修复狀態**: ✅ 已完成
+- **测試狀態**: ✅ 待用户验证
 
 ## 快速验证命令
 
 ```bash
-# 1. 检查后端是否运行
+# 1. 检查後端是否运行
 curl http://localhost:3001/health
 
-# 2. 测试面试回忆分析（简单测试）
+# 2. 测試面試回憶分析（简单测試）
 curl -X POST http://localhost:3001/api/ai/extract-interview-memory \
   -H "Content-Type: application/json" \
-  -d '{"text":"面试官问：Tell me about yourself."}'
+  -d '{"text":"面試官問：Tell me about yourself."}'
 
-# 3. 查看后端日志
+# 3. 查看後端日志
 # 应该看到：
-# 🤖 AI 分析面试回忆文本 (35 字)...
+# 🤖 AI 分析面試回憶文本 (35 字)...
 # 🤖 Calling DeepSeek API...
 # ✅ DeepSeek API call successful
-# ✅ 成功提取 X 个问题
+# ✅ 成功提取 X 个問題
 ```

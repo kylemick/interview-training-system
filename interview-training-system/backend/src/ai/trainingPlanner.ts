@@ -1,5 +1,5 @@
 /**
- * AI 训练计划生成服务
+ * AI 訓練計劃生成服務
  */
 import { deepseekClient } from './deepseek.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -38,12 +38,12 @@ export interface GeneratedTrainingPlan {
 }
 
 /**
- * 生成训练计划
+ * 生成訓練計劃
  */
 export async function generateTrainingPlan(params: TrainingPlanRequest): Promise<GeneratedTrainingPlan> {
   const { student_name, target_school, start_date, end_date, total_days, daily_duration } = params;
 
-  // 获取学校信息
+  // 获取學校信息
   const school = await queryOne(
     'SELECT code, name, name_zh, focus_areas, interview_style, notes FROM school_profiles WHERE code = ?',
     [target_school]
@@ -55,31 +55,41 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
       ? JSON.parse(school.focus_areas) 
       : school.focus_areas;
     schoolInfo = `
-目标学校：${school.name_zh} (${school.code})
-面试重点：${focusAreas.join('、')}
-面试风格：${school.interview_style}
-备注：${school.notes}`;
+目標學校：${school.name_zh} (${school.code})
+面試重點：${focusAreas.join('、')}
+面試風格：${school.interview_style}
+備注：${school.notes}`;
   }
 
-  // 构建提示词
-  const prompt = `你是一位资深的香港升中面试辅导专家。请为学生生成一个系统化的训练计划。
+  // 構建提示詞
+  const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-学生信息：
+你是一位資深的香港升中面試輔導專家。請為學生生成一個係統化的訓練計劃。
+
+學生信息：
 - 姓名：${student_name}
-- 目标学校：${target_school}${schoolInfo}
-- 训练周期：${start_date} 至 ${end_date}（共 ${total_days} 天）
-- 每日可用时长：${daily_duration} 分钟
+- 目標學校：${target_school}${schoolInfo}
+- 訓練週期：${start_date} 至 ${end_date}（共 ${total_days} 天）
+- 每日可用時長：${daily_duration} 分鐘
 
-七大专项类别：
-1. english-oral（英文口语）
-2. chinese-oral（中文表达）
-3. logic-thinking（逻辑思维）
-4. current-affairs（时事常识）
-5. science-knowledge（科学常识）
-6. personal-growth（个人成长）
-7. group-discussion（小组讨论）
+七大專項類別：
+1. english-oral（英文口語）
+2. chinese-oral（中文表達）
+3. logic-thinking（邏輯思維）
+4. current-affairs（時事常識）
+5. science-knowledge（科學常識）
+6. personal-growth（個人成長）
+7. group-discussion（小組討論）
 
-请生成训练计划，以 JSON 格式返回：
+四個學科能力類別（可選，用於專項基礎能力訓練）：
+8. chinese-reading（中文閱讀理解）：通過閱讀文章，考察閱讀理解、字詞理解、觀點提煉等能力
+9. english-reading（英文閱讀理解）：通過閱讀英文文章，考察閱讀理解、詞彙、觀點分析等能力
+10. mathematics（數學基礎）：考察計算能力、數學概念理解、基礎數學知識應用
+11. science-practice（科學實踐）：考察科學現象說明、科學推理、科學行為等能力
+
+注意：學科能力類別可以作為補充訓練，建議與相關專項類別結合（如英文閱讀理解與英文口語結合）。
+
+請生成訓練計劃，以 JSON 格式返回：
 
 {
   "category_allocation": {
@@ -91,7 +101,7 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
     "personal-growth": 10,
     "group-discussion": 5
   },
-  "ai_suggestions": "根据 ${target_school} 的特点，建议重点加强...",
+  "ai_suggestions": "根據 ${target_school} 的特點，建議重點加強...（必須使用繁體中文）",
   "daily_tasks": [
     {
       "task_date": "${start_date}",
@@ -103,16 +113,18 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
 }
 
 要求：
-1. category_allocation 为各专项的百分比分配（总和=100）
-2. 根据学校特点调整专项比例（如 SPCC 增加 science-knowledge）
-3. daily_tasks 数组包含每一天的任务安排
-4. 每天可以安排 1-2 个专项
-5. 合理分配时间，确保每个专项都有充分练习
-6. ai_suggestions 提供针对性建议（200-300字）
+1. category_allocation 為各專項的百分比分配（總和=100）
+2. 根據學校特點調整專項比例（如 SPCC 增加 science-knowledge 和 science-practice）
+3. 學科能力類別可以作為補充訓練，建議與相關專項類別結合（如英文閱讀理解與英文口語結合）
+4. daily_tasks 數組包含每一天的任務安排
+5. 每天可以安排 1-2 個專項（可以是專項類別或學科能力類別）
+6. 合理分配時間，確保每個專項都有充分練習
+7. ai_suggestions 必須使用繁體中文
+7. ai_suggestions 提供針對性建議（200-300字），如果包含學科能力訓練，應說明訓練重點
 
-现在请生成完整的训练计划：`;
+現在請生成完整的訓練計劃：`;
 
-  console.log(`🤖 生成训练计划: ${student_name} -> ${target_school}`);
+  console.log(`🤖 生成訓練計劃: ${student_name} -> ${target_school}`);
 
   try {
     const response = await deepseekClient.chat(
@@ -131,36 +143,36 @@ export async function generateTrainingPlan(params: TrainingPlanRequest): Promise
     // 解析 JSON
     const plan = JSON.parse(jsonText) as GeneratedTrainingPlan;
 
-    // 验证结果
+    // 驗證結果
     if (!plan.category_allocation || !plan.daily_tasks || !Array.isArray(plan.daily_tasks)) {
-      throw new Error('AI 返回的数据格式不正确');
+      throw new Error('AI 返回的數據格式不正確');
     }
 
-    // 验证日期和类别
+    // 驗證日期和類別
     for (const task of plan.daily_tasks) {
       if (!task.task_date || !task.category || !task.duration) {
-        throw new Error('每日任务缺少必要字段');
+        throw new Error('每日任務缺少必要字段');
       }
     }
 
-    console.log(`✅ 成功生成训练计划：${plan.daily_tasks.length} 个每日任务`);
+    console.log(`✅ 成功生成訓練計劃：${plan.daily_tasks.length} 個每日任務`);
     return plan;
   } catch (error: any) {
-    console.error('❌ AI 生成训练计划失败:', error.message);
+    console.error('❌ AI 生成訓練計劃失敗:', error.message);
     
-    // 降级：使用预设模板
-    console.log('🔄 使用预设模板生成计划...');
+    // 降級：使用預設模板
+    console.log('🔄 使用預設模板生成計劃...');
     return generateDefaultPlan(params);
   }
 }
 
 /**
- * 预设模板计划（AI 失败时的降级方案）
+ * 預設模板計劃（AI 失敗時的降級方案）
  */
 function generateDefaultPlan(params: TrainingPlanRequest): GeneratedTrainingPlan {
   const { start_date, total_days, daily_duration } = params;
 
-  // 默认类别分配
+  // 默認類別分配
   const category_allocation = {
     'english-oral': 25,
     'chinese-oral': 20,
@@ -171,7 +183,7 @@ function generateDefaultPlan(params: TrainingPlanRequest): GeneratedTrainingPlan
     'group-discussion': 5,
   };
 
-  // 生成每日任务（循环分配专项）
+  // 生成每日任務（循環分配專項）
   const categories = Object.keys(category_allocation);
   const daily_tasks: DailyTask[] = [];
 
@@ -192,13 +204,13 @@ function generateDefaultPlan(params: TrainingPlanRequest): GeneratedTrainingPlan
 
   return {
     category_allocation,
-    ai_suggestions: '使用默认模板生成的计划。建议根据实际情况调整，并在数据管理页面手动优化。',
+    ai_suggestions: '使用默認模板生成的計劃。建議根據實際情況調整，並在數據管理頁面手動優化。',
     daily_tasks,
   };
 }
 
 /**
- * 基于弱点生成训练计划
+ * 基於弱點生成訓練計劃
  */
 export async function generateTrainingPlanFromWeakness(
   params: WeaknessBasedPlanRequest,
@@ -206,7 +218,7 @@ export async function generateTrainingPlanFromWeakness(
 ): Promise<GeneratedTrainingPlan> {
   const { start_date, end_date, total_days, daily_duration, target_school, student_name } = params;
 
-  // 获取学校信息（如果有）
+  // 獲取學校信息（如果有）
   let schoolInfo = '';
   if (target_school) {
     const school = await queryOne(
@@ -218,52 +230,60 @@ export async function generateTrainingPlanFromWeakness(
         ? JSON.parse(school.focus_areas) 
         : school.focus_areas;
       schoolInfo = `
-目标学校：${school.name_zh} (${school.code})
-面试重点：${focusAreas.join('、')}
-面试风格：${school.interview_style}`;
+目標學校：${school.name_zh} (${school.code})
+面試重點：${focusAreas.join('、')}
+面試風格：${school.interview_style}`;
     }
   }
 
-  // 解析弱点相关信息
+  // 解析弱點相關信息
   const relatedTopics = typeof weakness.related_topics === 'string'
     ? JSON.parse(weakness.related_topics || '[]')
     : weakness.related_topics || [];
 
-  // 构建针对弱点的提示词
-  const prompt = `你是一位资深的香港升中面试辅导专家。请根据学生的具体弱点，生成一个针对性的训练计划。
+  // 構建針對弱點的提示詞
+  const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-学生信息：
-- 姓名：${student_name || '学生'}
-${target_school ? `- 目标学校：${target_school}${schoolInfo}` : ''}
-- 训练周期：${start_date} 至 ${end_date}（共 ${total_days} 天）
-- 每日可用时长：${daily_duration} 分钟
+你是一位資深的香港升中面試輔導專家。請根據學生的具體弱點，生成一個針對性的訓練計劃。
 
-需要改善的弱点：
-- 专项类别：${weakness.category}（${getCategoryName(weakness.category)}）
-- 弱点类型：${weakness.weakness_type}（${getWeaknessTypeName(weakness.weakness_type)}）
-- 严重程度：${weakness.severity === 'high' ? '高' : weakness.severity === 'medium' ? '中' : '低'}
-- 弱点描述：${weakness.description}
+學生信息：
+- 姓名：${student_name || '學生'}
+${target_school ? `- 目標學校：${target_school}${schoolInfo}` : ''}
+- 訓練週期：${start_date} 至 ${end_date}（共 ${total_days} 天）
+- 每日可用時長：${daily_duration} 分鐘
+
+需要改善的弱點：
+- 專項類別：${weakness.category}（${getCategoryName(weakness.category)}）
+- 弱點類型：${weakness.weakness_type}（${getWeaknessTypeName(weakness.weakness_type)}）
+- 嚴重程度：${weakness.severity === 'high' ? '高' : weakness.severity === 'medium' ? '中' : '低'}
+- 弱點描述：${weakness.description}
 ${weakness.example_text ? `- 示例：${weakness.example_text}` : ''}
-${weakness.improvement_suggestions ? `- 改进建议：${weakness.improvement_suggestions}` : ''}
-${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : ''}
+${weakness.improvement_suggestions ? `- 改進建議：${weakness.improvement_suggestions}` : ''}
+${relatedTopics.length > 0 ? `- 相關話題：${relatedTopics.join('、')}` : ''}
 
-七大专项类别：
-1. english-oral（英文口语）
-2. chinese-oral（中文表达）
-3. logic-thinking（逻辑思维）
-4. current-affairs（时事常识）
-5. science-knowledge（科学常识）
-6. personal-growth（个人成长）
-7. group-discussion（小组讨论）
+七大專項類別：
+1. english-oral（英文口語）
+2. chinese-oral（中文表達）
+3. logic-thinking（邏輯思維）
+4. current-affairs（時事常識）
+5. science-knowledge（科學常識）
+6. personal-growth（個人成長）
+7. group-discussion（小組討論）
 
-请生成针对该弱点的训练计划，以 JSON 格式返回：
+四個學科能力類別（可選，用於專項基礎能力訓練）：
+8. chinese-reading（中文閱讀理解）：通過閱讀文章，考察閱讀理解、字詞理解、觀點提煉等能力
+9. english-reading（英文閱讀理解）：通過閱讀英文文章，考察閱讀理解、詞彙、觀點分析等能力
+10. mathematics（數學基礎）：考察計算能力、數學概念理解、基礎數學知識應用
+11. science-practice（科學實踐）：考察科學現象說明、科學推理、科學行為等能力
+
+請生成針對該弱點的訓練計劃，以 JSON 格式返回：
 
 {
   "category_allocation": {
     "${weakness.category}": 40,
-    "其他相关类别": 60
+    "其他相關類別": 60
   },
-  "ai_suggestions": "针对${getWeaknessTypeName(weakness.weakness_type)}弱点的训练建议...",
+  "ai_suggestions": "針對${getWeaknessTypeName(weakness.weakness_type)}弱點的訓練建議...（必須使用繁體中文）",
   "daily_tasks": [
     {
       "task_date": "${start_date}",
@@ -275,22 +295,22 @@ ${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : '
 }
 
 要求：
-1. category_allocation 中，弱点所属类别应占较高比例（30-50%），其他类别合理分配
-2. 根据弱点类型设计练习重点：
-   - vocabulary（词汇量不足）：重点练习词汇丰富度、同义词替换
-   - grammar（语法错误）：重点练习语法结构、句式多样性
-   - logic（逻辑不清晰）：重点练习逻辑推理、条理表达
-   - knowledge_gap（知识盲区）：重点补充相关知识、扩展视野
-   - confidence（信心不足）：重点练习表达流畅度、自信心培养
-   - expression（表达能力弱）：重点练习表达技巧、组织能力
-3. daily_tasks 中，弱点所属类别应占至少40%的任务天数
-4. 每天可以安排 1-2 个专项，但弱点类别应优先安排
-5. ai_suggestions 应详细说明如何针对该弱点进行训练（300-400字）
-6. 如果提供了改进建议和相关话题，应在计划中体现
+1. category_allocation 中，弱點所屬類別應佔較高比例（30-50%），其他類別合理分配
+2. 根據弱點類型設計練習重點：
+   - vocabulary（詞彙量不足）：重點練習詞彙豐富度、同義詞替換
+   - grammar（語法錯誤）：重點練習語法結構、句式多樣性
+   - logic（邏輯不清晰）：重點練習邏輯推理、條理表達
+   - knowledge_gap（知識盲區）：重點補充相關知識、擴展視野
+   - confidence（信心不足）：重點練習表達流暢度、自信心培養
+   - expression（表達能力弱）：重點練習表達技巧、組織能力
+3. daily_tasks 中，弱點所屬類別應佔至少40%的任務天數
+4. 每天可以安排 1-2 個專項，但弱點類別應優先安排
+5. ai_suggestions 應詳細說明如何針對該弱點進行訓練（300-400字，必須使用繁體中文）
+6. 如果提供了改進建議和相關話題，應在計劃中體現
 
-现在请生成针对性的训练计划：`;
+現在請生成針對性的訓練計劃：`;
 
-  console.log(`🤖 基于弱点生成训练计划: 弱点ID=${params.weakness_id}, 类别=${weakness.category}`);
+  console.log(`🤖 基於弱點生成訓練計劃: 弱點ID=${params.weakness_id}, 類別=${weakness.category}`);
 
   try {
     const response = await deepseekClient.chat(
@@ -309,19 +329,19 @@ ${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : '
     // 解析 JSON
     const plan = JSON.parse(jsonText) as GeneratedTrainingPlan;
 
-    // 验证结果
+    // 驗證結果
     if (!plan.category_allocation || !plan.daily_tasks || !Array.isArray(plan.daily_tasks)) {
-      throw new Error('AI 返回的数据格式不正确');
+      throw new Error('AI 返回的數據格式不正確');
     }
 
-    // 确保弱点类别在分配中占较高比例
+    // 確保弱點類別在分配中佔較高比例
     if (!plan.category_allocation[weakness.category] || plan.category_allocation[weakness.category] < 30) {
-      // 调整分配，确保弱点类别至少占30%
+      // 調整分配，確保弱點類別至少佔30%
       const total = Object.values(plan.category_allocation).reduce((a: number, b: number) => a + b, 0);
       const weaknessPercent = Math.max(30, plan.category_allocation[weakness.category] || 0);
       const remaining = 100 - weaknessPercent;
       
-      // 重新分配其他类别
+      // 重新分配其他類別
       const otherCategories = Object.keys(plan.category_allocation).filter(c => c !== weakness.category);
       const perCategory = remaining / Math.max(1, otherCategories.length);
       
@@ -331,18 +351,18 @@ ${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : '
       };
     }
 
-    // 验证每日任务
+    // 驗證每日任務
     for (const task of plan.daily_tasks) {
       if (!task.task_date || !task.category || !task.duration) {
-        throw new Error('每日任务缺少必要字段');
+        throw new Error('每日任務缺少必要字段');
       }
     }
 
-    // 确保弱点类别在任务中占足够比例
+    // 確保弱點類別在任務中佔足夠比例
     const weaknessCategoryTasks = plan.daily_tasks.filter(t => t.category === weakness.category).length;
     const minWeaknessTasks = Math.ceil(plan.daily_tasks.length * 0.4);
     if (weaknessCategoryTasks < minWeaknessTasks) {
-      // 调整任务，增加弱点类别的任务
+      // 調整任務，增加弱點類別的任務
       const needMore = minWeaknessTasks - weaknessCategoryTasks;
       for (let i = 0; i < needMore && i < plan.daily_tasks.length; i++) {
         if (plan.daily_tasks[i].category !== weakness.category) {
@@ -351,19 +371,19 @@ ${relatedTopics.length > 0 ? `- 相关话题：${relatedTopics.join('、')}` : '
       }
     }
 
-    console.log(`✅ 成功生成针对性训练计划：${plan.daily_tasks.length} 个每日任务，弱点类别占比${Math.round((plan.daily_tasks.filter(t => t.category === weakness.category).length / plan.daily_tasks.length) * 100)}%`);
+    console.log(`✅ 成功生成針對性訓練計劃：${plan.daily_tasks.length} 個每日任務，弱點類別佔比${Math.round((plan.daily_tasks.filter(t => t.category === weakness.category).length / plan.daily_tasks.length) * 100)}%`);
     return plan;
   } catch (error: any) {
-    console.error('❌ AI 生成针对性训练计划失败:', error.message);
+    console.error('❌ AI 生成針對性訓練計劃失敗:', error.message);
     
-    // 降级：使用预设模板
-    console.log('🔄 使用预设模板生成针对性计划...');
+    // 降級：使用預設模板
+    console.log('🔄 使用預設模板生成針對性計劃...');
     return generateDefaultWeaknessPlan(params, weakness);
   }
 }
 
 /**
- * 预设模板计划（基于弱点，AI失败时的降级方案）
+ * 預設模板計劃（基於弱點，AI失敗時的降級方案）
  */
 function generateDefaultWeaknessPlan(
   params: WeaknessBasedPlanRequest,
@@ -371,9 +391,9 @@ function generateDefaultWeaknessPlan(
 ): GeneratedTrainingPlan {
   const { start_date, total_days, daily_duration } = params;
 
-  // 弱点类别占40%，其他类别平均分配
+  // 弱點類別佔40%，其他類別平均分配
   const weaknessCategoryPercent = 40;
-  const otherPercent = (100 - weaknessCategoryPercent) / 6; // 其他6个类别平均分配
+  const otherPercent = (100 - weaknessCategoryPercent) / 6; // 其他6個類別平均分配
 
   const category_allocation: Record<string, number> = {
     [weakness.category]: weaknessCategoryPercent,
@@ -386,14 +406,14 @@ function generateDefaultWeaknessPlan(
     'group-discussion': weakness.category === 'group-discussion' ? 0 : otherPercent,
   };
 
-  // 移除0值的类别
+  // 移除0值的類別
   Object.keys(category_allocation).forEach(key => {
     if (category_allocation[key] === 0) {
       delete category_allocation[key];
     }
   });
 
-  // 生成每日任务（40%为弱点类别，60%为其他类别）
+  // 生成每日任務（40%为弱點類別，60%为其他類別）
   const daily_tasks: DailyTask[] = [];
   const otherCategories = Object.keys(category_allocation).filter(c => c !== weakness.category);
   
@@ -402,7 +422,7 @@ function generateDefaultWeaknessPlan(
     date.setDate(date.getDate() + i);
     const taskDate = date.toISOString().split('T')[0];
 
-    // 前40%的任务使用弱点类别，后60%使用其他类别循环
+    // 前40%的任務使用弱點類別，後60%使用其他類別循环
     const category = i < Math.ceil(total_days * 0.4)
       ? weakness.category
       : otherCategories[i % otherCategories.length];
@@ -420,40 +440,44 @@ function generateDefaultWeaknessPlan(
 
   return {
     category_allocation,
-    ai_suggestions: `针对${weaknessTypeName}弱点的训练计划。重点加强${categoryName}专项，建议每天进行针对性练习，逐步改善${weakness.description}。${weakness.improvement_suggestions ? `具体改进方向：${weakness.improvement_suggestions}` : ''}`,
+    ai_suggestions: `針對${weaknessTypeName}弱點的訓練計劃。重點加强${categoryName}專項，建議每天進行針對性練習，逐步改善${weakness.description}。${weakness.improvement_suggestions ? `具体改進方向：${weakness.improvement_suggestions}` : ''}`,
     daily_tasks,
   };
 }
 
 /**
- * 获取类别中文名称
+ * 获取類別中文名称
  */
 function getCategoryName(category: string): string {
   const map: Record<string, string> = {
-    'english-oral': '英文口语',
-    'chinese-oral': '中文表达',
-    'chinese-expression': '中文表达',
-    'logic-thinking': '逻辑思维',
-    'logical-thinking': '逻辑思维',
-    'current-affairs': '时事常识',
-    'science-knowledge': '科学常识',
-    'personal-growth': '个人成长',
-    'group-discussion': '小组讨论',
+    'english-oral': '英文口語',
+    'chinese-oral': '中文表達',
+    'chinese-expression': '中文表達',
+    'logic-thinking': '邏輯思維',
+    'logical-thinking': '邏輯思維',
+    'current-affairs': '時事常識',
+    'science-knowledge': '科學常識',
+    'personal-growth': '个人成長',
+    'group-discussion': '小組討論',
+    'chinese-reading': '中文阅读理解',
+    'english-reading': '英文阅读理解',
+    'mathematics': '數學基础',
+    'science-practice': '科學实践',
   };
   return map[category] || category;
 }
 
 /**
- * 获取弱点类型中文名称
+ * 获取弱點類型中文名称
  */
 function getWeaknessTypeName(type: string): string {
   const map: Record<string, string> = {
-    vocabulary: '词汇量不足',
-    grammar: '语法错误',
-    logic: '逻辑不清晰',
-    knowledge_gap: '知识盲区',
+    vocabulary: '詞汇量不足',
+    grammar: '語法错误',
+    logic: '邏輯不清晰',
+    knowledge_gap: '知識盲区',
     confidence: '信心不足',
-    expression: '表达能力弱',
+    expression: '表達能力弱',
   };
   return map[type] || type;
 }

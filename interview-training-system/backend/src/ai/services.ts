@@ -1,11 +1,11 @@
 import { deepseekClient, DeepSeekMessage } from './deepseek.js'
 
 /**
- * AI服务 - 封装各种AI功能
+ * AI服務 - 封装各種AI功能
  */
 
 /**
- * 生成训练计划
+ * 生成訓練計劃
  */
 export async function generateTrainingPlan(params: {
   targetSchool: string
@@ -13,31 +13,33 @@ export async function generateTrainingPlan(params: {
   weeklyHours: number
   currentLevel?: string
 }): Promise<any> {
-  const systemPrompt = `你是一个专业的香港升中面试辅导专家。请根据以下信息生成一个详细的训练计划。
+  const systemPrompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-目标学校：${params.targetSchool}
-面试日期：${params.interviewDate}
-每周可用时间：${params.weeklyHours}小时
-当前水平：${params.currentLevel || '未评估'}
+你是一個專業的香港升中面試輔導專家。請根據以下信息生成一個詳細的訓練計劃。
 
-请生成一个包含每日任务的训练计划，覆盖七大专项：
-1. 英文口语 (english-oral)
-2. 中文表达 (chinese-oral)
-3. 逻辑思维 (logic-thinking)
-4. 时事常识 (current-affairs)
-5. 科学常识 (science-knowledge)
-6. 个人成长 (personal-growth)
-7. 小组讨论 (group-discussion)
+目標學校：${params.targetSchool}
+面試日期：${params.interviewDate}
+每周可用時間：${params.weeklyHours}小時
+当前水平：${params.currentLevel || '未評估'}
+
+请生成一个包含每日任務的訓練計劃，覆盖七大專項：
+1. 英文口語 (english-oral)
+2. 中文表達 (chinese-oral)
+3. 邏輯思維 (logic-thinking)
+4. 時事常識 (current-affairs)
+5. 科學常識 (science-knowledge)
+6. 个人成長 (personal-growth)
+7. 小組討論 (group-discussion)
 
 返回JSON格式，包含：
 {
-  "overview": "计划概述",
+  "overview": "計劃概述",
   "dailyTasks": [
     {
       "date": "YYYY-MM-DD",
-      "category": "专项类别",
-      "targetCount": 题目数量,
-      "focus": "重点内容"
+      "category": "專項類別",
+      "targetCount": 題目數量,
+      "focus": "重點內容"
     }
   ],
   "milestones": ["里程碑1", "里程碑2"]
@@ -45,12 +47,12 @@ export async function generateTrainingPlan(params: {
 
   const messages: DeepSeekMessage[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: '请生成训练计划' }
+    { role: 'user', content: '请生成訓練計劃' }
   ]
 
   const response = await deepseekClient.chat(messages)
   
-  // 尝试解析JSON
+  // 尝試解析JSON
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
@@ -64,7 +66,7 @@ export async function generateTrainingPlan(params: {
 }
 
 /**
- * 生成题目
+ * 生成題目
  */
 export async function generateQuestions(params: {
   category: string
@@ -73,34 +75,36 @@ export async function generateQuestions(params: {
   schoolCode?: string
 }): Promise<any[]> {
   const categoryMap: Record<string, string> = {
-    'english-oral': '英文口语',
-    'chinese-oral': '中文表达',
-    'logic-thinking': '逻辑思维',
-    'current-affairs': '时事常识',
-    'science-knowledge': '科学常识',
-    'personal-growth': '个人成长',
-    'group-discussion': '小组讨论',
+    'english-oral': '英文口語',
+    'chinese-oral': '中文表達',
+    'logic-thinking': '邏輯思維',
+    'current-affairs': '時事常識',
+    'science-knowledge': '科學常識',
+    'personal-growth': '个人成長',
+    'group-discussion': '小組討論',
   }
 
   const categoryName = categoryMap[params.category] || params.category
 
-  const systemPrompt = `你是一个专业的香港升中面试题目设计专家。请生成${params.count}道${categoryName}类型的面试题目。
+  const systemPrompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文（英文專項除外）。
 
-难度：${params.difficulty || 3}/5
-${params.schoolCode ? `目标学校：${params.schoolCode}` : ''}
+你是一個專業的香港升中面試題目設計專家。請生成${params.count}道${categoryName}類型的面試題目。
 
-返回JSON数组格式：
+難度：${params.difficulty || 3}/5
+${params.schoolCode ? `目標學校：${params.schoolCode}` : ''}
+
+返回JSON數組格式：
 [
   {
-    "questionText": "题目内容",
-    "referenceAnswer": "参考答案",
-    "scoringCriteria": ["评分标准1", "评分标准2"]
+    "questionText": "題目內容",
+    "referenceAnswer": "參考答案",
+    "scoringCriteria": ["評分標準1", "評分標準2"]
   }
 ]`
 
   const messages: DeepSeekMessage[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: `请生成${params.count}道题目` }
+    { role: 'user', content: `请生成${params.count}道題目` }
   ]
 
   const response = await deepseekClient.chat(messages)
@@ -126,25 +130,27 @@ export async function analyzeFeedback(params: {
   category: string
   targetSchool?: string
 }): Promise<any> {
-  const systemPrompt = `你是一个专业的香港升中面试评审专家。请分析学生的回答并提供详细反馈。
+  const systemPrompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文。
 
-题目：${params.question}
-学生回答：${params.answer}
-专项类别：${params.category}
-${params.targetSchool ? `目标学校：${params.targetSchool}` : ''}
+你是一個專業的香港升中面試評審專家。請分析學生的回答並提供詳細反饋。
+
+題目：${params.question}
+學生回答：${params.answer}
+專項類別：${params.category}
+${params.targetSchool ? `目標學校：${params.targetSchool}` : ''}
 
 返回JSON格式：
 {
   "scores": {
-    "language": 语言质量分数(0-100),
-    "content": 内容深度分数(0-100),
-    "relevance": 切题程度分数(0-100)
+    "language": 語言质量分數(0-100),
+    "content": 內容深度分數(0-100),
+    "relevance": 切題程度分數(0-100)
   },
-  "strengths": ["优点1", "优点2"],
-  "weaknesses": ["需改进1", "需改进2"],
-  "suggestions": ["建议1", "建议2"],
-  "referenceAnswer": "参考答案示例",
-  "schoolSpecificAdvice": "针对目标学校的建议"
+  "strengths": ["優點1", "優點2"],
+  "weaknesses": ["需改進1", "需改進2"],
+  "suggestions": ["建議1", "建議2"],
+  "referenceAnswer": "參考答案示例",
+  "schoolSpecificAdvice": "針對目標學校的建議"
 }`
 
   const messages: DeepSeekMessage[] = [
@@ -167,28 +173,30 @@ ${params.targetSchool ? `目标学校：${params.targetSchool}` : ''}
 }
 
 /**
- * 从面试回忆中提取问答对
+ * 從面試回憶中提取問答對
  */
 export async function extractQuestionsFromMemory(params: {
   rawText: string
   schoolCode?: string
   category?: string
 }): Promise<any[]> {
-  const systemPrompt = `你是一个专业的文本分析专家。请从面试回忆文本中提取问答对。
+  const systemPrompt = `⚠️ 重要：你必須使用繁體中文回應。所有內容必須使用繁體中文（英文專項的原始問題除外）。
 
-返回JSON数组格式：
+你是一個專業的文本分析專家。請從面試回憶文本中提取問答對。
+
+返回JSON數組格式：
 [
   {
-    "question": "面试官的问题",
-    "studentAnswer": "学生的回答",
-    "category": "推断的专项类别",
-    "difficulty": 推断的难度(1-5)
+    "question": "面試官的問題",
+    "studentAnswer": "學生的回答",
+    "category": "推断的專項類別",
+    "difficulty": 推断的難度(1-5)
   }
 ]`
 
   const messages: DeepSeekMessage[] = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: `面试回忆内容：\n\n${params.rawText}` }
+    { role: 'user', content: `面試回憶內容：\n\n${params.rawText}` }
   ]
 
   const response = await deepseekClient.chat(messages)

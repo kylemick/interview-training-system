@@ -9,7 +9,7 @@ interface Question {
 }
 
 interface SessionState {
-  // 当前会话
+  // 当前會話
   currentSessionId: string | null
   questions: Question[]
   currentIndex: number

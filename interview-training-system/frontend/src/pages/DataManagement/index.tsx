@@ -29,9 +29,9 @@ const DataManagement = () => {
     try {
       setLoading(true);
       const response = await api.data.stats();
-      console.log('统计信息响应:', response);
+      console.log('統計信息响应:', response);
       if (response.success && response.data) {
-        // 确保数据格式正确
+        // 確保數據格式正確
         const statsData: DataStats = {
           schools: Number(response.data.schools) || 0,
           questions: Number(response.data.questions) || 0,
@@ -47,12 +47,12 @@ const DataManagement = () => {
         };
         setStats(statsData);
       } else {
-        console.error('获取统计信息失败: 响应格式不正确', response);
-        message.error(`获取统计信息失败: ${response.message || '响应格式不正确'}`);
+        console.error('获取統計信息失敗: 响应格式不正確', response);
+        message.error(`获取統計信息失敗: ${response.message || '响应格式不正確'}`);
       }
     } catch (error: any) {
-      console.error('获取统计信息失败:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || '获取统计信息失败';
+      console.error('获取統計信息失敗:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || '获取統計信息失敗';
       message.error(errorMessage);
     } finally {
       setLoading(false);
@@ -61,19 +61,19 @@ const DataManagement = () => {
 
   const handleSeedSchools = () => {
     Modal.confirm({
-      title: '导入学校种子数据',
+      title: '導入學校種子數據',
       icon: <ExclamationCircleOutlined />,
-      content: '将导入 5 所香港顶尖中学的档案数据（SPCC、QC、LSC、DBS、DGS）。已存在的数据将被跳过。',
-      okText: '确认导入',
+      content: '将導入 5 所香港顶尖中學的檔案數據（SPCC、QC、LSC、DBS、DGS）。已存在的數據将被跳過。',
+      okText: '確认導入',
       cancelText: '取消',
       onOk: async () => {
         setLoading(true);
         try {
           const response = await api.data.seedSchools();
-          message.success(response.message || '学校种子数据导入成功');
+          message.success(response.message || '學校種子數據導入成功');
           await fetchStats();
         } catch (error: any) {
-          message.error(error.response?.data?.error?.message || '导入失败');
+          message.error(error.response?.data?.error?.message || '導入失敗');
         } finally {
           setLoading(false);
         }
@@ -83,19 +83,19 @@ const DataManagement = () => {
 
   const handleSeedQuestions = () => {
     Modal.confirm({
-      title: '导入题库种子数据',
+      title: '導入題庫種子數據',
       icon: <ExclamationCircleOutlined />,
-      content: '将导入 21 道示例题目，覆盖七大专项类别，每类 3 道（简单、中等、困难）。已存在的种子数据将被跳过。',
-      okText: '确认导入',
+      content: '将導入 21 道示例題目，覆盖七大專項類別，每類 3 道（简单、中等、困難）。已存在的種子數據将被跳過。',
+      okText: '確认導入',
       cancelText: '取消',
       onOk: async () => {
         setLoading(true);
         try {
           const response = await api.data.seedQuestions();
-          message.success(response.message || '题目种子数据导入成功');
+          message.success(response.message || '題目種子數據導入成功');
           await fetchStats();
         } catch (error: any) {
-          message.error(error.response?.data?.error?.message || '导入失败');
+          message.error(error.response?.data?.error?.message || '導入失敗');
         } finally {
           setLoading(false);
         }
@@ -105,19 +105,19 @@ const DataManagement = () => {
 
   const handleSeedAll = () => {
     Modal.confirm({
-      title: '导入所有种子数据',
+      title: '導入所有種子數據',
       icon: <ExclamationCircleOutlined />,
-      content: '将一次性导入学校档案和题库的所有种子数据。已存在的数据将被跳过。',
-      okText: '确认导入',
+      content: '将一次性導入學校檔案和題庫的所有種子數據。已存在的數據将被跳過。',
+      okText: '確认導入',
       cancelText: '取消',
       onOk: async () => {
         setLoading(true);
         try {
           const response = await api.data.seedAll();
-          message.success(response.message || '所有种子数据导入成功');
+          message.success(response.message || '所有種子數據導入成功');
           await fetchStats();
         } catch (error: any) {
-          message.error(error.response?.data?.error?.message || '导入失败');
+          message.error(error.response?.data?.error?.message || '導入失敗');
         } finally {
           setLoading(false);
         }
@@ -127,39 +127,39 @@ const DataManagement = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <h1>数据管理</h1>
+      <h1>數據管理</h1>
 
-      {/* 数据统计 */}
-      <Card title="数据库统计" style={{ marginBottom: 24 }}>
+      {/* 數據統計 */}
+      <Card title="數據庫統計" style={{ marginBottom: 24 }}>
         <Row gutter={16}>
           <Col span={6}>
-            <Statistic title="学校档案" value={stats?.schools || 0} prefix={<DatabaseOutlined />} />
+            <Statistic title="學校檔案" value={stats?.schools || 0} prefix={<DatabaseOutlined />} />
           </Col>
           <Col span={6}>
-            <Statistic title="题库题目" value={stats?.questions || 0} prefix={<DatabaseOutlined />} />
+            <Statistic title="題庫題目" value={stats?.questions || 0} prefix={<DatabaseOutlined />} />
           </Col>
           <Col span={6}>
-            <Statistic title="训练计划" value={stats?.plans || 0} prefix={<DatabaseOutlined />} />
+            <Statistic title="訓練計劃" value={stats?.plans || 0} prefix={<DatabaseOutlined />} />
           </Col>
           <Col span={6}>
-            <Statistic title="练习会话" value={stats?.sessions || 0} prefix={<DatabaseOutlined />} />
+            <Statistic title="練習會話" value={stats?.sessions || 0} prefix={<DatabaseOutlined />} />
           </Col>
         </Row>
 
         {stats?.questionsBySource && stats.questionsBySource.length > 0 && (
           <div style={{ marginTop: 24 }}>
-            <h4>题目来源分布：</h4>
+            <h4>題目來源分布：</h4>
             <Space>
               {stats.questionsBySource.map((item) => (
                 <Statistic
                   key={item.source}
                   title={
                     item.source === 'seed'
-                      ? '种子数据'
+                      ? '種子數據'
                       : item.source === 'ai_generated'
                       ? 'AI生成'
                       : item.source === 'manual'
-                      ? '手动添加'
+                      ? '手動添加'
                       : item.source
                   }
                   value={item.count}
@@ -171,10 +171,10 @@ const DataManagement = () => {
         )}
       </Card>
 
-      {/* 种子数据导入 */}
-      <Card title="种子数据导入" style={{ marginBottom: 24 }}>
+      {/* 種子數據導入 */}
+      <Card title="種子數據導入" style={{ marginBottom: 24 }}>
         <p style={{ marginBottom: 16, color: '#666' }}>
-          种子数据包含预置的学校档案和题库示例，用于快速开始使用系统。
+          種子數據包含预置的學校檔案和題庫示例，用于快速開始使用係統。
         </p>
 
         <Space size="large">
@@ -184,7 +184,7 @@ const DataManagement = () => {
             onClick={handleSeedSchools}
             loading={loading}
           >
-            导入学校数据
+            導入學校數據
           </Button>
 
           <Button
@@ -193,25 +193,25 @@ const DataManagement = () => {
             onClick={handleSeedQuestions}
             loading={loading}
           >
-            导入题库数据
+            導入題庫數據
           </Button>
 
           <Button icon={<CloudUploadOutlined />} onClick={handleSeedAll} loading={loading}>
-            导入所有数据
+            導入所有數據
           </Button>
 
           <Button icon={<ReloadOutlined />} onClick={fetchStats}>
-            刷新统计
+            刷新統計
           </Button>
         </Space>
 
         <div style={{ marginTop: 16, padding: 12, background: '#f0f2f5', borderRadius: 4 }}>
-          <h4 style={{ marginBottom: 8 }}>💡 说明：</h4>
+          <h4 style={{ marginBottom: 8 }}>💡 說明：</h4>
           <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-            <li>学校数据：包含 5 所香港顶尖中学（SPCC、QC、LSC、DBS、DGS）</li>
-            <li>题库数据：包含 21 道示例题目，覆盖七大专项类别</li>
-            <li>已存在的数据不会被重复导入</li>
-            <li>导入后可在"学校档案"和"题库管理"页面查看</li>
+            <li>學校數據：包含 5 所香港顶尖中學（SPCC、QC、LSC、DBS、DGS）</li>
+            <li>題庫數據：包含 21 道示例題目，覆盖七大專項類別</li>
+            <li>已存在的數據不會被重复導入</li>
+            <li>導入後可在"學校檔案"和"題庫管理"页面查看</li>
           </ul>
         </div>
       </Card>

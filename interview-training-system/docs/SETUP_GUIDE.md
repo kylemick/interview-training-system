@@ -1,51 +1,51 @@
-# 安装指南 - 详细步骤说明
+# 安装指南 - 详细步骤說明
 
-本文档详细说明 `setup.sh` / `setup.bat` 安装脚本的工作流程和使用方法。
+本文檔详细說明 `setup.sh` / `setup.bat` 安装脚本的工作流程和使用方法。
 
 ## 📋 安装脚本功能
 
-一键安装脚本会自动完成以下步骤：
+一键安装脚本會自動完成以下步骤：
 
 ### 1. 环境检查
-- ✅ 检测操作系统（macOS / Linux / Windows）
+- ✅ 检测操作係統（macOS / Linux / Windows）
 - ✅ 检查 Node.js 版本（需要 >= 18）
 - ✅ 检查 npm 版本
 
 ### 2. MySQL 安装与配置
 - ✅ 检测 MySQL 是否已安装
-- ✅ 如未安装，提供自动安装选项（macOS 使用 Homebrew）
-- ✅ 启动 MySQL 服务
-- ✅ 配置 root 密码（新安装）或验证现有密码
+- ✅ 如未安装，提供自動安装選項（macOS 使用 Homebrew）
+- ✅ 启動 MySQL 服務
+- ✅ 配置 root 密碼（新安装）或验证现有密碼
 
 ### 3. API 配置
 - ✅ 交互式输入 DeepSeek API Key
-- ✅ 支持跳过（稍后配置）
+- ✅ 支持跳過（稍後配置）
 
 ### 4. 环境文件生成
-- ✅ 自动生成 `backend/.env` 文件
-- ✅ 填入 MySQL 密码和 API Key
-- ✅ 设置默认配置项
+- ✅ 自動生成 `backend/.env` 文件
+- ✅ 填入 MySQL 密碼和 API Key
+- ✅ 设置默认配置項
 
 ### 5. 依赖安装
-- ✅ 安装根目录依赖（concurrently 等）
-- ✅ 安装后端依赖（express, mysql2 等）
+- ✅ 安装根目錄依赖（concurrently 等）
+- ✅ 安装後端依赖（express, mysql2 等）
 - ✅ 安装前端依赖（react, vite 等）
 
-### 6. 数据库初始化
-- ✅ 创建 `interview_training` 数据库
-- ✅ 执行 schema.sql 创建表结构
-- ✅ 验证数据库连接
+### 6. 數據庫初始化
+- ✅ 創建 `interview_training` 數據庫
+- ✅ 执行 schema.sql 創建表結构
+- ✅ 验证數據庫连接
 
-### 7. 启动确认
+### 7. 启動確认
 - ✅ 显示配置摘要
-- ✅ 询问是否立即启动应用
+- ✅ 询問是否立即启動应用
 
 ## 🚀 使用方法
 
 ### macOS / Linux
 
 ```bash
-# 进入项目目录
+# 進入項目目錄
 cd /Users/chenkan/project/plans/interview-training-system
 
 # 运行安装脚本
@@ -61,50 +61,50 @@ cd path\to\interview-training-system
 setup.bat
 ```
 
-## 📝 交互式问答示例
+## 📝 交互式問答示例
 
-### 问题 1: 是否安装 MySQL？
+### 問題 1: 是否安装 MySQL？
 
 ```
 是否现在安装 MySQL? (y/n):
 ```
 
-- 输入 `y`：自动安装 MySQL
-- 输入 `n`：退出，要求手动安装后重试
+- 输入 `y`：自動安装 MySQL
+- 输入 `n`：退出，要求手動安装後重試
 
-### 问题 2: 设置 MySQL 密码
+### 問題 2: 设置 MySQL 密碼
 
 **场景 A：新安装 MySQL**
 ```
-请输入 MySQL root 密码（用于本项目）: ********
-请再次输入密码确认: ********
+请输入 MySQL root 密碼（用于本項目）: ********
+请再次输入密碼確认: ********
 ```
 
 **场景 B：已有 MySQL**
 ```
-请输入现有的 MySQL root 密码
-MySQL root 密码: ********
+请输入现有的 MySQL root 密碼
+MySQL root 密碼: ********
 ```
 
-脚本会验证密码是否正确，错误则要求重新输入。
+脚本會验证密碼是否正確，错误則要求重新输入。
 
-### 问题 3: DeepSeek API Key
+### 問題 3: DeepSeek API Key
 
 ```
 请输入 DeepSeek API Key（可留空）:
 ```
 
 - 输入 API Key：启用 AI 功能
-- 直接回车：跳过，稍后配置
+- 直接回车：跳過，稍後配置
 
-### 问题 4: 是否立即启动？
+### 問題 4: 是否立即启動？
 
 ```
-是否现在启动应用? (y/n):
+是否现在启動应用? (y/n):
 ```
 
-- 输入 `y`：自动运行 `dev.sh` 启动应用
-- 输入 `n`：退出，稍后手动启动
+- 输入 `y`：自動运行 `dev.sh` 启動应用
+- 输入 `n`：退出，稍後手動启動
 
 ## 🎬 完整安装流程示例
 
@@ -112,10 +112,10 @@ MySQL root 密码: ********
 $ ./setup.sh
 
 ╔═══════════════════════════════════════════════════════════╗
-║         升中面试训练系统 - 一键安装向导                    ║
+║         升中面試訓練係統 - 一键安装向導                    ║
 ╚═══════════════════════════════════════════════════════════╝
 
-[步骤 1/6] 检查操作系统...
+[步骤 1/6] 检查操作係統...
 ✓ 检测到 macOS
 
 [步骤 2/6] 检查 MySQL...
@@ -125,58 +125,58 @@ $ ./setup.sh
 ✓ MySQL 安装完成
 
 [步骤 3/6] 配置 MySQL...
-请输入 MySQL root 密码（用于本项目）: ********
-请再次输入密码确认: ********
-✓ 密码设置完成
+请输入 MySQL root 密碼（用于本項目）: ********
+请再次输入密碼確认: ********
+✓ 密碼设置完成
 
 [步骤 4/6] 配置 DeepSeek API...
 请输入 DeepSeek API Key（可留空）: sk-xxxxxxxxxxxxx
 ✓ API Key 已设置
 
-[步骤 5/6] 创建环境配置文件...
-✓ 环境配置文件已创建: backend/.env
+[步骤 5/6] 創建环境配置文件...
+✓ 环境配置文件已創建: backend/.env
 
-[步骤 6/6] 安装依赖并初始化数据库...
+[步骤 6/6] 安装依赖并初始化數據庫...
 ✓ Node.js: v20.10.0
 ✓ npm: 10.2.3
-正在安装启动工具...
-正在安装后端依赖...
+正在安装启動工具...
+正在安装後端依赖...
 正在安装前端依赖...
-正在初始化数据库...
+正在初始化數據庫...
 ✓ 所有依赖安装完成
 
 ╔═══════════════════════════════════════════════════════════╗
-║              ✨ 安装完成！系统已准备就绪 ✨                 ║
+║              ✨ 安装完成！係統已準備就绪 ✨                 ║
 ╚═══════════════════════════════════════════════════════════╝
 
 📋 配置信息：
-  - MySQL 数据库: interview_training
+  - MySQL 數據庫: interview_training
   - MySQL 用户: root
-  - 后端端口: 3001
+  - 後端端口: 3001
   - 前端端口: 3000
   - DeepSeek API: 已配置
 
-🚀 启动应用：
+🚀 启動应用：
   ./dev.sh
 
-是否现在启动应用? (y/n): y
+是否现在启動应用? (y/n): y
 
-正在启动...
+正在启動...
 ```
 
 ## ⚙️ 生成的配置文件
 
-安装完成后，`backend/.env` 文件内容如下：
+安装完成後，`backend/.env` 文件內容如下：
 
 ```env
-# 后端服务器配置
+# 後端服務器配置
 PORT=3001
 
 # DeepSeek API 配置
 DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxx
 DEEPSEEK_API_URL=https://api.deepseek.com
 
-# MySQL 数据库配置
+# MySQL 數據庫配置
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
@@ -185,9 +185,9 @@ DB_DATABASE=interview_training
 DB_CONNECTION_LIMIT=10
 ```
 
-## 🔧 手动修改配置
+## 🔧 手動修改配置
 
-如需修改配置，直接编辑 `backend/.env` 文件：
+如需修改配置，直接编輯 `backend/.env` 文件：
 
 ```bash
 # macOS/Linux
@@ -197,17 +197,17 @@ nano backend/.env
 notepad backend\.env
 ```
 
-修改后重启应用：
+修改後重启应用：
 
 ```bash
 # 按 Ctrl+C 停止当前运行
-# 然后重新启动
+# 然後重新启動
 ./dev.sh
 ```
 
-## ❗ 常见问题
+## ❗ 常见問題
 
-### MySQL 安装失败（macOS）
+### MySQL 安装失敗（macOS）
 
 **错误**: Homebrew 未安装
 
@@ -216,13 +216,13 @@ notepad backend\.env
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-### MySQL 密码验证失败
+### MySQL 密碼验证失敗
 
 **错误**: Access denied
 
 **检查**:
-1. 密码是否正确
-2. MySQL 服务是否启动
+1. 密碼是否正確
+2. MySQL 服務是否启動
    ```bash
    # macOS
    brew services list
@@ -231,10 +231,10 @@ notepad backend\.env
    sudo systemctl status mysql
    
    # Windows
-   # 在"服务"中查看 MySQL80 状态
+   # 在"服務"中查看 MySQL80 狀態
    ```
 
-### Node.js 版本过低
+### Node.js 版本過低
 
 **错误**: Node.js < 18
 
@@ -244,7 +244,7 @@ notepad backend\.env
 nvm install 20
 nvm use 20
 
-# 或从官网下载
+# 或從官网下载
 # https://nodejs.org/
 ```
 
@@ -272,19 +272,19 @@ taskkill /PID <PID> /F
 rm backend/.env
 rm -rf node_modules backend/node_modules frontend/node_modules
 
-# 2. 删除数据库（可选）
+# 2. 删除數據庫（可選）
 mysql -u root -p -e "DROP DATABASE interview_training;"
 
 # 3. 重新运行安装
 ./setup.sh
 ```
 
-## 📚 相关文档
+## 📚 相關文檔
 
 - [MySQL 详细安装指南](./MYSQL_SETUP.md)
-- [快速开始指南](../QUICKSTART.md)
-- [开发文档](./DEVELOPMENT.md)
+- [快速開始指南](../QUICKSTART.md)
+- [開發文檔](./DEVELOPMENT.md)
 
 ---
 
-**安装过程中遇到问题？** 请查看上述常见问题或参考其他文档。
+**安装過程中遇到問題？** 请查看上述常见問題或參考其他文檔。

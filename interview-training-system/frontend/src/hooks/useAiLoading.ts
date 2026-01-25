@@ -1,6 +1,6 @@
 /**
  * AI Loading Hook
- * 用于统一管理AI调用的loading状态，防止用户重复点击或离开页面
+ * 用于統一管理AI調用的loading狀態，防止用户重复點击或离開页面
  */
 import { useState, useCallback, useEffect } from 'react';
 import { message, Modal } from 'antd';
@@ -10,17 +10,17 @@ interface UseAiLoadingOptions {
   loadingText?: string;
   /** 成功提示文本 */
   successText?: string;
-  /** 是否显示确认对话框（防止误操作） */
+  /** 是否显示確认對話框（防止误操作） */
   showConfirm?: boolean;
-  /** 确认对话框标题 */
+  /** 確认對話框標題 */
   confirmTitle?: string;
-  /** 确认对话框内容 */
+  /** 確认對話框內容 */
   confirmContent?: string;
 }
 
 /**
  * AI Loading Hook
- * @param options 配置选项
+ * @param options 配置選項
  * @returns { loading, executeWithLoading, cancelLoading }
  */
 export function useAiLoading(options: UseAiLoadingOptions = {}) {
@@ -28,8 +28,8 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
     loadingText = 'AI 正在处理中，请稍候...',
     successText,
     showConfirm = false,
-    confirmTitle = '确认操作',
-    confirmContent = '此操作可能需要一些时间，确定要继续吗？',
+    confirmTitle = '確认操作',
+    confirmContent = '此操作可能需要一些時間，確定要继续吗？',
   } = options;
 
   const [loading, setLoading] = useState(false);
@@ -51,17 +51,17 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
     ): Promise<T | null> => {
       // 如果已经在loading，直接返回
       if (loading) {
-        message.warning('操作正在进行中，请勿重复点击');
+        message.warning('操作正在進行中，请勿重复點击');
         return null;
       }
 
-      // 显示确认对话框
+      // 显示確认對話框
       if (customOptions?.showConfirm ?? showConfirm) {
         return new Promise((resolve) => {
           Modal.confirm({
             title: confirmTitle,
             content: confirmContent,
-            okText: '确定',
+            okText: '確定',
             cancelText: '取消',
             onOk: async () => {
               try {
@@ -71,7 +71,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
                 message.loading({
                   content: customOptions?.loadingText || loadingText,
                   key,
-                  duration: 0, // 不自动关闭
+                  duration: 0, // 不自動關闭
                 });
 
                 const result = await asyncFn();
@@ -96,7 +96,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
                   error?.response?.data?.error?.message ||
                   error?.response?.data?.message ||
                   error?.message ||
-                  '操作失败';
+                  '操作失敗';
                 message.error({
                   content: errorMsg,
                   key: loadingKey || 'error',
@@ -120,7 +120,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
         });
       }
 
-      // 不显示确认对话框，直接执行
+      // 不显示確认對話框，直接执行
       try {
         setLoading(true);
         const key = `ai-loading-${Date.now()}`;
@@ -128,7 +128,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
         message.loading({
           content: customOptions?.loadingText || loadingText,
           key,
-          duration: 0, // 不自动关闭
+          duration: 0, // 不自動關闭
         });
 
         const result = await asyncFn();
@@ -153,7 +153,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
           error?.response?.data?.error?.message ||
           error?.response?.data?.message ||
           error?.message ||
-          '操作失败';
+          '操作失敗';
         message.error({
           content: errorMsg,
           key: loadingKey || 'error',
@@ -184,7 +184,7 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
     setLoadingKey(null);
   }, [loadingKey]);
 
-  // 组件卸载时清理loading
+  // 組件卸载時清理loading
   useEffect(() => {
     return () => {
       if (loadingKey) {
@@ -193,12 +193,12 @@ export function useAiLoading(options: UseAiLoadingOptions = {}) {
     };
   }, [loadingKey]);
 
-  // 页面离开前警告（如果正在loading）
+  // 页面离開前警告（如果正在loading）
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (loading) {
         e.preventDefault();
-        e.returnValue = 'AI 正在处理中，确定要离开吗？';
+        e.returnValue = 'AI 正在处理中，確定要离開吗？';
         return e.returnValue;
       }
     };

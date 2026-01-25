@@ -1,5 +1,5 @@
 /**
- * 学生弱点管理路由
+ * 學生弱點管理路由
  */
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute } from '../db/index.js';
@@ -15,36 +15,36 @@ const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
 const router = Router();
 
 /**
- * 从设置文件读取学生信息
+ * 從設置文件讀取學生信息
  */
 async function getStudentInfoFromSettings(): Promise<{ student_name: string; target_school?: string }> {
   try {
     const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
     const settings = JSON.parse(data);
     return {
-      student_name: settings.student_name || '学生',
+      student_name: settings.student_name || '學生',
       target_school: settings.target_school,
     };
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      // 文件不存在，返回默认值
-      return { student_name: '学生' };
+      // 文件不存在，返回默認值
+      return { student_name: '學生' };
     }
-    console.error('读取设置失败:', error);
-    return { student_name: '学生' };
+    console.error('讀取設置失敗:', error);
+    return { student_name: '學生' };
   }
 }
 
 /**
- * 获取学生弱点列表
+ * 获取學生弱點列表
  * GET /api/weaknesses?student_name=&category=&status=&severity=
- * 注意：如果没有提供student_name，则从设置获取
+ * 注意：如果没有提供student_name，則從设置获取
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
     let { student_name, category, status, severity } = req.query;
 
-    // 如果没有提供student_name，从设置获取
+    // 如果没有提供student_name，從设置获取
     if (!student_name) {
       const settings = await getStudentInfoFromSettings();
       student_name = settings.student_name;
@@ -82,13 +82,13 @@ router.get('/', async (req: Request, res: Response) => {
       data: weaknesses,
     });
   } catch (error) {
-    console.error('获取弱点列表失败:', error);
-    throw new AppError(500, '获取弱点列表失败');
+    console.error('獲取弱點列表失敗:', error);
+    throw new AppError(500, '獲取弱點列表失敗');
   }
 });
 
 /**
- * 获取单个弱点详情
+ * 獲取單個弱點詳情
  * GET /api/weaknesses/:id
  */
 router.get('/:id', async (req: Request, res: Response) => {
@@ -101,7 +101,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     );
 
     if (!weakness) {
-      throw new AppError(404, '弱点记录不存在');
+      throw new AppError(404, '弱點記錄不存在');
     }
 
     res.json({
@@ -110,13 +110,13 @@ router.get('/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('获取弱点详情失败:', error);
-    throw new AppError(500, '获取弱点详情失败');
+    console.error('獲取弱點詳情失敗:', error);
+    throw new AppError(500, '獲取弱點詳情失敗');
   }
 });
 
 /**
- * 更新弱点状态
+ * 更新弱點狀態
  * PATCH /api/weaknesses/:id/status
  * Body: { status: 'active' | 'improved' | 'resolved' }
  */
@@ -126,7 +126,7 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
     const { status } = req.body;
 
     if (!['active', 'improved', 'resolved'].includes(status)) {
-      throw new AppError(400, '无效的状态值');
+      throw new AppError(400, '無效的狀態值');
     }
 
     await execute(
@@ -136,17 +136,17 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '状态已更新',
+      message: '狀態已更新',
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('更新弱点状态失败:', error);
-    throw new AppError(500, '更新状态失败');
+    console.error('更新弱點狀態失敗:', error);
+    throw new AppError(500, '更新狀態失敗');
   }
 });
 
 /**
- * 删除弱点记录
+ * 刪除弱點記錄
  * DELETE /api/weaknesses/:id
  */
 router.delete('/:id', async (req: Request, res: Response) => {
@@ -157,24 +157,24 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: '弱点记录已删除',
+      message: '弱點記錄已刪除',
     });
   } catch (error) {
-    console.error('删除弱点记录失败:', error);
-    throw new AppError(500, '删除失败');
+    console.error('刪除弱點記錄失敗:', error);
+    throw new AppError(500, '刪除失敗');
   }
 });
 
 /**
- * 获取弱点统计
+ * 獲取弱點統計
  * GET /api/weaknesses/stats/summary
- * 注意：如果没有提供student_name，则从设置获取
+ * 注意：如果沒有提供student_name，則從設置獲取
  */
 router.get('/stats/summary', async (req: Request, res: Response) => {
   try {
     let { student_name } = req.query;
 
-    // 如果没有提供student_name，从设置获取
+    // 如果没有提供student_name，從设置获取
     if (!student_name) {
       const settings = await getStudentInfoFromSettings();
       student_name = settings.student_name;
@@ -188,31 +188,31 @@ router.get('/stats/summary', async (req: Request, res: Response) => {
       params.push(student_name);
     }
 
-    // 按类别统计
+    // 按類別統計
     const byCategory = await query(
       `SELECT category, COUNT(*) as count FROM student_weaknesses WHERE ${whereClause} GROUP BY category`,
       params
     );
 
-    // 按弱点类型统计
+    // 按弱點類型統計
     const byType = await query(
       `SELECT weakness_type, COUNT(*) as count FROM student_weaknesses WHERE ${whereClause} GROUP BY weakness_type`,
       params
     );
 
-    // 按严重程度统计
+    // 按嚴重程度統計
     const bySeverity = await query(
       `SELECT severity, COUNT(*) as count FROM student_weaknesses WHERE ${whereClause} GROUP BY severity`,
       params
     );
 
-    // 按状态统计
+    // 按狀態統計
     const byStatus = await query(
       `SELECT status, COUNT(*) as count FROM student_weaknesses WHERE ${whereClause} GROUP BY status`,
       params
     );
 
-    // 总数
+    // 總數
     const [total] = await query<{ count: number }>(
       `SELECT COUNT(*) as count FROM student_weaknesses WHERE ${whereClause}`,
       params
@@ -229,21 +229,21 @@ router.get('/stats/summary', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('获取弱点统计失败:', error);
-    throw new AppError(500, '获取统计失败');
+    console.error('獲取弱點統計失敗:', error);
+    throw new AppError(500, '獲取統計失敗');
   }
 });
 
 /**
- * 获取弱点趋势分析
+ * 獲取弱點趨勢分析
  * GET /api/weaknesses/stats/trends?student_name=&days=30
- * 注意：如果没有提供student_name，则从设置获取
+ * 注意：如果沒有提供student_name，則從設置獲取
  */
 router.get('/stats/trends', async (req: Request, res: Response) => {
   try {
     let { student_name, days = 30 } = req.query;
 
-    // 如果没有提供student_name，从设置获取
+    // 如果沒有提供student_name，從設置獲取
     if (!student_name) {
       const settings = await getStudentInfoFromSettings();
       student_name = settings.student_name;
@@ -257,7 +257,7 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       params.push(student_name);
     }
 
-    // 获取指定天数内的弱点数据
+    // 獲取指定天數內的弱點數據
     const weaknesses = await query(
       `SELECT 
         id, category, weakness_type, severity, status, practice_count, 
@@ -269,22 +269,22 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       [...params, Number(days)]
     );
 
-    // 计算趋势
+    // 計算趨勢
     const trends = {
-      // 按周统计新增弱点数
+      // 按周統計新增弱點數
       weekly_new_weaknesses: [] as any[],
       
-      // 按弱点类型统计改善情况
+      // 按弱點類型統計改善情况
       improvement_by_type: [] as any[],
       
-      // 高严重度弱点的变化
+      // 高嚴重度弱點的变化
       high_severity_trend: [] as any[],
       
-      // 练习次数与状态改善的关系
+      // 練習次數与狀態改善的關係
       practice_effectiveness: [] as any[],
     };
 
-    // 1. 按周统计新增弱点
+    // 1. 按周統計新增弱點
     const weeklyMap = new Map<string, number>();
     weaknesses.forEach((w: any) => {
       const weekStart = new Date(w.created_at);
@@ -296,7 +296,7 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       .map(([week, count]) => ({ week, count }))
       .sort((a, b) => a.week.localeCompare(b.week));
 
-    // 2. 按类型统计改善情况
+    // 2. 按類型統計改善情况
     const typeMap = new Map<string, { total: number; improved: number; resolved: number }>();
     weaknesses.forEach((w: any) => {
       if (!typeMap.has(w.weakness_type)) {
@@ -313,7 +313,7 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       improvement_rate: stats.total > 0 ? ((stats.improved + stats.resolved) / stats.total * 100).toFixed(1) : '0.0',
     }));
 
-    // 3. 高严重度弱点趋势（按周）
+    // 3. 高嚴重度弱點趨勢（按周）
     const highSeverityByWeek = new Map<string, number>();
     weaknesses.filter((w: any) => w.severity === 'high').forEach((w: any) => {
       const weekStart = new Date(w.created_at);
@@ -325,7 +325,7 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       .map(([week, count]) => ({ week, count }))
       .sort((a, b) => a.week.localeCompare(b.week));
 
-    // 4. 练习效果分析（练习次数与状态改善的关系）
+    // 4. 練習效果分析（練習次數与狀態改善的關係）
     const practiceRanges = [
       { range: '0', min: 0, max: 0 },
       { range: '1-3', min: 1, max: 3 },
@@ -351,7 +351,7 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
         period_days: Number(days),
         total_weaknesses: weaknesses.length,
         trends,
-        // 提供一些关键洞察
+        // 提供一些關鍵洞察
         insights: {
           most_common_weakness: trends.improvement_by_type.sort((a, b) => b.total - a.total)[0]?.weakness_type || 'N/A',
           best_improved_type: trends.improvement_by_type.sort((a, b) => 
@@ -362,8 +362,8 @@ router.get('/stats/trends', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('获取弱点趋势失败:', error);
-    throw new AppError(500, '获取趋势失败');
+    console.error('獲取弱點趨勢失敗:', error);
+    throw new AppError(500, '獲取趨勢失敗');
   }
 });
 

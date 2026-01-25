@@ -15,15 +15,15 @@ import dayjs, { Dayjs } from 'dayjs'
 const { Title, Text } = Typography
 const { RangePicker } = DatePicker
 
-// 专项类别映射
+// 專項類別映射
 const CATEGORY_MAP: Record<string, string> = {
-  'english-oral': '英文口语',
-  'chinese-expression': '中文表达',
-  'logical-thinking': '逻辑思维',
-  'current-affairs': '时事常识',
-  'science-knowledge': '科学常识',
-  'personal-growth': '个人成长',
-  'group-discussion': '小组讨论',
+  'english-oral': '英文口語',
+  'chinese-expression': '中文表達',
+  'logical-thinking': '邏輯思維',
+  'current-affairs': '時事常識',
+  'science-knowledge': '科學常識',
+  'personal-growth': '个人成長',
+  'group-discussion': '小組討論',
 }
 
 const CATEGORIES = Object.keys(CATEGORY_MAP)
@@ -86,17 +86,17 @@ export default function Progress() {
     try {
       setLoading(true)
 
-      // 获取会话列表
+      // 获取會話列表
       const sessionsRes = await api.sessions.recent(100)
       const sessions = sessionsRes.success ? sessionsRes.data : []
 
-      // 过滤日期范围
+      // 過滤日期范围
       const filteredSessions = sessions.filter((s: any) => {
         const sessionDate = dayjs(s.start_time)
         return sessionDate.isAfter(dateRange[0]) && sessionDate.isBefore(dateRange[1].add(1, 'day'))
       })
 
-      // 计算统计数据
+      // 計算統計數據
       const totalSessions = filteredSessions.length
       let totalQuestions = 0
       let totalDuration = 0
@@ -104,13 +104,13 @@ export default function Progress() {
       const dateStats: Record<string, number> = {}
       const allScores: number[] = []
 
-      // 获取所有会话的详情以计算平均分
+      // 获取所有會話的详情以計算平均分
       const sessionDetailsPromises = filteredSessions.map(async (session: any) => {
         try {
           const detailRes = await api.sessions.get(session.id)
           return detailRes.success ? detailRes.data : null
         } catch (error) {
-          console.error(`获取会话 ${session.id} 详情失败:`, error)
+          console.error(`获取會話 ${session.id} 详情失敗:`, error)
           return null
         }
       })
@@ -123,7 +123,7 @@ export default function Progress() {
 
         totalQuestions += session.question_count || 0
 
-        // 计算时长
+        // 計算時長
         if (session.end_time) {
           const duration = Math.round(
             (new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000
@@ -131,13 +131,13 @@ export default function Progress() {
           totalDuration += duration
         }
 
-        // 按类别统计
+        // 按類別統計
         if (!categoryStats[session.category]) {
           categoryStats[session.category] = { count: 0, avgScore: 0, scores: [] }
         }
         categoryStats[session.category].count++
 
-        // 从反馈中提取分数
+        // 從反馈中提取分數
         if (sessionDetail?.qa_records) {
           for (const record of sessionDetail.qa_records) {
             if (record.ai_feedback) {
@@ -150,7 +150,7 @@ export default function Progress() {
                 }
               }
 
-              // 优先使用score，其次使用overall_score
+              // 優先使用score，其次使用overall_score
               const score = feedback.score ?? feedback.overall_score
               if (typeof score === 'number' && score >= 0 && score <= 10) {
                 allScores.push(score)
@@ -160,17 +160,17 @@ export default function Progress() {
           }
         }
 
-        // 按日期统计
+        // 按日期統計
         const dateKey = new Date(session.start_time).toISOString().split('T')[0]
         dateStats[dateKey] = (dateStats[dateKey] || 0) + 1
       }
 
-      // 计算平均分
+      // 計算平均分
       const averageScore = allScores.length > 0
         ? Math.round((allScores.reduce((sum, s) => sum + s, 0) / allScores.length) * 10) / 10
         : 0
 
-      // 计算各类别的平均分
+      // 計算各類別的平均分
       const formattedCategoryStats: Record<string, { count: number; avgScore: number }> = {}
       for (const [category, stats] of Object.entries(categoryStats)) {
         formattedCategoryStats[category] = {
@@ -190,7 +190,7 @@ export default function Progress() {
         dateStats,
       })
 
-      // 加载弱点统计和趋势
+      // 加载弱點統計和趋勢
       try {
         const [statsRes, trendsRes] = await Promise.all([
           api.weaknesses.stats(),
@@ -199,16 +199,16 @@ export default function Progress() {
         setWeaknessStats(statsRes.success ? statsRes.data : null)
         setWeaknessTrend(trendsRes.success ? trendsRes.data : null)
       } catch (error) {
-        console.error('加载弱点数据失败:', error)
+        console.error('加载弱點數據失敗:', error)
       }
     } catch (error) {
-      console.error('加载进度数据失败:', error)
+      console.error('加载進度數據失敗:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 类别分布图表配置
+  // 類別分布图表配置
   const categoryChartOption = {
     tooltip: {
       trigger: 'item',
@@ -219,7 +219,7 @@ export default function Progress() {
     },
     series: [
       {
-        name: '练习次数',
+        name: '練習次數',
         type: 'pie',
         radius: '50%',
         data: CATEGORIES.map((cat) => ({
@@ -237,7 +237,7 @@ export default function Progress() {
     ],
   }
 
-  // 练习趋势图表配置
+  // 練習趋勢图表配置
   const trendChartOption = {
     tooltip: {
       trigger: 'axis',
@@ -251,11 +251,11 @@ export default function Progress() {
     },
     yAxis: {
       type: 'value',
-      name: '练习次数',
+      name: '練習次數',
     },
     series: [
       {
-        name: '练习次数',
+        name: '練習次數',
         type: 'line',
         data: Object.keys(stats.dateStats)
           .sort()
@@ -271,7 +271,7 @@ export default function Progress() {
     ],
   }
 
-  // 类别柱状图配置
+  // 類別柱狀图配置
   const categoryBarOption = {
     tooltip: {
       trigger: 'axis',
@@ -289,11 +289,11 @@ export default function Progress() {
     },
     yAxis: {
       type: 'value',
-      name: '练习次数',
+      name: '練習次數',
     },
     series: [
       {
-        name: '练习次数',
+        name: '練習次數',
         type: 'bar',
         data: CATEGORIES.map((cat) => stats.categoryStats[cat]?.count || 0),
         itemStyle: {
@@ -316,10 +316,10 @@ export default function Progress() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <Title level={2}>
           <TrophyOutlined style={{ marginRight: 8 }} />
-          进度报告
+          進度报告
         </Title>
         <Space>
-          <Text>时间范围：</Text>
+          <Text>時間范围：</Text>
           <RangePicker
             value={dateRange}
             onChange={(dates) => {
@@ -334,16 +334,16 @@ export default function Progress() {
 
       {stats.totalSessions === 0 ? (
         <Card>
-          <Empty description="该时间段内暂无练习数据" />
+          <Empty description="该時間段內暫无練習數據" />
         </Card>
       ) : (
         <>
-          {/* 统计卡片 */}
+          {/* 統計卡片 */}
           <Row gutter={[16, 16]}>
             <Col xs={12} sm={6}>
               <Card>
                 <Statistic
-                  title="总练习次数"
+                  title="總練習次數"
                   value={stats.totalSessions}
                   suffix="次"
                   prefix={<BookOutlined />}
@@ -354,9 +354,9 @@ export default function Progress() {
             <Col xs={12} sm={6}>
               <Card>
                 <Statistic
-                  title="累计题目"
+                  title="累計題目"
                   value={stats.totalQuestions}
-                  suffix="题"
+                  suffix="題"
                   prefix={<FireOutlined />}
                   valueStyle={{ color: '#ff4d4f' }}
                 />
@@ -365,9 +365,9 @@ export default function Progress() {
             <Col xs={12} sm={6}>
               <Card>
                 <Statistic
-                  title="总时长"
+                  title="總時長"
                   value={stats.totalDuration}
-                  suffix="分钟"
+                  suffix="分鐘"
                   prefix={<ClockCircleOutlined />}
                   valueStyle={{ color: '#52c41a' }}
                 />
@@ -376,7 +376,7 @@ export default function Progress() {
             <Col xs={12} sm={6}>
               <Card>
                 <Statistic
-                  title="日均练习"
+                  title="日均練習"
                   value={(
                     stats.totalSessions / Math.max(1, dateRange[1].diff(dateRange[0], 'day'))
                   ).toFixed(1)}
@@ -390,30 +390,30 @@ export default function Progress() {
 
           {/* 图表 */}
           <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-            {/* 练习趋势 */}
+            {/* 練習趋勢 */}
             <Col xs={24} lg={16}>
-              <Card title="练习趋势">
+              <Card title="練習趋勢">
                 <ReactECharts option={trendChartOption} style={{ height: 350 }} />
               </Card>
             </Col>
 
-            {/* 类别分布 */}
+            {/* 類別分布 */}
             <Col xs={24} lg={8}>
-              <Card title="类别分布">
+              <Card title="類別分布">
                 <ReactECharts option={categoryChartOption} style={{ height: 350 }} />
               </Card>
             </Col>
 
-            {/* 各专项练习统计 */}
+            {/* 各專項練習統計 */}
             <Col xs={24}>
-              <Card title="各专项练习统计">
+              <Card title="各專項練習統計">
                 <ReactECharts option={categoryBarOption} style={{ height: 300 }} />
               </Card>
             </Col>
           </Row>
 
-          {/* 专项详情 */}
-          <Card title="专项详情" style={{ marginTop: 24 }}>
+          {/* 專項详情 */}
+          <Card title="專項详情" style={{ marginTop: 24 }}>
             <Row gutter={[16, 16]}>
               {CATEGORIES.filter((cat) => stats.categoryStats[cat]?.count > 0).map((cat) => (
                 <Col xs={12} sm={8} md={6} key={cat}>
@@ -435,13 +435,13 @@ export default function Progress() {
             </Row>
           </Card>
 
-          {/* 弱点追踪 */}
+          {/* 弱點追踪 */}
           {weaknessStats && weaknessStats.total > 0 && (
             <Card
               title={
                 <Space>
                   <WarningOutlined style={{ color: '#ff4d4f' }} />
-                  弱点追踪
+                  弱點追踪
                 </Space>
               }
               style={{ marginTop: 24 }}
@@ -449,7 +449,7 @@ export default function Progress() {
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                   <Statistic
-                    title="总弱点数"
+                    title="總弱點數"
                     value={weaknessStats.total}
                     prefix={<WarningOutlined />}
                     valueStyle={{ color: '#ff4d4f' }}
@@ -457,7 +457,7 @@ export default function Progress() {
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                   <Statistic
-                    title="高严重度"
+                    title="高嚴重度"
                     value={weaknessStats.by_severity.find((s) => s.severity === 'high')?.count || 0}
                     valueStyle={{ color: '#ff4d4f' }}
                   />
@@ -474,16 +474,16 @@ export default function Progress() {
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                   <Statistic
-                    title="活跃弱点"
+                    title="活跃弱點"
                     value={weaknessStats.by_status.find((s) => s.status === 'active')?.count || 0}
                     valueStyle={{ color: '#faad14' }}
                   />
                 </Col>
               </Row>
 
-              {/* 弱点趋势图表 */}
+              {/* 弱點趋勢图表 */}
               {weaknessTrend && weaknessTrend.trends.weekly_new_weaknesses.length > 0 && (
-                <Card type="inner" title="弱点趋势" style={{ marginTop: 16 }}>
+                <Card type="inner" title="弱點趋勢" style={{ marginTop: 16 }}>
                   <ReactECharts
                     option={{
                       tooltip: { trigger: 'axis' },
@@ -491,10 +491,10 @@ export default function Progress() {
                         type: 'category',
                         data: weaknessTrend.trends.weekly_new_weaknesses.map((t) => t.week),
                       },
-                      yAxis: { type: 'value', name: '新增弱点数' },
+                      yAxis: { type: 'value', name: '新增弱點數' },
                       series: [
                         {
-                          name: '新增弱点',
+                          name: '新增弱點',
                           type: 'line',
                           data: weaknessTrend.trends.weekly_new_weaknesses.map((t) => t.count),
                           smooth: true,
@@ -507,9 +507,9 @@ export default function Progress() {
                 </Card>
               )}
 
-              {/* 按类型统计 */}
+              {/* 按類型統計 */}
               {weaknessStats.by_type.length > 0 && (
-                <Card type="inner" title="弱点类型分布" style={{ marginTop: 16 }}>
+                <Card type="inner" title="弱點類型分布" style={{ marginTop: 16 }}>
                   <Row gutter={[16, 16]}>
                     {weaknessStats.by_type.map((item) => (
                       <Col xs={12} sm={8} md={6} key={item.weakness_type}>
@@ -528,15 +528,15 @@ export default function Progress() {
                 <Card type="inner" title="改善洞察" style={{ marginTop: 16 }}>
                   <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <div>
-                      <Text strong>最常见弱点：</Text>
+                      <Text strong>最常见弱點：</Text>
                       <Tag color="orange">{weaknessTrend.insights.most_common_weakness}</Tag>
                     </div>
                     <div>
-                      <Text strong>改善最好的类型：</Text>
+                      <Text strong>改善最好的類型：</Text>
                       <Tag color="green">{weaknessTrend.insights.best_improved_type}</Tag>
                     </div>
                     <div>
-                      <Text strong>高严重度弱点：</Text>
+                      <Text strong>高嚴重度弱點：</Text>
                       <Tag color="red">{weaknessTrend.insights.high_severity_count}个</Tag>
                     </div>
                   </Space>

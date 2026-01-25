@@ -17,28 +17,28 @@ const SETTINGS_FILE = path.join(__dirname, '../../data/settings.json');
 const router = Router();
 
 /**
- * 从设置文件读取学生信息
+ * 從设置文件读取學生信息
  */
 async function getStudentInfoFromSettings(): Promise<{ student_name: string; target_school?: string }> {
   try {
     const data = await fs.readFile(SETTINGS_FILE, 'utf-8');
     const settings = JSON.parse(data);
     return {
-      student_name: settings.student_name || '学生',
+      student_name: settings.student_name || '學生',
       target_school: settings.target_school,
     };
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       // 文件不存在，返回默认值
-      return { student_name: '学生' };
+      return { student_name: '學生' };
     }
-    console.error('读取设置失败:', error);
-    return { student_name: '学生' };
+    console.error('讀取設置失敗:', error);
+    return { student_name: '學生' };
   }
 }
 
 /**
- * AI 生成学校档案
+ * AI 生成學校檔案
  * POST /api/ai/generate-school
  * Body: { schoolName: string }
  */
@@ -47,12 +47,12 @@ router.post('/generate-school', async (req: Request, res: Response) => {
     const { schoolName } = req.body;
 
     if (!schoolName || !schoolName.trim()) {
-      throw new AppError(400, '请提供学校名称');
+      throw new AppError(400, '请提供學校名称');
     }
 
-    console.log(`🤖 AI 生成学校档案: ${schoolName}`);
+    console.log(`🤖 AI 生成學校檔案: ${schoolName}`);
 
-    // 调用 AI 服务生成学校档案
+    // 調用 AI 服務生成學校檔案
     const schoolProfile = await generateSchoolProfile(schoolName.trim());
 
     res.json({
@@ -61,13 +61,13 @@ router.post('/generate-school', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('AI 生成学校档案失败:', error);
-    throw new AppError(500, 'AI 生成失败，请重试');
+    console.error('AI 生成學校檔案失敗:', error);
+    throw new AppError(500, 'AI 生成失敗，請重試');
   }
 });
 
 /**
- * AI 生成题目
+ * AI 生成題目
  * POST /api/ai/generate-questions
  * Body: { category, difficulty, count?, school_code?, topic?, save? }
  */
@@ -80,13 +80,13 @@ router.post('/generate-questions', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category, difficulty');
     }
 
-    // 验证数量
+    // 验证數量
     const questionCount = parseInt(count);
     if (isNaN(questionCount) || questionCount < 1 || questionCount > 20) {
-      throw new AppError(400, '题目数量必须在 1-20 之间');
+      throw new AppError(400, '題目數量必须在 1-20 之間');
     }
 
-    console.log(`🤖 AI 生成题目: ${category} (${difficulty}) x ${questionCount}`);
+    console.log(`🤖 AI 生成題目: ${category} (${difficulty}) x ${questionCount}`);
     const questions = await generateQuestions({
       category,
       difficulty,
@@ -95,9 +95,9 @@ router.post('/generate-questions', async (req: Request, res: Response) => {
       topic,
     });
 
-    // 如果需要保存到数据库
+    // 如果需要保存到數據庫
     if (save) {
-      console.log(`💾 保存 ${questions.length} 道题目到数据库...`);
+      console.log(`💾 保存 ${questions.length} 道題目到數據庫...`);
       const savedIds: number[] = [];
 
       for (const q of questions) {
@@ -109,29 +109,29 @@ router.post('/generate-questions', async (req: Request, res: Response) => {
         savedIds.push(id);
       }
 
-      console.log(`✅ 已保存 ${savedIds.length} 道题目`);
+      console.log(`✅ 已保存 ${savedIds.length} 道題目`);
 
       res.json({
         success: true,
-        message: `成功生成并保存 ${questions.length} 道题目`,
+        message: `成功生成並保存 ${questions.length} 道題目`,
         data: questions.map((q, i) => ({ ...q, id: savedIds[i] })),
       });
     } else {
       res.json({
         success: true,
-        message: `成功生成 ${questions.length} 道题目（未保存）`,
+        message: `成功生成 ${questions.length} 道題目（未保存）`,
         data: questions,
       });
     }
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('AI 生成题目失败:', error);
-    throw new AppError(500, 'AI 生成失败，请重试');
+    console.error('AI 生成題目失敗:', error);
+    throw new AppError(500, 'AI 生成失敗，請重試');
   }
 });
 
 /**
- * AI 分析面试回忆文本并提取问答对
+ * AI 分析面試回憶文本并提取問答對
  * POST /api/ai/extract-interview-memory
  * Body: { text, category?, school_code?, interview_round? }
  */
@@ -140,115 +140,118 @@ router.post('/extract-interview-memory', async (req: Request, res: Response) => 
     const { text, category, school_code, interview_round } = req.body;
 
     if (!text || !text.trim()) {
-      throw new AppError(400, '请提供面试回忆文本');
+      throw new AppError(400, '请提供面試回憶文本');
     }
 
-    console.log(`🤖 AI 分析面试回忆文本 (${text.length} 字)...`);
+    console.log(`🤖 AI 分析面試回憶文本 (${text.length} 字)...`);
 
-    // 调用 DeepSeek API 分析文本
+    // 調用 DeepSeek API 分析文本
     const { deepseekClient } = await import('../ai/deepseek.js');
     
-    // 构建轮次相关的提示
+    // 构建輪次相關的提示
     let roundContext = '';
     if (interview_round) {
-      roundContext = `\n面试轮次：${interview_round}（用户已指定）`;
+      roundContext = `\n面試輪次：${interview_round}（用户已指定）`;
     } else {
-      roundContext = `\n请尝试从文本中识别面试轮次信息（如"第一轮"、"第二轮"、"最终轮"等），如果无法识别则返回null。`;
+      roundContext = `\n請嘗試從文本中識別面試輪次信息（如"第一輪"、"第二輪"、"最終輪"等），如果無法識別則返回null。`;
     }
     
-    const prompt = `你是一个面试题目提取和弱点分析专家。请从以下香港升中面试回忆文本中：
-1. 提取所有的面试问题
-2. 分析学生的表现弱点
-3. 对每个问题的分类进行置信度评估
-4. 识别面试轮次信息（如果文本中包含）${roundContext}
+    const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有分析結果必須使用繁體中文（除英文專項的原始問題外）。
 
-面试回忆文本：
+你是一個面試題目提取和弱點分析專家。請從以下香港升中面試回憶文本中：
+1. 提取所有的面試問題
+2. 分析學生的表現弱點
+3. 對每個問題的分類進行置信度評估
+4. 識別面試輪次信息（如果文本中包含）${roundContext}
+
+面試回憶文本：
 """
 ${text.trim()}
 """
 
-专项类别定义（七大类别）：
-- english-oral: 英文口语（自我介绍、日常对话、看图说话、即兴演讲）
-- chinese-oral: 中文表达（朗读、时事讨论、阅读理解、观点阐述）
-- logic-thinking: 逻辑思维（数学应用题、推理题、解难题、脑筋急转弯）
-- current-affairs: 时事常识（新闻热点、社会议题、香港本地事务、国际事件）
-- science-knowledge: 科学常识（科学原理、生活中的科学、环境保护、科技发展、STEM相关话题）
-- personal-growth: 个人成长（兴趣爱好、学习经历、志向抱负、自我认知）
-- group-discussion: 小组讨论（合作技巧、表达观点、倾听回应、领导协调）
+專項類別定義（七大類別）：
+- english-oral: 英文口語（自我介紹、日常對話、看圖說話、即興演講）
+- chinese-oral: 中文表達（朗讀、時事討論、閱讀理解、觀點闡述）
+- logic-thinking: 邏輯思維（數學應用題、推理題、解難題、腦筋急轉彎）
+- current-affairs: 時事常識（新聞熱點、社會議題、香港本地事務、國際事件）
+- science-knowledge: 科學常識（科學原理、生活中的科學、環境保護、科技發展、STEM相關話題）
+- personal-growth: 個人成長（興趣愛好、學習經歷、志向抱負、自我認知）
+- group-discussion: 小組討論（合作技巧、表達觀點、傾聽回應、領導協調）
 
-分类示例（正确分类）：
+分類示例（正確分類）：
 - "Tell me about your favorite book." → english-oral (置信度: 0.95)
-- "你觉得什么是领导力？" → chinese-oral (置信度: 0.90)
-- "如果1+1=2，那么2+2等于多少？" → logic-thinking (置信度: 0.98)
-- "你对香港最近的新闻有什么看法？" → current-affairs (置信度: 0.85)
-- "为什么天空是蓝色的？" → science-knowledge (置信度: 0.92)
-- "你平时有什么兴趣爱好？" → personal-growth (置信度: 0.88)
-- "在小组讨论中，你如何表达不同意见？" → group-discussion (置信度: 0.90)
+- "你覺得什麼是領導力？" → chinese-oral (置信度: 0.90)
+- "如果1+1=2，那麼2+2等於多少？" → logic-thinking (置信度: 0.98)
+- "你對香港最近的新聞有什麼看法？" → current-affairs (置信度: 0.85)
+- "為什麼天空是藍色的？" → science-knowledge (置信度: 0.92)
+- "你平時有什麼興趣愛好？" → personal-growth (置信度: 0.88)
+- "在小組討論中，你如何表達不同意見？" → group-discussion (置信度: 0.90)
 
-常见误分类模式（避免）：
-- 不要将英文问题误分类为 chinese-oral
-- 不要将逻辑题误分类为 science-knowledge
-- 不要将个人成长问题误分类为 group-discussion
-- 注意区分 current-affairs 和 chinese-oral（时事讨论类）
+常見誤分類模式（避免）：
+- 不要將英文問題誤分類為 chinese-oral
+- 不要將邏輯題誤分類為 science-knowledge
+- 不要將個人成長問題誤分類為 group-discussion
+- 注意區分 current-affairs 和 chinese-oral（時事討論類）
 
-请按照以下JSON格式返回分析结果：
+請按照以下JSON格式返回分析結果：
 {
   "questions": [
     {
-      "question_text": "面试官问的问题",
-      "category": "专项类别（必须从七大类别中选择一个）",
+      "question_text": "面試官問的問題（英文專項保持英文，其他使用繁體中文）",
+      "category": "專項類別（必須從七大類別中選擇一個）",
       "classification_confidence": 0.85,
-      "difficulty": "难度（easy/medium/hard）",
-      "reference_answer": "建议答案要点",
-      "tags": ["标签1", "标签2"],
-      "notes": "从文本中提取的原始回答或备注"
+      "difficulty": "難度（easy/medium/hard）",
+      "reference_answer": "建議答案要點（必須使用繁體中文，英文專項除外）",
+      "tags": ["標籤1", "標籤2"],
+      "notes": "從文本中提取的原始回答或備註（必須使用繁體中文，英文專項除外）"
     }
   ],
   "weaknesses": [
     {
-      "category": "专项类别",
-      "weakness_type": "弱点类型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）",
-      "description": "弱点描述（具体说明问题所在）",
-      "example_text": "体现弱点的原文片段",
-      "severity": "严重程度（low/medium/high）",
-      "improvement_suggestions": "具体的改进建议",
-      "related_topics": ["相关话题1", "相关话题2"]
+      "category": "專項類別",
+      "weakness_type": "弱點類型（vocabulary/grammar/logic/knowledge_gap/confidence/expression）",
+      "description": "弱點描述（具體說明問題所在，必須使用繁體中文）",
+      "example_text": "體現弱點的原文片段",
+      "severity": "嚴重程度（low/medium/high）",
+      "improvement_suggestions": "具體的改進建議（必須使用繁體中文）",
+      "related_topics": ["相關話題1", "相關話題2"]
     }
   ],
-  "summary": "对这次面试的整体分析和特点总结",
-  "interview_round": "面试轮次（如：first-round, second-round, final-round，如果无法识别则返回null）"
+  "summary": "對這次面試的整體分析和特點總結（必須使用繁體中文）",
+  "interview_round": "面試輪次（如：first-round, second-round, final-round，如果無法識別則返回null）"
 }
 
 注意：
-1. 问题提取：只提取明确的问题，不要臆造
-2. 分类要求：
-   - 必须从七大类别中选择一个最合适的类别
-   - 每个分类必须提供置信度分数（0-1之间的小数）
-   - 置信度低于0.7的分类应标记为"待确认"
-   - 如果问题涉及多个类别，选择最主要的类别
-3. 弱点分析：基于学生的实际回答进行分析
-4. 弱点类型说明：
-   - vocabulary: 词汇量不足
-   - grammar: 语法错误
-   - logic: 逻辑不清晰
-   - knowledge_gap: 知识盲区
-   - confidence: 信心不足、表达犹豫
-   - expression: 表达能力弱
-5. 严重程度评估要客观合理
-6. 改进建议要具体可操作`;
+1. 問題提取：只提取明確的問題，不要臆造
+2. 分類要求：
+   - 必須從七大類別中選擇一個最合適的類別
+   - 每個分類必須提供置信度分數（0-1之間的小數）
+   - 置信度低於0.7的分類應標記為"待確認"
+   - 如果問題涉及多個類別，選擇最主要的類別
+3. 弱點分析：基於學生的實際回答進行分析
+4. 弱點類型說明：
+   - vocabulary: 詞彙量不足
+   - grammar: 語法錯誤
+   - logic: 邏輯不清晰
+   - knowledge_gap: 知識盲區
+   - confidence: 信心不足、表達猶豫
+   - expression: 表達能力弱
+5. 嚴重程度評估要客觀合理
+6. 改進建議要具體可操作
+7. 所有中文內容必須使用繁體中文（除英文專項的原始問題外）`;
 
     const response = await deepseekClient.chat([
       { role: 'user', content: prompt }
     ]);
     
-    // 解析返回的JSON（使用更健壮的解析逻辑）
+    // 解析返回的JSON（使用更健壮的解析邏輯）
     let extractedData;
     
     /**
-     * 智能提取JSON对象（使用括号匹配找到完整的JSON）
+     * 智能提取JSON對象（使用括號匹配找到完整的JSON）
      */
     function extractCompleteJSON(text: string): string | null {
-      // 1. 尝试提取markdown代码块中的JSON
+      // 1. 尝試提取markdown代碼块中的JSON
       const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (codeBlockMatch) {
         text = codeBlockMatch[1].trim();
@@ -258,7 +261,7 @@ ${text.trim()}
       const firstBrace = text.indexOf('{');
       if (firstBrace === -1) return null;
       
-      // 3. 使用括号匹配找到完整的JSON对象
+      // 3. 使用括號匹配找到完整的JSON對象
       let braceCount = 0;
       let inString = false;
       let escapeNext = false;
@@ -303,32 +306,32 @@ ${text.trim()}
     }
     
     /**
-     * 尝试修复常见的JSON格式错误
+     * 尝試修复常见的JSON格式错误
      */
     function fixJSONFormat(jsonText: string): string {
       // 移除注释
       jsonText = jsonText.replace(/\/\/.*$/gm, '');
       jsonText = jsonText.replace(/\/\*[\s\S]*?\*\//g, '');
       
-      // 移除尾随逗号（在 } 或 ] 之前）
+      // 移除尾随逗號（在 } 或 ] 之前）
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
       
-      // 修复未完成的键值对（如 "key": 后面没有值）
+      // 修复未完成的键值對（如 "key": 後面没有值）
       jsonText = jsonText.replace(/("[\w_]+")\s*:\s*([^,}\]]*?)(?=\s*[,}\]])/g, (match, key, value) => {
         const trimmedValue = value.trim();
         if (!trimmedValue || trimmedValue === '') {
-          // 如果值缺失，删除整个键值对
+          // 如果值缺失，删除整个键值對
           return '';
         }
-        // 如果值不是有效的JSON值（不是字符串、数字、布尔、null、对象、数组），尝试修复
+        // 如果值不是有效的JSON值（不是字符串、數字、布尔、null、對象、數組），尝試修复
         if (!trimmedValue.match(/^(".*"|[\d.]+|true|false|null|\{.*\}|\[.*\])$/)) {
-          // 尝试将其作为字符串
+          // 尝試将其作为字符串
           return `${key}: ${JSON.stringify(trimmedValue)}`;
         }
         return match;
       });
       
-      // 清理多余的逗号
+      // 清理多余的逗號
       jsonText = jsonText.replace(/,+/g, ',');
       jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
       
@@ -338,16 +341,16 @@ ${text.trim()}
     try {
       let jsonText = response.trim();
       
-      // 1. 提取完整的JSON对象
+      // 1. 提取完整的JSON對象
       const completeJSON = extractCompleteJSON(jsonText);
       if (!completeJSON) {
-        throw new Error('无法从AI响应中提取完整的JSON对象');
+        throw new Error('無法從AI響應中提取完整的JSON對象');
       }
       
       // 2. 修复JSON格式
       jsonText = fixJSONFormat(completeJSON);
       
-      // 3. 尝试解析JSON
+      // 3. 尝試解析JSON
       extractedData = JSON.parse(jsonText);
       
       // 4. 验证必要字段
@@ -362,17 +365,17 @@ ${text.trim()}
       }
       
     } catch (parseError: any) {
-      console.error('解析AI响应失败:', parseError);
-      console.error('AI原始响应（前1000字符）:', response.substring(0, 1000));
-      console.error('JSON解析错误详情:', parseError.message);
+      console.error('解析AI響應失敗:', parseError);
+      console.error('AI原始響應（前1000字符）:', response.substring(0, 1000));
+      console.error('JSON解析錯誤詳情:', parseError.message);
       
-      // 尝试部分提取：即使JSON不完整，也尝试提取能解析的部分
+      // 尝試部分提取：即使JSON不完整，也尝試提取能解析的部分
       try {
         let questions: any[] = [];
         let weaknesses: any[] = [];
-        let summary = 'AI返回格式错误，无法解析完整数据。请检查输入文本或稍后重试。';
+        let summary = 'AI返回格式錯誤，無法解析完整數據。請檢查輸入文本或稍後重試。';
         
-        // 尝试提取questions数组（使用括号匹配找到完整的数组）
+        // 尝試提取questions數組（使用括號匹配找到完整的數組）
         const questionsStart = response.indexOf('"questions"');
         if (questionsStart !== -1) {
           const arrayStart = response.indexOf('[', questionsStart);
@@ -413,13 +416,13 @@ ${text.trim()}
                 const questionsText = response.substring(arrayStart, arrayEnd);
                 questions = JSON.parse(questionsText);
               } catch (e) {
-                console.warn('无法解析questions数组:', e);
+                console.warn('無法解析questions數組:', e);
               }
             }
           }
         }
         
-        // 尝试提取weaknesses数组（同样的方法）
+        // 尝試提取weaknesses數組（同樣的方法）
         const weaknessesStart = response.indexOf('"weaknesses"');
         if (weaknessesStart !== -1) {
           const arrayStart = response.indexOf('[', weaknessesStart);
@@ -460,13 +463,13 @@ ${text.trim()}
                 const weaknessesText = response.substring(arrayStart, arrayEnd);
                 weaknesses = JSON.parse(weaknessesText);
               } catch (e) {
-                console.warn('无法解析weaknesses数组:', e);
+                console.warn('無法解析weaknesses數組:', e);
               }
             }
           }
         }
         
-        // 尝试提取summary（简单字符串匹配）
+        // 尝試提取summary（简单字符串匹配）
         const summaryMatch = response.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
         if (summaryMatch) {
           try {
@@ -479,32 +482,32 @@ ${text.trim()}
         extractedData = {
           questions: Array.isArray(questions) ? questions : [],
           weaknesses: Array.isArray(weaknesses) ? weaknesses : [],
-          summary: summary || 'AI返回格式错误，无法解析完整数据。'
+          summary: summary || 'AI返回格式錯誤，無法解析完整數據。'
         };
         
-        console.warn(`⚠️  使用部分提取的数据：${extractedData.questions.length}个问题，${extractedData.weaknesses.length}个弱点`);
+        console.warn(`⚠️  使用部分提取的數據：${extractedData.questions.length}个問題，${extractedData.weaknesses.length}个弱點`);
         
       } catch (fallbackError: any) {
-        // 如果连部分提取都失败，返回空结构
+        // 如果连部分提取都失敗，返回空結构
         extractedData = {
           questions: [],
           weaknesses: [],
-          summary: 'AI返回格式错误，无法解析数据。请检查输入文本或稍后重试。'
+          summary: 'AI返回格式錯誤，無法解析數據。請檢查輸入文本或稍後重試。'
         };
-        console.warn('⚠️  使用空数据结构作为最终后备方案');
+        console.warn('⚠️  使用空數據結构作为最终後備方案');
       }
     }
     
-    // 确保extractedData已定义
+    // 確保extractedData已定义
     if (!extractedData) {
       extractedData = {
         questions: [],
         weaknesses: [],
-        summary: '无法解析AI响应'
+        summary: '無法解析AI響應'
       };
     }
 
-    // 如果用户指定了类别或学校，覆盖AI的判断
+    // 如果用户指定了類別或學校，覆盖AI的判断
     if (category || school_code) {
       extractedData.questions = extractedData.questions.map((q: any) => ({
         ...q,
@@ -513,61 +516,61 @@ ${text.trim()}
       }));
     }
 
-    // 处理轮次信息：优先使用用户指定的，否则使用AI识别的
+    // 处理輪次信息：優先使用用户指定的，否則使用AI識別的
     if (interview_round) {
       extractedData.interview_round = interview_round;
     } else if (extractedData.interview_round) {
-      // AI识别的轮次，转换为标准格式
+      // AI識別的輪次，转换为標準格式
       const round = extractedData.interview_round.toLowerCase();
-      if (round.includes('第一轮') || round.includes('1') || round.includes('first')) {
+      if (round.includes('第一輪') || round.includes('1') || round.includes('first')) {
         extractedData.interview_round = 'first-round';
-      } else if (round.includes('第二轮') || round.includes('2') || round.includes('second')) {
+      } else if (round.includes('第二輪') || round.includes('2') || round.includes('second')) {
         extractedData.interview_round = 'second-round';
-      } else if (round.includes('最终') || round.includes('final') || round.includes('最后')) {
+      } else if (round.includes('最终') || round.includes('final') || round.includes('最後')) {
         extractedData.interview_round = 'final-round';
       }
     }
 
-    // 确保每个问题都有分类置信度，如果没有则设置为默认值
+    // 確保每个問題都有分類置信度，如果没有則设置为默认值
     extractedData.questions = extractedData.questions.map((q: any) => ({
       ...q,
       classification_confidence: q.classification_confidence ?? 0.8,
       classification_source: 'auto',
     }));
 
-    console.log(`✅ 成功提取 ${extractedData.questions.length} 个问题${extractedData.interview_round ? `，轮次：${extractedData.interview_round}` : ''}`);
+    console.log(`✅ 成功提取 ${extractedData.questions.length} 個問題${extractedData.interview_round ? `，輪次：${extractedData.interview_round}` : ''}`);
 
     res.json({
       success: true,
-      message: `成功提取 ${extractedData.questions.length} 个问题`,
+      message: `成功提取 ${extractedData.questions.length} 個問題`,
       data: extractedData,
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('AI 分析面试回忆失败:', error);
-    throw new AppError(500, 'AI 分析失败，请重试');
+    console.error('AI 分析面試回憶失敗:', error);
+    throw new AppError(500, 'AI 分析失敗，請重試');
   }
 });
 
 /**
- * 保存学生弱点分析
+ * 保存學生弱點分析
  * POST /api/ai/save-weaknesses
  * Body: { weaknesses: Array<Weakness>, source_text? }
- * 注意：student_name 统一从设置获取，不再从请求参数获取
+ * 注意：student_name 統一從设置获取，不再從请求參數获取
  */
 router.post('/save-weaknesses', async (req: Request, res: Response) => {
   try {
     const { weaknesses, source_text } = req.body;
 
     if (!weaknesses || !Array.isArray(weaknesses) || weaknesses.length === 0) {
-      throw new AppError(400, '请提供要保存的弱点分析列表');
+      throw new AppError(400, '请提供要保存的弱點分析列表');
     }
 
-    // 从设置获取学生信息
+    // 從设置获取學生信息
     const settings = await getStudentInfoFromSettings();
     const student_name = settings.student_name;
 
-    console.log(`💾 保存 ${weaknesses.length} 条弱点分析... (学生: ${student_name || '未设置'})`);
+    console.log(`💾 保存 ${weaknesses.length} 条弱點分析... (學生: ${student_name || '未设置'})`);
     const savedIds: number[] = [];
 
     for (const w of weaknesses) {
@@ -591,22 +594,22 @@ router.post('/save-weaknesses', async (req: Request, res: Response) => {
       savedIds.push(id);
     }
 
-    console.log(`✅ 已保存 ${savedIds.length} 条弱点分析`);
+    console.log(`✅ 已保存 ${savedIds.length} 条弱點分析`);
 
     res.json({
       success: true,
-      message: `成功保存 ${savedIds.length} 条弱点分析`,
+      message: `成功保存 ${savedIds.length} 條弱點分析`,
       data: { savedIds },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('保存弱点分析失败:', error);
-    throw new AppError(500, '保存失败，请重试');
+    console.error('保存弱點分析失敗:', error);
+    throw new AppError(500, '保存失敗，請重試');
   }
 });
 
 /**
- * 保存面试回忆提取的问题到题库
+ * 保存面試回憶提取的問題到題庫
  * POST /api/ai/save-interview-questions
  * Body: { questions: Array<Question>, source_text?: string }
  */
@@ -615,10 +618,10 @@ router.post('/save-interview-questions', async (req: Request, res: Response) => 
     const { questions, source_text } = req.body;
 
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
-      throw new AppError(400, '请提供要保存的问题列表');
+      throw new AppError(400, '请提供要保存的問題列表');
     }
 
-    console.log(`💾 保存 ${questions.length} 道面试回忆题目...`);
+    console.log(`💾 保存 ${questions.length} 道面試回憶題目...`);
     const savedIds: number[] = [];
 
     // 检查新字段是否存在（只检查一次）
@@ -630,7 +633,7 @@ router.post('/save-interview-questions', async (req: Request, res: Response) => 
       hasNotes = columnNames.includes('notes');
       hasClassificationFields = columnNames.includes('classification_confidence');
     } catch (e) {
-      console.warn('无法检查表结构，使用基础字段:', e);
+      console.warn('無法檢查表結構，使用基礎字段:', e);
     }
 
     for (const q of questions) {
@@ -663,22 +666,22 @@ router.post('/save-interview-questions', async (req: Request, res: Response) => 
       savedIds.push(id);
     }
 
-    console.log(`✅ 已保存 ${savedIds.length} 道题目到题库`);
+    console.log(`✅ 已保存 ${savedIds.length} 道題目到題庫`);
 
     res.json({
       success: true,
-      message: `成功保存 ${savedIds.length} 道题目到题库`,
+      message: `成功保存 ${savedIds.length} 道題目到題庫`,
       data: { savedIds },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('保存面试回忆题目失败:', error);
-    throw new AppError(500, '保存失败，请重试');
+    console.error('保存面試回憶題目失敗:', error);
+    throw new AppError(500, '保存失敗，請重試');
   }
 });
 
 /**
- * 保存完整的面试回忆到interview_memories表
+ * 保存完整的面試回憶到interview_memories表
  * POST /api/ai/save-interview-memory
  * Body: { memory_text, school_code?, interview_date?, interview_round?, extracted_questions?, feedback?, tags? }
  */
@@ -687,10 +690,10 @@ router.post('/save-interview-memory', async (req: Request, res: Response) => {
     const { memory_text, school_code, interview_date, interview_round, extracted_questions, feedback, tags } = req.body;
 
     if (!memory_text || !memory_text.trim()) {
-      throw new AppError(400, '请提供面试回忆文本');
+      throw new AppError(400, '请提供面試回憶文本');
     }
 
-    console.log(`💾 保存面试回忆到数据库... (学校: ${school_code || '未指定'}, 轮次: ${interview_round || '未指定'})`);
+    console.log(`💾 保存面試回憶到數據庫... (學校: ${school_code || '未指定'}, 輪次: ${interview_round || '未指定'})`);
 
     const { insert } = await import('../db/index.js');
 
@@ -701,7 +704,7 @@ router.post('/save-interview-memory', async (req: Request, res: Response) => {
       const columnNames = columns.map((col: any) => col.Field);
       hasRoundField = columnNames.includes('interview_round');
     } catch (e) {
-      console.warn('无法检查表结构，假设字段不存在:', e);
+      console.warn('无法检查表結构，假设字段不存在:', e);
     }
 
     let sql = `INSERT INTO interview_memories (memory_text, school_code, interview_date`;
@@ -731,22 +734,22 @@ router.post('/save-interview-memory', async (req: Request, res: Response) => {
 
     const memoryId = await insert(sql, values);
 
-    console.log(`✅ 已保存面试回忆，ID: ${memoryId}`);
+    console.log(`✅ 已保存面試回憶，ID: ${memoryId}`);
 
     res.json({
       success: true,
-      message: '成功保存面试回忆',
+      message: '成功保存面試回憶',
       data: { id: memoryId },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('保存面试回忆失败:', error);
-    throw new AppError(500, '保存失败，请重试');
+    console.error('保存面試回憶失敗:', error);
+    throw new AppError(500, '保存失敗，请重試');
   }
 });
 
 /**
- * 根据学生弱点生成针对性题目
+ * 根據學生弱點生成針對性題目
  * POST /api/ai/generate-questions-from-weaknesses
  * Body: { weakness_ids?: number[], category?, count? }
  */
@@ -754,19 +757,19 @@ router.post('/generate-questions-from-weaknesses', async (req: Request, res: Res
   try {
     const { weakness_ids, category, count = 5 } = req.body;
 
-    // 获取弱点信息
+    // 获取弱點信息
     let weaknesses: any[] = [];
     const { query } = await import('../db/index.js');
 
     if (weakness_ids && weakness_ids.length > 0) {
-      // 根据ID获取指定弱点
+      // 根據ID获取指定弱點
       const placeholders = weakness_ids.map(() => '?').join(',');
       weaknesses = await query(
         `SELECT * FROM student_weaknesses WHERE id IN (${placeholders}) AND status = 'active'`,
         weakness_ids
       );
     } else if (category) {
-      // 获取该类别的所有活跃弱点
+      // 获取该類別的所有活跃弱點
       weaknesses = await query(
         `SELECT * FROM student_weaknesses WHERE category = ? AND status = 'active' ORDER BY severity DESC, created_at DESC LIMIT 5`,
         [category]
@@ -776,40 +779,43 @@ router.post('/generate-questions-from-weaknesses', async (req: Request, res: Res
     }
 
     if (weaknesses.length === 0) {
-      throw new AppError(404, '未找到相关弱点记录');
+      throw new AppError(404, '未找到相關弱點記錄');
     }
 
-    console.log(`🤖 根据 ${weaknesses.length} 个弱点生成针对性题目...`);
+    console.log(`🤖 根據 ${weaknesses.length} 个弱點生成針對性題目...`);
 
-    // 构建AI提示词
+    // 构建AI提示詞
     const weaknessDescriptions = weaknesses.map((w: any) => 
-      `- ${w.description} (类型: ${w.weakness_type}, 严重程度: ${w.severity})`
+      `- ${w.description} (類型: ${w.weakness_type}, 嚴重程度: ${w.severity})`
     ).join('\n');
 
     const { deepseekClient } = await import('../ai/deepseek.js');
     
-    const prompt = `你是一个香港升中面试题目生成专家。请根据以下学生的弱点，生成 ${count} 道针对性的练习题目。
+    const prompt = `⚠️ 重要：你必須使用繁體中文回應。所有題目內容必須使用繁體中文（除英文專項外）。
 
-学生弱点分析：
+你是一個香港升中面試題目生成專家。請根據以下學生的弱點，生成 ${count} 道針對性的練習題目。
+
+學生弱點分析：
 ${weaknessDescriptions}
 
 要求：
-1. 题目要针对上述弱点进行强化训练
-2. 难度要适中，既能挑战学生又不会过难
-3. 题目要实用，贴近真实面试场景
-4. 每道题目要有清晰的训练目标
+1. 題目要針對上述弱點進行強化訓練
+2. 難度要適中，既能挑戰學生又不會過難
+3. 題目要實用，貼近真實面試場景
+4. 每道題目要有清晰的訓練目標
+5. 所有內容必須使用繁體中文（除英文專項外）
 
-请按照以下JSON格式返回：
+請按照以下JSON格式返回：
 {
   "questions": [
     {
-      "question_text": "题目内容",
-      "category": "专项类别",
+      "question_text": "題目內容（必須使用繁體中文，英文專項除外）",
+      "category": "專項類別",
       "difficulty": "medium",
-      "reference_answer": "参考答案要点",
-      "tags": ["标签1", "标签2"],
-      "target_weakness": "针对的弱点类型",
-      "training_focus": "训练重点说明"
+      "reference_answer": "參考答案要點（必須使用繁體中文，英文專項除外）",
+      "tags": ["標籤1", "標籤2"],
+      "target_weakness": "針對的弱點類型",
+      "training_focus": "訓練重點說明（必須使用繁體中文）"
     }
   ]
 }`;
@@ -825,14 +831,14 @@ ${weaknessDescriptions}
       if (jsonMatch) {
         generatedData = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error('无法从AI响应中提取JSON');
+        throw new Error('無法從AI響應中提取JSON');
       }
     } catch (parseError) {
-      console.error('解析AI响应失败:', parseError);
-      throw new AppError(500, 'AI返回格式错误，请重试');
+      console.error('解析AI響應失敗:', parseError);
+      throw new AppError(500, 'AI返回格式錯誤，請重試');
     }
 
-    // 保存生成的题目到数据库
+    // 保存生成的題目到數據庫
     const savedIds: number[] = [];
     for (const q of generatedData.questions) {
       const id = await insert(
@@ -845,13 +851,13 @@ ${weaknessDescriptions}
           q.reference_answer || '',
           JSON.stringify(q.tags || []),
           'ai_generated_targeted',
-          `针对弱点: ${q.target_weakness}. ${q.training_focus || ''}`,
+          `針對弱點: ${q.target_weakness}. ${q.training_focus || ''}`,
         ]
       );
       savedIds.push(id);
     }
 
-    // 更新弱点的练习次数
+    // 更新弱點的練習次數
     for (const weakness of weaknesses) {
       await query(
         `UPDATE student_weaknesses SET practice_count = practice_count + 1, updated_at = NOW() WHERE id = ?`,
@@ -859,11 +865,11 @@ ${weaknessDescriptions}
       );
     }
 
-    console.log(`✅ 已生成并保存 ${savedIds.length} 道针对性题目`);
+    console.log(`✅ 已生成并保存 ${savedIds.length} 道針對性題目`);
 
     res.json({
       success: true,
-      message: `成功生成 ${savedIds.length} 道针对性题目`,
+      message: `成功生成 ${savedIds.length} 道針對性題目`,
       data: {
         questions: generatedData.questions.map((q: any, i: number) => ({
           ...q,
@@ -878,13 +884,13 @@ ${weaknessDescriptions}
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('生成针对性题目失败:', error);
-    throw new AppError(500, '生成失败，请重试');
+    console.error('生成針對性題目失敗:', error);
+    throw new AppError(500, '生成失敗，请重試');
   }
 });
 
 /**
- * 测试 API 连接
+ * 测試 API 连接
  * POST /api/ai/test-connection
  * Body: { api_key?: string }
  */
@@ -892,13 +898,13 @@ router.post('/test-connection', async (req: Request, res: Response) => {
   try {
     const { api_key } = req.body;
     
-    // 临时设置API Key（如果提供）
+    // 临時设置API Key（如果提供）
     const originalKey = process.env.DEEPSEEK_API_KEY;
     if (api_key) {
       process.env.DEEPSEEK_API_KEY = api_key;
     }
 
-    console.log('🔍 测试 DeepSeek API 连接...');
+    console.log('🔍 测試 DeepSeek API 连接...');
 
     const { deepseekClient } = await import('../ai/deepseek.js');
     const response = await deepseekClient.chat([
@@ -910,7 +916,7 @@ router.post('/test-connection', async (req: Request, res: Response) => {
       process.env.DEEPSEEK_API_KEY = originalKey;
     }
 
-    console.log('✅ API 连接测试成功');
+    console.log('✅ API 连接测試成功');
 
     res.json({
       success: true,
@@ -918,16 +924,16 @@ router.post('/test-connection', async (req: Request, res: Response) => {
       data: { response: response.substring(0, 100) },
     });
   } catch (error: any) {
-    console.error('API 连接测试失败:', error);
+    console.error('API 连接测試失敗:', error);
     
-    // 根据错误类型返回不同消息
-    let message = 'API Key 验证失败';
+    // 根據错误類型返回不同消息
+    let message = 'API Key 验证失敗';
     if (error.message?.includes('401')) {
-      message = 'API Key 无效或已过期';
+      message = 'API Key 无效或已過期';
     } else if (error.message?.includes('429')) {
-      message = 'API 调用频率超限，请稍后重试';
+      message = 'API 調用频率超限，请稍後重試';
     } else if (error.message?.includes('network') || error.code === 'ECONNREFUSED') {
-      message = '网络连接失败，请检查网络设置';
+      message = '网络连接失敗，请检查网络设置';
     }
     
     throw new AppError(400, message);
@@ -935,7 +941,7 @@ router.post('/test-connection', async (req: Request, res: Response) => {
 });
 
 /**
- * AI生成学习素材
+ * AI生成學習素材
  * POST /api/ai/generate-learning-material
  * Body: { weakness_id, material_type? }
  */
@@ -944,22 +950,22 @@ router.post('/generate-learning-material', async (req: Request, res: Response) =
     const { weakness_id, material_type = 'text' } = req.body;
 
     if (!weakness_id) {
-      throw new AppError(400, '请提供弱点ID');
+      throw new AppError(400, '请提供弱點ID');
     }
 
-    // 获取弱点信息
+    // 获取弱點信息
     const weakness = await queryOne(
       'SELECT * FROM student_weaknesses WHERE id = ?',
       [weakness_id]
     );
 
     if (!weakness) {
-      throw new AppError(404, '弱点记录不存在');
+      throw new AppError(404, '弱點記錄不存在');
     }
 
-    console.log(`🤖 生成学习素材: 弱点ID=${weakness_id}, 类型=${material_type}`);
+    console.log(`🤖 生成學習素材: 弱點ID=${weakness_id}, 類型=${material_type}`);
 
-    // 调用AI生成学习素材
+    // 調用AI生成學習素材
     const { generateLearningMaterial } = await import('../ai/materialGenerator.js');
     const generatedMaterial = await generateLearningMaterial({
       weakness_id,
@@ -967,7 +973,7 @@ router.post('/generate-learning-material', async (req: Request, res: Response) =
       weakness,
     });
 
-    // 保存素材到数据库
+    // 保存素材到數據庫
     const materialId = await insert(
       `INSERT INTO learning_materials 
        (weakness_id, category, weakness_type, title, content, material_type, tags, created_by)
@@ -990,11 +996,11 @@ router.post('/generate-learning-material', async (req: Request, res: Response) =
       [materialId]
     );
 
-    console.log(`✅ 学习素材已生成并保存: ID=${materialId}`);
+    console.log(`✅ 學習素材已生成并保存: ID=${materialId}`);
 
     res.json({
       success: true,
-      message: '学习素材生成成功',
+      message: '學習素材生成成功',
       data: {
         ...savedMaterial,
         tags: savedMaterial.tags ? (typeof savedMaterial.tags === 'string' ? JSON.parse(savedMaterial.tags) : savedMaterial.tags) : [],
@@ -1002,8 +1008,8 @@ router.post('/generate-learning-material', async (req: Request, res: Response) =
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('生成学习素材失败:', error);
-    throw new AppError(500, '生成学习素材失败，请重试');
+    console.error('生成學習素材失敗:', error);
+    throw new AppError(500, '生成學習素材失敗，请重試');
   }
 });
 

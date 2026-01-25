@@ -1,5 +1,5 @@
 /**
- * 反馈路由
+ * 反饋路由
  */
 import { Router, Request, Response } from 'express';
 import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
@@ -8,7 +8,7 @@ import { generateFeedback, generateSessionSummary } from '../ai/feedbackGenerato
 
 const router = Router();
 
-// 为单个问答生成反馈
+// 為單個問答生成反饋
 router.post('/generate', async (req: Request, res: Response) => {
   try {
     let { session_id, record_id, question_text, answer_text, category, target_school } = req.body;
@@ -17,12 +17,12 @@ router.post('/generate', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：question_text, answer_text, category');
     }
 
-    // 统一类别名称：将 logical-thinking 转换为 logic-thinking（兼容旧数据）
+    // 統一類別名稱：將 logical-thinking 轉換為 logic-thinking（兼容舊數據）
     if (category === 'logical-thinking') {
       category = 'logic-thinking';
     }
 
-    // 获取参考答案（如果有 question_id）
+    // 獲取參考答案（如果有 question_id）
     let reference_answer: string | undefined;
     if (req.body.question_id) {
       const question = await queryOne(
@@ -32,9 +32,9 @@ router.post('/generate', async (req: Request, res: Response) => {
       reference_answer = question?.reference_answer;
     }
 
-    console.log(`🤖 生成反馈: 会话=${session_id}, 记录=${record_id}`);
+    console.log(`🤖 生成反饋: 會話=${session_id}, 記錄=${record_id}`);
 
-    // 调用 AI 生成反馈
+    // 調用 AI 生成反饋
     const feedback = await generateFeedback({
       session_id,
       question_text,
@@ -44,28 +44,28 @@ router.post('/generate', async (req: Request, res: Response) => {
       reference_answer,
     });
 
-    // 如果提供了 record_id，更新问答记录
+    // 如果提供了 record_id，更新問答記錄
     if (record_id) {
       await execute(
         'UPDATE qa_records SET ai_feedback = ? WHERE id = ?',
         [JSON.stringify(feedback), record_id]
       );
-      console.log(`✅ 反馈已保存到记录 ${record_id}`);
+      console.log(`✅ 反饋已保存到記錄 ${record_id}`);
     }
 
     res.json({
       success: true,
-      message: '反馈生成成功',
+      message: '反饋生成成功',
       data: feedback,
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('生成反馈失败:', error);
-    throw new AppError(500, '生成反馈失败');
+    console.error('生成反饋失敗:', error);
+    throw new AppError(500, '生成反饋失敗');
   }
 });
 
-// 为会话生成总结
+// 為會話生成總結
 router.post('/session-summary', async (req: Request, res: Response) => {
   try {
     const { session_id } = req.body;
@@ -74,25 +74,25 @@ router.post('/session-summary', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：session_id');
     }
 
-    // 检查会话是否存在
+    // 檢查會話是否存在
     const session = await queryOne('SELECT id, category FROM sessions WHERE id = ?', [session_id]);
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
-    console.log(`🤖 生成会话总结: 会话ID=${session_id}`);
+    console.log(`🤖 生成會話總結: 會話ID=${session_id}`);
 
-    // 生成总结
+    // 生成總結
     const summary = await generateSessionSummary(session_id);
 
-    // 保存总结到数据库
+    // 保存總結到數據庫
     const existingSummary = await queryOne(
       'SELECT id FROM session_summaries WHERE session_id = ?',
       [session_id]
     );
 
     if (existingSummary) {
-      // 更新现有总结
+      // 更新現有總結
       await execute(
         `UPDATE session_summaries
          SET total_questions = ?, total_duration = ?, average_score = ?,
@@ -100,7 +100,7 @@ router.post('/session-summary', async (req: Request, res: Response) => {
          WHERE session_id = ?`,
         [
           summary.total_questions,
-          0, // total_duration 暂时设为 0
+          0, // total_duration 暫時設為 0
           summary.average_score,
           JSON.stringify(summary.strengths || []),
           JSON.stringify(summary.weaknesses || []),
@@ -109,7 +109,7 @@ router.post('/session-summary', async (req: Request, res: Response) => {
         ]
       );
     } else {
-      // 插入新总结
+      // 插入新總結
       await insert(
         `INSERT INTO session_summaries 
          (session_id, total_questions, total_duration, average_score, strengths, weaknesses, suggestions)
@@ -117,7 +117,7 @@ router.post('/session-summary', async (req: Request, res: Response) => {
         [
           session_id,
           summary.total_questions,
-          0, // total_duration 暂时设为 0
+          0, // total_duration 暫時設為 0
           summary.average_score,
           JSON.stringify(summary.strengths || []),
           JSON.stringify(summary.weaknesses || []),
@@ -126,21 +126,21 @@ router.post('/session-summary', async (req: Request, res: Response) => {
       );
     }
 
-    console.log(`✅ 会话总结已保存`);
+    console.log(`✅ 會話總結已保存`);
 
     res.json({
       success: true,
-      message: '会话总结生成成功',
+      message: '會話總結生成成功',
       data: summary,
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('生成会话总结失败:', error);
-    throw new AppError(500, '生成会话总结失败');
+    console.error('生成會話總結失敗:', error);
+    throw new AppError(500, '生成會話總結失敗');
   }
 });
 
-// 获取会话总结
+// 獲取會話總結
 router.get('/session/:sessionId/summary', async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
@@ -153,10 +153,10 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
     );
 
     if (!summary) {
-      throw new AppError(404, '会话总结不存在');
+      throw new AppError(404, '會話總結不存在');
     }
 
-    // 解析 JSON 字段（添加错误处理）
+    // 解析 JSON 字段（添加錯誤處理）
     let strengths = [];
     let weaknesses = [];
     try {
@@ -164,7 +164,7 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
         ? (typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths)
         : [];
     } catch (error) {
-      console.warn(`解析总结 ${summary.id} 的 strengths 失败:`, error);
+      console.warn(`解析總結 ${summary.id} 的 strengths 失敗:`, error);
       strengths = [];
     }
     try {
@@ -172,7 +172,7 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
         ? (typeof summary.weaknesses === 'string' ? JSON.parse(summary.weaknesses) : summary.weaknesses)
         : [];
     } catch (error) {
-      console.warn(`解析总结 ${summary.id} 的 weaknesses 失败:`, error);
+      console.warn(`解析總結 ${summary.id} 的 weaknesses 失敗:`, error);
       weaknesses = [];
     }
 
@@ -184,12 +184,12 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('获取会话总结失败:', error);
-    throw new AppError(500, '获取会话总结失败');
+    console.error('獲取會話總結失敗:', error);
+    throw new AppError(500, '獲取會話總結失敗');
   }
 });
 
-// 获取历史反馈列表
+// 獲取歷史反饋列表
 router.get('/history', async (req: Request, res: Response) => {
   try {
     const { category, limit = '20' } = req.query;
@@ -216,7 +216,7 @@ router.get('/history', async (req: Request, res: Response) => {
       0
     );
 
-    // 解析 JSON 字段（添加错误处理）
+    // 解析 JSON 字段（添加錯誤處理）
     const formattedSummaries = summaries.map((summary: any) => {
       let strengths = [];
       let weaknesses = [];
@@ -225,7 +225,7 @@ router.get('/history', async (req: Request, res: Response) => {
           ? (typeof summary.strengths === 'string' ? JSON.parse(summary.strengths) : summary.strengths)
           : [];
       } catch (error) {
-        console.warn(`解析总结 ${summary.id} 的 strengths 失败:`, error);
+        console.warn(`解析總結 ${summary.id} 的 strengths 失敗:`, error);
         strengths = [];
       }
       try {
@@ -233,7 +233,7 @@ router.get('/history', async (req: Request, res: Response) => {
           ? (typeof summary.weaknesses === 'string' ? JSON.parse(summary.weaknesses) : summary.weaknesses)
           : [];
       } catch (error) {
-        console.warn(`解析总结 ${summary.id} 的 weaknesses 失败:`, error);
+        console.warn(`解析總結 ${summary.id} 的 weaknesses 失敗:`, error);
         weaknesses = [];
       }
       return { ...summary, strengths, weaknesses };
@@ -245,8 +245,8 @@ router.get('/history', async (req: Request, res: Response) => {
       total: formattedSummaries.length,
     });
   } catch (error) {
-    console.error('获取历史反馈失败:', error);
-    throw new AppError(500, '获取历史反馈失败');
+    console.error('獲取歷史反饋失敗:', error);
+    throw new AppError(500, '獲取歷史反饋失敗');
   }
 });
 
@@ -255,76 +255,76 @@ router.delete('/record/:recordId', async (req: Request, res: Response) => {
   try {
     const { recordId } = req.params;
 
-    // 检查记录是否存在
+    // 檢查記錄是否存在
     const record = await queryOne('SELECT id, ai_feedback FROM qa_records WHERE id = ?', [recordId]);
     if (!record) {
-      throw new AppError(404, '问答记录不存在');
+      throw new AppError(404, '問答記錄不存在');
     }
 
     if (!record.ai_feedback) {
-      throw new AppError(400, '该记录没有反馈');
+      throw new AppError(400, '該記錄沒有反饋');
     }
 
-    // 清除反馈（设置为 NULL）
+    // 清除反饋（設置為 NULL）
     await execute('UPDATE qa_records SET ai_feedback = NULL WHERE id = ?', [recordId]);
 
-    console.log(`🗑️  反馈已删除: 记录ID=${recordId}`);
+    console.log(`🗑️  反饋已刪除: 記錄ID=${recordId}`);
 
     res.json({
       success: true,
-      message: '反馈已删除',
+      message: '反饋已刪除',
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('删除反馈失败:', error);
-    throw new AppError(500, '删除反馈失败');
+    console.error('刪除反饋失敗:', error);
+    throw new AppError(500, '刪除反饋失敗');
   }
 });
 
-// 批量删除会话的所有反馈
+// 批量删除會話的所有反馈
 router.delete('/session/:sessionId', async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
 
-    // 检查会话是否存在
+    // 檢查會話是否存在
     const session = await queryOne('SELECT id FROM sessions WHERE id = ?', [sessionId]);
     if (!session) {
-      throw new AppError(404, '会话不存在');
+      throw new AppError(404, '會話不存在');
     }
 
-    // 清除该会话所有问答记录的反馈
+    // 清除該會話所有問答記錄的反饋
     const affectedRows = await execute(
       'UPDATE qa_records SET ai_feedback = NULL WHERE session_id = ?',
       [sessionId]
     );
 
-    console.log(`🗑️  批量删除反馈: 会话ID=${sessionId}, 影响记录数=${affectedRows}`);
+    console.log(`🗑️  批量刪除反饋: 會話ID=${sessionId}, 影響記錄數=${affectedRows}`);
 
     res.json({
       success: true,
-      message: `已删除 ${affectedRows} 条反馈`,
+      message: `已刪除 ${affectedRows} 條反饋`,
       data: {
         deleted_count: affectedRows,
       },
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    console.error('批量删除反馈失败:', error);
-    throw new AppError(500, '批量删除反馈失败');
+    console.error('批量删除反馈失敗:', error);
+    throw new AppError(500, '批量删除反馈失敗');
   }
 });
 
 function getCategoryName(category: string): string {
   const map: Record<string, string> = {
-    'english-oral': '英文口语',
-    'chinese-oral': '中文表达',
-    'chinese-expression': '中文表达', // 兼容旧数据
-    'logic-thinking': '逻辑思维',
-    'logical-thinking': '逻辑思维', // 兼容旧数据
-    'current-affairs': '时事常识',
-    'science-knowledge': '科学常识',
-    'personal-growth': '个人成长',
-    'group-discussion': '小组讨论',
+    'english-oral': '英文口語',
+    'chinese-oral': '中文表達',
+    'chinese-expression': '中文表達', // 兼容舊數據
+    'logic-thinking': '邏輯思維',
+    'logical-thinking': '邏輯思維', // 兼容舊數據
+    'current-affairs': '時事常識',
+    'science-knowledge': '科學常識',
+    'personal-growth': '個人成長',
+    'group-discussion': '小組討論',
   };
   return map[category] || category;
 }

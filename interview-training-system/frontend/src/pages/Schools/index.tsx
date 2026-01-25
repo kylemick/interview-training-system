@@ -17,13 +17,13 @@ interface School {
 }
 
 const categoryLabels: Record<string, string> = {
-  'english-oral': '英文口语',
-  'chinese-expression': '中文表达',
-  'logical-thinking': '逻辑思维',
-  'current-affairs': '时事常识',
-  'science-knowledge': '科学常识',
-  'personal-growth': '个人成长',
-  'group-discussion': '小组讨论',
+  'english-oral': '英文口語',
+  'chinese-expression': '中文表達',
+  'logical-thinking': '邏輯思維',
+  'current-affairs': '時事常識',
+  'science-knowledge': '科學常識',
+  'personal-growth': '个人成長',
+  'group-discussion': '小組討論',
 };
 
 export default function SchoolsPage() {
@@ -35,14 +35,14 @@ export default function SchoolsPage() {
   const [form] = Form.useForm();
   const { executeWithThinking } = useAiThinking();
 
-  // 加载学校列表
+  // 加载學校列表
   const loadSchools = async () => {
     setLoading(true);
     try {
       const response = await api.schools.list();
       setSchools(response.data || []);
     } catch (error) {
-      message.error('加载学校列表失败');
+      message.error('加载學校列表失敗');
       console.error(error);
     } finally {
       setLoading(false);
@@ -53,7 +53,7 @@ export default function SchoolsPage() {
     loadSchools();
   }, []);
 
-  // 打开编辑/新增弹窗
+  // 打開编輯/新增弹窗
   const handleEdit = (school?: School) => {
     if (school) {
       setEditingSchool(school);
@@ -65,13 +65,13 @@ export default function SchoolsPage() {
     setModalVisible(true);
   };
 
-  // AI 生成学校档案
+  // AI 生成學校檔案
   const handleAiGenerate = async () => {
     try {
       const schoolName = form.getFieldValue('name') || form.getFieldValue('name_zh');
       
       if (!schoolName || !schoolName.trim()) {
-        message.warning('请先输入学校名称（中文或英文）');
+        message.warning('请先输入學校名称（中文或英文）');
         return;
       }
 
@@ -85,12 +85,12 @@ export default function SchoolsPage() {
           });
         },
         {
-          taskName: `生成${schoolName.trim()}学校档案`,
+          taskName: `生成${schoolName.trim()}學校檔案`,
           onSuccess: (response) => {
             if (response.success) {
               const profile = response.data;
               
-              // 自动填充表单
+              // 自動填充表单
               form.setFieldsValue({
                 code: profile.code,
                 name: profile.name,
@@ -100,16 +100,16 @@ export default function SchoolsPage() {
                 notes: profile.notes,
               });
 
-              message.success('AI 已生成学校档案，请检查并修改');
+              message.success('AI 已生成學校檔案，请检查并修改');
             }
           },
           onError: (error: any) => {
-            console.error('AI 生成失败:', error);
+            console.error('AI 生成失敗:', error);
             
             if (error.response?.data?.message) {
               message.error(error.response.data.message);
             } else {
-              message.error('AI 生成失败，请检查 DeepSeek API Key 配置');
+              message.error('AI 生成失敗，请检查 DeepSeek API Key 配置');
             }
           },
         }
@@ -119,7 +119,7 @@ export default function SchoolsPage() {
     }
   };
 
-  // 保存学校
+  // 保存學校
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
@@ -127,36 +127,36 @@ export default function SchoolsPage() {
       if (editingSchool) {
         // 更新
         await api.schools.update(editingSchool.code, values);
-        message.success('学校信息已更新');
+        message.success('學校信息已更新');
       } else {
         // 新增
         await api.schools.create(values);
-        message.success('学校已添加');
+        message.success('學校已添加');
       }
       
       setModalVisible(false);
       loadSchools();
     } catch (error) {
-      message.error('保存失败');
+      message.error('保存失敗');
       console.error(error);
     }
   };
 
-  // 删除学校
+  // 删除學校
   const handleDelete = (school: School) => {
     Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除 ${school.name_zh} (${school.code}) 吗？`,
+      title: '確认删除',
+      content: `確定要删除 ${school.name_zh} (${school.code}) 吗？`,
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
         try {
           await api.schools.delete(school.code);
-          message.success('学校已删除');
+          message.success('學校已删除');
           loadSchools();
         } catch (error) {
-          message.error('删除失败');
+          message.error('删除失敗');
           console.error(error);
         }
       },
@@ -165,7 +165,7 @@ export default function SchoolsPage() {
 
   const columns = [
     {
-      title: '学校代码',
+      title: '學校代碼',
       dataIndex: 'code',
       key: 'code',
       width: 100,
@@ -183,7 +183,7 @@ export default function SchoolsPage() {
       width: 250,
     },
     {
-      title: '面试重点',
+      title: '面試重點',
       dataIndex: 'focus_areas',
       key: 'focus_areas',
       render: (areas: string[]) => (
@@ -197,7 +197,7 @@ export default function SchoolsPage() {
       ),
     },
     {
-      title: '面试风格',
+      title: '面試風格',
       dataIndex: 'interview_style',
       key: 'interview_style',
       width: 120,
@@ -213,7 +213,7 @@ export default function SchoolsPage() {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            编辑
+            编輯
           </Button>
           <Button
             type="link"
@@ -231,13 +231,13 @@ export default function SchoolsPage() {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>学校档案管理</h1>
+        <h1 style={{ margin: 0 }}>學校檔案管理</h1>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => handleEdit()}
         >
-          添加学校
+          添加學校
         </Button>
       </div>
 
@@ -250,7 +250,7 @@ export default function SchoolsPage() {
       />
 
       <Modal
-        title={editingSchool ? '编辑学校' : '添加学校'}
+        title={editingSchool ? '编輯學校' : '添加學校'}
         open={modalVisible}
         onOk={handleSave}
         onCancel={() => setModalVisible(false)}
@@ -270,23 +270,23 @@ export default function SchoolsPage() {
               loading={aiGenerating}
               block
             >
-              {aiGenerating ? 'AI 生成中...' : '🤖 AI 自动生成学校档案'}
+              {aiGenerating ? 'AI 生成中...' : '🤖 AI 自動生成學校檔案'}
             </Button>
             <div style={{ fontSize: 12, color: '#999', textAlign: 'center' }}>
-              提示：先输入学校中文名或英文名，然后点击上方按钮让 AI 自动填充其他信息
+              提示：先输入學校中文名或英文名，然後點击上方按钮让 AI 自動填充其他信息
             </div>
           </Space>
 
           <Form.Item
-            label="学校中文名称"
+            label="學校中文名称"
             name="name_zh"
             rules={[{ required: true, message: '请输入中文名称' }]}
           >
-            <Input placeholder="例如：圣保罗男女中学" />
+            <Input placeholder="例如：聖保羅男女中學" />
           </Form.Item>
 
           <Form.Item
-            label="学校英文名称"
+            label="學校英文名称"
             name="name"
             rules={[{ required: true, message: '请输入英文名称' }]}
           >
@@ -294,21 +294,21 @@ export default function SchoolsPage() {
           </Form.Item>
 
           <Form.Item
-            label="学校代码"
+            label="學校代碼"
             name="code"
-            rules={[{ required: true, message: '请输入学校代码' }]}
+            rules={[{ required: true, message: '请输入學校代碼' }]}
           >
             <Input placeholder="例如：SPCC" disabled={!!editingSchool} />
           </Form.Item>
 
           <Form.Item
-            label="面试重点领域"
+            label="面試重點領域"
             name="focus_areas"
-            rules={[{ required: true, message: '请选择面试重点' }]}
+            rules={[{ required: true, message: '请選擇面試重點' }]}
           >
             <Select
               mode="multiple"
-              placeholder="选择面试重点领域"
+              placeholder="選擇面試重點領域"
               options={Object.entries(categoryLabels).map(([value, label]) => ({
                 value,
                 label,
@@ -317,20 +317,20 @@ export default function SchoolsPage() {
           </Form.Item>
 
           <Form.Item
-            label="面试风格"
+            label="面試風格"
             name="interview_style"
-            rules={[{ required: true, message: '请输入面试风格' }]}
+            rules={[{ required: true, message: '请输入面試風格' }]}
           >
             <Input placeholder="例如：academic-rigorous" />
           </Form.Item>
 
           <Form.Item
-            label="备注说明"
+            label="備注說明"
             name="notes"
           >
             <TextArea
               rows={4}
-              placeholder="学校特点、面试特色等"
+              placeholder="學校特點、面試特色等"
             />
           </Form.Item>
         </Form>

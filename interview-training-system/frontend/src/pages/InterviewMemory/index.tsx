@@ -28,17 +28,29 @@ const { TextArea } = Input
 const { Option } = Select
 const { Title, Paragraph, Text } = Typography
 
+// 七大專項類別
 const CATEGORIES = [
-  { value: 'english-oral', label: '英文口语' },
-  { value: 'chinese-oral', label: '中文表达' },
-  { value: 'logic-thinking', label: '逻辑思维' },
-  { value: 'current-affairs', label: '时事常识' },
-  { value: 'science-knowledge', label: '科学常识' },
-  { value: 'personal-growth', label: '个人成长' },
-  { value: 'group-discussion', label: '小组讨论' },
-]
+  { value: 'english-oral', label: '英文口語' },
+  { value: 'chinese-oral', label: '中文表達' },
+  { value: 'logic-thinking', label: '邏輯思維' },
+  { value: 'current-affairs', label: '時事常識' },
+  { value: 'science-knowledge', label: '科學常識' },
+  { value: 'personal-growth', label: '个人成長' },
+  { value: 'group-discussion', label: '小組討論' },
+];
 
-// 学校列表从API动态加载，存储在 schools 状态中
+// 四个學科能力類別
+const SUBJECT_CATEGORIES = [
+  { value: 'chinese-reading', label: '中文阅读理解' },
+  { value: 'english-reading', label: '英文阅读理解' },
+  { value: 'mathematics', label: '數學基础' },
+  { value: 'science-practice', label: '科學实践' },
+];
+
+// 所有類別（七大專項 + 四个學科能力）
+const ALL_CATEGORIES = [...CATEGORIES, ...SUBJECT_CATEGORIES];
+
+// 學校列表從API動態加载，存储在 schools 狀態中
 
 interface ExtractedQuestion {
   question_text: string
@@ -82,7 +94,7 @@ export default function InterviewMemory() {
   const [schools, setSchools] = useState<Array<{ code: string; name_zh: string }>>([])
   const [loadingSchools, setLoadingSchools] = useState(false)
 
-  // 加载学校列表
+  // 加载學校列表
   useEffect(() => {
     const loadSchools = async () => {
       try {
@@ -92,7 +104,7 @@ export default function InterviewMemory() {
           setSchools(response.data)
         }
       } catch (error) {
-        console.error('加载学校列表失败:', error)
+        console.error('加载學校列表失敗:', error)
       } finally {
         setLoadingSchools(false)
       }
@@ -105,7 +117,7 @@ export default function InterviewMemory() {
   // AI 分析文本
   const handleExtract = async () => {
     if (!inputText.trim()) {
-      message.warning('请输入面试回忆文本')
+      message.warning('请输入面試回憶文本')
       return
     }
 
@@ -122,14 +134,14 @@ export default function InterviewMemory() {
           });
         },
         {
-          taskName: '提取面试回忆',
+          taskName: '提取面試回憶',
           onSuccess: (response) => {
             setExtractedData(response.data)
             setCurrentStep(1)
             message.success(response.message || 'AI 分析成功')
           },
           onError: (error: any) => {
-            message.error(error.response?.data?.message || 'AI 分析失败')
+            message.error(error.response?.data?.message || 'AI 分析失敗')
           },
         }
       );
@@ -138,7 +150,7 @@ export default function InterviewMemory() {
     }
   }
 
-  // 编辑问题
+  // 编輯問題
   const handleEdit = (question: ExtractedQuestion, index: number) => {
     setEditingQuestion(question)
     setEditingIndex(index)
@@ -146,7 +158,7 @@ export default function InterviewMemory() {
     setEditModalVisible(true)
   }
 
-  // 保存编辑
+  // 保存编輯
   const handleSaveEdit = async () => {
     try {
       const values = await form.validateFields()
@@ -155,22 +167,22 @@ export default function InterviewMemory() {
         const newQuestions = [...extractedData.questions]
         newQuestions[editingIndex] = { ...values, tags: values.tags || [] }
         setExtractedData({ ...extractedData, questions: newQuestions })
-        message.success('已更新问题')
+        message.success('已更新問題')
       }
       
       setEditModalVisible(false)
       setEditingQuestion(null)
       setEditingIndex(-1)
     } catch (error) {
-      console.error('保存失败:', error)
+      console.error('保存失敗:', error)
     }
   }
 
-  // 删除问题
+  // 删除問題
   const handleDelete = (index: number) => {
     Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除这个问题吗？',
+      title: '確认删除',
+      content: '確定要删除这个問題吗？',
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
@@ -178,22 +190,22 @@ export default function InterviewMemory() {
         if (extractedData) {
           const newQuestions = extractedData.questions.filter((_, i) => i !== index)
           setExtractedData({ ...extractedData, questions: newQuestions })
-          message.success('已删除问题')
+          message.success('已删除問題')
         }
       },
     })
   }
 
-  // 保存到题库
+  // 保存到題庫
   const handleSaveToQuestionBank = async () => {
     if (!extractedData || extractedData.questions.length === 0) {
-      message.warning('没有可保存的问题')
+      message.warning('没有可保存的問題')
       return
     }
 
     setSaving(true)
     try {
-      // 保存问题
+      // 保存問題
       await executeWithThinking(
         'save-interview-questions',
         async () => {
@@ -203,9 +215,9 @@ export default function InterviewMemory() {
           });
         },
         {
-          taskName: '保存面试题目',
+          taskName: '保存面試題目',
           onSuccess: async (questionsResponse) => {
-            // 保存弱点分析（如果有）
+            // 保存弱點分析（如果有）
             if (extractedData?.weaknesses && extractedData.weaknesses.length > 0) {
               await executeWithThinking(
                 'save-weaknesses',
@@ -213,23 +225,23 @@ export default function InterviewMemory() {
                   return await api.ai.saveWeaknesses({
                     weaknesses: extractedData.weaknesses!,
                     source_text: inputText,
-                    // 不传递student_name，让后端从设置获取
+                    // 不傳递student_name，让後端從设置获取
                   });
                 },
                 {
-                  taskName: '保存弱点分析',
+                  taskName: '保存弱點分析',
                   onSuccess: () => {
                     message.success(
-                      `${questionsResponse.message || '问题已保存'}，同时保存了 ${extractedData?.weaknesses?.length || 0} 条弱点分析`
+                      `${questionsResponse.message || '問題已保存'}，同時保存了 ${extractedData?.weaknesses?.length || 0} 条弱點分析`
                     );
                   },
                   onError: (error: any) => {
-                    message.warning('问题已保存，但弱点分析保存失败：' + (error.response?.data?.message || '保存失败'));
+                    message.warning('問題已保存，但弱點分析保存失敗：' + (error.response?.data?.message || '保存失敗'));
                   },
                 }
               );
             } else {
-              message.success(questionsResponse.message || '问题已保存');
+              message.success(questionsResponse.message || '問題已保存');
             }
             
             // 重置表单
@@ -240,7 +252,7 @@ export default function InterviewMemory() {
             setExtractedData(null)
           },
           onError: (error: any) => {
-            message.error(error.response?.data?.message || '保存失败');
+            message.error(error.response?.data?.message || '保存失敗');
           },
         }
       );
@@ -272,7 +284,7 @@ export default function InterviewMemory() {
     const map: Record<string, string> = {
       easy: '简单',
       medium: '中等',
-      hard: '困难',
+      hard: '困難',
     }
     return map[value] || value
   }
@@ -286,20 +298,20 @@ export default function InterviewMemory() {
       render: (_: any, __: any, index: number) => index + 1,
     },
     {
-      title: '问题',
+      title: '問題',
       dataIndex: 'question_text',
       key: 'question_text',
       ellipsis: true,
     },
     {
-      title: '类别',
+      title: '類別',
       dataIndex: 'category',
       key: 'category',
       width: 120,
       render: (cat: string) => <Tag color="blue">{getCategoryLabel(cat)}</Tag>,
     },
     {
-      title: '难度',
+      title: '難度',
       dataIndex: 'difficulty',
       key: 'difficulty',
       width: 80,
@@ -308,7 +320,7 @@ export default function InterviewMemory() {
       ),
     },
     {
-      title: '标签',
+      title: '標籤',
       dataIndex: 'tags',
       key: 'tags',
       width: 180,
@@ -334,7 +346,7 @@ export default function InterviewMemory() {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record, index)}
           >
-            编辑
+            编輯
           </Button>
           <Button
             type="link"
@@ -353,10 +365,10 @@ export default function InterviewMemory() {
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <Title level={2}>
-        <FileTextOutlined /> 面试回忆录入
+        <FileTextOutlined /> 面試回憶錄入
       </Title>
       <Paragraph type="secondary">
-        将面试回忆文本粘贴到下方，AI 将自动提取问题并分类，您可以编辑后保存到题库。
+        将面試回憶文本粘贴到下方，AI 将自動提取問題并分類，您可以编輯後保存到題庫。
       </Paragraph>
 
       <Steps
@@ -365,7 +377,7 @@ export default function InterviewMemory() {
         items={[
           { title: '输入文本', icon: <FileTextOutlined /> },
           { title: 'AI 分析', icon: <RobotOutlined /> },
-          { title: '保存题库', icon: <SaveOutlined /> },
+          { title: '保存題庫', icon: <SaveOutlined /> },
         ]}
       />
 
@@ -374,13 +386,13 @@ export default function InterviewMemory() {
         <Card>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Alert
-              message="使用说明"
+              message="使用說明"
               description={
                 <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-                  <li>粘贴完整的面试回忆文本，包括问题和回答</li>
-                  <li>AI 会自动识别问题、分类、难度和建议答案</li>
-                  <li>您可以选择指定专项类别和学校，AI 会优先使用您的选择</li>
-                  <li>分析后可以编辑每个问题，然后批量保存到题库</li>
+                  <li>粘贴完整的面試回憶文本，包括問題和回答</li>
+                  <li>AI 會自動識別問題、分類、難度和建議答案</li>
+                  <li>您可以選擇指定專項類別和學校，AI 會優先使用您的選擇</li>
+                  <li>分析後可以编輯每个問題，然後批量保存到題庫</li>
                 </ul>
               }
               type="info"
@@ -389,21 +401,21 @@ export default function InterviewMemory() {
 
             <div>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                面试回忆文本 <Text type="danger">*</Text>
+                面試回憶文本 <Text type="danger">*</Text>
               </label>
               <TextArea
                 rows={12}
-                placeholder={`请粘贴面试回忆文本，例如：
+                placeholder={`请粘贴面試回憶文本，例如：
 
-今天去了SPCC面试，遇到了以下问题：
+今天去了SPCC面試，遇到了以下問題：
 
-1. 面试官先用英文问我："Tell me about your favorite book."
-我回答了我最喜欢的书是Harry Potter...
+1. 面試官先用英文問我："Tell me about your favorite book."
+我回答了我最喜欢的書是Harry Potter...
 
-2. 然后问："What do you think about climate change?"
-我说我认为气候变化是很严重的问题...
+2. 然後問："What do you think about climate change?"
+我說我认为气候变化是很嚴重的問題...
 
-3. 最后问中文："你觉得什么是领导力？"
+3. 最後問中文："你觉得什么是領導力？"
 ...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -413,15 +425,15 @@ export default function InterviewMemory() {
 
             <Space size="middle" style={{ width: '100%' }} wrap>
               <div>
-                <label style={{ display: 'block', marginBottom: 8 }}>指定专项类别（可选）</label>
+                <label style={{ display: 'block', marginBottom: 8 }}>指定專項類別（可選）</label>
                 <Select
-                  placeholder="AI 自动识别"
+                  placeholder="AI 自動識別"
                   allowClear
                   style={{ width: 200 }}
                   value={category}
                   onChange={setCategory}
                 >
-                  {CATEGORIES.map((cat) => (
+                  {ALL_CATEGORIES.map((cat) => (
                     <Option key={cat.value} value={cat.value}>
                       {cat.label}
                     </Option>
@@ -430,9 +442,9 @@ export default function InterviewMemory() {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: 8 }}>目标学校（可选）</label>
+                <label style={{ display: 'block', marginBottom: 8 }}>目標學校（可選）</label>
                 <Select
-                  placeholder="选择学校"
+                  placeholder="選擇學校"
                   allowClear
                   style={{ width: 200 }}
                   value={schoolCode}
@@ -449,17 +461,17 @@ export default function InterviewMemory() {
                 </Select>
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 8 }}>面试轮次（可选）</label>
+                <label style={{ display: 'block', marginBottom: 8 }}>面試輪次（可選）</label>
                 <Select
-                  placeholder="选择轮次"
+                  placeholder="選擇輪次"
                   allowClear
                   style={{ width: 150 }}
                   value={interviewRound}
                   onChange={setInterviewRound}
                 >
-                  <Option value="first-round">第一轮</Option>
-                  <Option value="second-round">第二轮</Option>
-                  <Option value="final-round">最终轮</Option>
+                  <Option value="first-round">第一輪</Option>
+                  <Option value="second-round">第二輪</Option>
+                  <Option value="final-round">最终輪</Option>
                 </Select>
               </div>
             </Space>
@@ -472,24 +484,24 @@ export default function InterviewMemory() {
               loading={extracting}
               disabled={!inputText.trim()}
             >
-              {extracting ? 'AI 分析中...' : 'AI 分析并提取问题'}
+              {extracting ? 'AI 分析中...' : 'AI 分析并提取問題'}
             </Button>
           </Space>
         </Card>
       )}
 
-      {/* 步骤 2: 查看和编辑提取结果 */}
+      {/* 步骤 2: 查看和编輯提取結果 */}
       {currentStep === 1 && extractedData && (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {extractedData.summary && (
-            <Card title="📊 AI 分析总结">
+            <Card title="📊 AI 分析總結">
               <Paragraph>{extractedData.summary}</Paragraph>
             </Card>
           )}
 
-          {/* 弱点分析卡片 */}
+          {/* 弱點分析卡片 */}
           {extractedData.weaknesses && extractedData.weaknesses.length > 0 && (
-            <Card title={`⚠️ 识别到 ${extractedData.weaknesses.length} 个需要改进的弱点`}>
+            <Card title={`⚠️ 識別到 ${extractedData.weaknesses.length} 个需要改進的弱點`}>
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 {extractedData.weaknesses.map((weakness, index) => (
                   <Card
@@ -503,7 +515,7 @@ export default function InterviewMemory() {
                           weakness.severity === 'medium' ? 'orange' : 'blue'
                         }>
                           {weakness.severity === 'high' ? '高' :
-                           weakness.severity === 'medium' ? '中' : '低'}严重
+                           weakness.severity === 'medium' ? '中' : '低'}嚴重
                         </Tag>
                         <Tag color="blue">{getCategoryLabel(weakness.category)}</Tag>
                         <span>{weakness.description}</span>
@@ -520,14 +532,14 @@ export default function InterviewMemory() {
                         </div>
                       )}
                       <div>
-                        <Text type="secondary">改进建议：</Text>
+                        <Text type="secondary">改進建議：</Text>
                         <Paragraph style={{ marginLeft: 16 }}>
                           {weakness.improvement_suggestions}
                         </Paragraph>
                       </div>
                       {weakness.related_topics && weakness.related_topics.length > 0 && (
                         <div>
-                          <Text type="secondary">相关话题：</Text>
+                          <Text type="secondary">相關話題：</Text>
                           <div style={{ marginLeft: 16, marginTop: 8 }}>
                             {weakness.related_topics.map((topic) => (
                               <Tag key={topic}>{topic}</Tag>
@@ -541,7 +553,7 @@ export default function InterviewMemory() {
               </Space>
               <Alert
                 message="💡 提示"
-                description="系统将保存这些弱点分析，后续可以根据弱点生成针对性的练习题目。"
+                description="係統将保存这些弱點分析，後续可以根據弱點生成針對性的練習題目。"
                 type="info"
                 showIcon
                 style={{ marginTop: 16 }}
@@ -550,7 +562,7 @@ export default function InterviewMemory() {
           )}
 
           <Card
-            title={`✅ 提取到 ${extractedData.questions.length} 个问题`}
+            title={`✅ 提取到 ${extractedData.questions.length} 个問題`}
             extra={
               <Space>
                 <Button onClick={handleReset}>重新输入</Button>
@@ -561,7 +573,7 @@ export default function InterviewMemory() {
                   loading={saving}
                   disabled={extractedData.questions.length === 0}
                 >
-                  保存到题库
+                  保存到題庫
                 </Button>
               </Space>
             }
@@ -577,9 +589,9 @@ export default function InterviewMemory() {
         </Space>
       )}
 
-      {/* 编辑问题弹窗 */}
+      {/* 编輯問題弹窗 */}
       <Modal
-        title="编辑问题"
+        title="编輯問題"
         open={editModalVisible}
         onOk={handleSaveEdit}
         onCancel={() => setEditModalVisible(false)}
@@ -590,13 +602,13 @@ export default function InterviewMemory() {
         <Form form={form} layout="vertical">
           <Form.Item
             name="question_text"
-            label="问题内容"
-            rules={[{ required: true, message: '请输入问题内容' }]}
+            label="問題內容"
+            rules={[{ required: true, message: '请输入問題內容' }]}
           >
             <TextArea rows={3} />
           </Form.Item>
 
-          <Form.Item name="category" label="专项类别" rules={[{ required: true, message: '请选择类别' }]}>
+          <Form.Item name="category" label="專項類別" rules={[{ required: true, message: '请選擇類別' }]}>
             <Select>
               {CATEGORIES.map((cat) => (
                 <Option key={cat.value} value={cat.value}>
@@ -606,24 +618,24 @@ export default function InterviewMemory() {
             </Select>
           </Form.Item>
 
-          <Form.Item name="difficulty" label="难度" rules={[{ required: true, message: '请选择难度' }]}>
+          <Form.Item name="difficulty" label="難度" rules={[{ required: true, message: '请選擇難度' }]}>
             <Select>
               <Option value="easy">简单</Option>
               <Option value="medium">中等</Option>
-              <Option value="hard">困难</Option>
+              <Option value="hard">困難</Option>
             </Select>
           </Form.Item>
 
-          <Form.Item name="reference_answer" label="参考答案">
-            <TextArea rows={4} placeholder="建议答案要点" />
+          <Form.Item name="reference_answer" label="參考答案">
+            <TextArea rows={4} placeholder="建議答案要點" />
           </Form.Item>
 
-          <Form.Item name="tags" label="标签">
-            <Select mode="tags" placeholder="输入标签后按回车" />
+          <Form.Item name="tags" label="標籤">
+            <Select mode="tags" placeholder="输入標籤後按回车" />
           </Form.Item>
 
-          <Form.Item name="school_code" label="目标学校">
-            <Select allowClear placeholder="选择学校（可选）" loading={loadingSchools}>
+          <Form.Item name="school_code" label="目標學校">
+            <Select allowClear placeholder="選擇學校（可選）" loading={loadingSchools}>
               {schools.map((school) => (
                 <Option key={school.code} value={school.code}>
                   {school.name_zh} ({school.code})
@@ -632,8 +644,8 @@ export default function InterviewMemory() {
             </Select>
           </Form.Item>
 
-          <Form.Item name="notes" label="备注">
-            <TextArea rows={2} placeholder="原始回答或其他备注" />
+          <Form.Item name="notes" label="備注">
+            <TextArea rows={2} placeholder="原始回答或其他備注" />
           </Form.Item>
         </Form>
       </Modal>

@@ -32,7 +32,7 @@ export function errorHandler(
   res.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',
-      message: '服务器内部错误',
+      message: '服務器內部错误',
     },
   })
 }

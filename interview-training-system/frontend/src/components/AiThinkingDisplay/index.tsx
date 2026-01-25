@@ -1,5 +1,5 @@
 /**
- * AI思考过程展示组件
+ * AI思考過程展示組件
  * 悬浮框展示AI思考步骤
  */
 import React, { memo } from 'react'
@@ -19,12 +19,12 @@ const AiThinkingDisplay: React.FC = memo(() => {
     toggleMinimize,
   } = useAiThinkingStore()
 
-  // 如果不可见或没有任务，不渲染
+  // 如果不可见或没有任務，不渲染
   if (!visible || !currentTask) {
     return null
   }
 
-  // 最小化状态：只显示小图标
+  // 最小化狀態：只显示小图標
   if (minimized) {
     return (
       <div className="ai-thinking-minimized" onClick={toggleMinimize}>

@@ -1,35 +1,35 @@
-# Change: 增加学校-轮次模拟面试练习模式
+# Change: 增加學校-輪次模拟面試練習模式
 
 ## Why
 
-当前系统支持任务模式、自由模式和弱点专项练习模式，但缺少针对特定学校和面试轮次的完整模拟面试功能。用户希望能够：
-1. 选择目标学校和面试轮次（如SPCC第一轮、QC第二轮）
-2. 根据该学校过往对应轮次的真实题目，生成类似的模拟题目
-3. 完成一次完整的模拟面试，更贴近真实面试场景
-4. 在生成题目时能够搜索和参考该学校对应轮次的面试信息，提升题目生成的准确性
+当前係統支持任務模式、自由模式和弱點專項練習模式，但缺少針對特定學校和面試輪次的完整模拟面試功能。用户希望能够：
+1. 選擇目標學校和面試輪次（如SPCC第一輪、QC第二輪）
+2. 根據该學校過往對应輪次的真实題目，生成類似的模拟題目
+3. 完成一次完整的模拟面試，更贴近真实面試场景
+4. 在生成題目時能够搜索和參考该學校對应輪次的面試信息，提升題目生成的準確性
 
-这有助于学生进行更有针对性的准备，特别是针对心仪学校的特定面试轮次。
+这有助于學生進行更有針對性的準備，特別是針對心仪學校的特定面試輪次。
 
 ## What Changes
 
-- **新增学校-轮次模拟面试练习模式**：在"开始练习"页面增加新的练习模式选项
-- **扩展面试回忆数据结构**：在`interview_memories`表中增加`interview_round`字段，用于记录面试轮次信息
-- **学校轮次信息管理**：支持在面试回忆录入时指定轮次，并在学校档案中维护轮次相关信息
-- **基于轮次的题目生成**：根据选择的学校和轮次，搜索该学校对应轮次的过往题目和面试回忆，生成类似的模拟题目
-- **完整模拟面试流程**：支持一次完整的模拟面试，包含多道题目，覆盖该轮次常见的考查重点
+- **新增學校-輪次模拟面試練習模式**：在"開始練習"页面增加新的練習模式選項
+- **扩展面試回憶數據結构**：在`interview_memories`表中增加`interview_round`字段，用于記錄面試輪次信息
+- **學校輪次信息管理**：支持在面試回憶錄入時指定輪次，并在學校檔案中維护輪次相關信息
+- **基于輪次的題目生成**：根據選擇的學校和輪次，搜索该學校對应輪次的過往題目和面試回憶，生成類似的模拟題目
+- **完整模拟面試流程**：支持一次完整的模拟面試，包含多道題目，覆盖该輪次常见的考查重點
 
 ## Impact
 
 - **Affected specs**: 
-  - `interview-practice` - 新增学校-轮次模拟面试模式
-  - `school-profiles` - 扩展学校档案以支持轮次信息查询和应用
+  - `interview-practice` - 新增學校-輪次模拟面試模式
+  - `school-profiles` - 扩展學校檔案以支持輪次信息查询和应用
 - **Affected code**: 
-  - `frontend/src/pages/Practice/index.tsx` - 增加新的练习模式选择
-  - `backend/src/routes/sessions.ts` - 新增基于学校和轮次创建会话的逻辑
-  - `backend/src/ai/questionGenerator.ts` - 增强题目生成，支持基于轮次信息生成
-  - `backend/src/db/schema.sql` - 扩展`interview_memories`表结构
-  - `backend/src/routes/ai.ts` - 扩展面试回忆分析，支持轮次信息提取
-  - `frontend/src/pages/InterviewMemory/index.tsx` - 增加轮次选择字段
+  - `frontend/src/pages/Practice/index.tsx` - 增加新的練習模式選擇
+  - `backend/src/routes/sessions.ts` - 新增基于學校和輪次創建會話的邏輯
+  - `backend/src/ai/questionGenerator.ts` - 增强題目生成，支持基于輪次信息生成
+  - `backend/src/db/schema.sql` - 扩展`interview_memories`表結构
+  - `backend/src/routes/ai.ts` - 扩展面試回憶分析，支持輪次信息提取
+  - `frontend/src/pages/InterviewMemory/index.tsx` - 增加輪次選擇字段
 - **Database changes**: 
-  - `interview_memories`表增加`interview_round`字段（VARCHAR(50)，可选）
-  - 可能需要增加索引以支持按学校和轮次查询
+  - `interview_memories`表增加`interview_round`字段（VARCHAR(50)，可選）
+  - 可能需要增加索引以支持按學校和輪次查询

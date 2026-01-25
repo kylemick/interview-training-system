@@ -1,5 +1,5 @@
 /**
- * 系统设置路由
+ * 係統設置路由
  */
 import { Router, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
@@ -26,7 +26,7 @@ interface Settings {
 }
 
 /**
- * 确保数据目录存在
+ * 確保數據目錄存在
  */
 async function ensureDataDir() {
   const dataDir = path.dirname(SETTINGS_FILE);
@@ -38,7 +38,7 @@ async function ensureDataDir() {
 }
 
 /**
- * 读取设置
+ * 讀取設置
  */
 async function readSettings(): Promise<Settings> {
   try {
@@ -47,7 +47,7 @@ async function readSettings(): Promise<Settings> {
     return JSON.parse(data);
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      // 文件不存在，返回默认设置
+      // 文件不存在，返回默認設置
       return {
         daily_duration: 30,
         notification_enabled: true,
@@ -58,7 +58,7 @@ async function readSettings(): Promise<Settings> {
 }
 
 /**
- * 写入设置
+ * 寫入設置
  */
 async function writeSettings(settings: Settings): Promise<void> {
   await ensureDataDir();
@@ -66,7 +66,7 @@ async function writeSettings(settings: Settings): Promise<void> {
 }
 
 /**
- * 获取系统设置
+ * 獲取係統設置
  * GET /api/settings
  */
 router.get('/', async (req: Request, res: Response) => {
@@ -86,13 +86,13 @@ router.get('/', async (req: Request, res: Response) => {
       data: safeSettings,
     });
   } catch (error) {
-    console.error('读取设置失败:', error);
-    throw new AppError(500, '读取设置失败');
+    console.error('读取设置失敗:', error);
+    throw new AppError(500, '读取设置失敗');
   }
 });
 
 /**
- * 保存系统设置
+ * 保存係統設置
  * POST /api/settings
  */
 router.post('/', async (req: Request, res: Response) => {
@@ -105,10 +105,10 @@ router.post('/', async (req: Request, res: Response) => {
       notification_enabled,
     } = req.body;
     
-    // 读取现有设置
+    // 讀取現有設置
     const existingSettings = await readSettings();
     
-    // 合并设置
+    // 合併設置
     const newSettings: Settings = {
       ...existingSettings,
       ...(student_name !== undefined && { student_name }),
@@ -123,17 +123,17 @@ router.post('/', async (req: Request, res: Response) => {
       newSettings.created_at = new Date().toISOString();
     }
     
-    // 写入设置
+    // 寫入設置
     await writeSettings(newSettings);
     
-    // 如果提供了新的 API Key，更新环境变量
+    // 如果提供了新的 API Key，更新環境變量
     if (deepseek_api_key) {
       process.env.DEEPSEEK_API_KEY = deepseek_api_key;
     }
     
     res.json({
       success: true,
-      message: '设置已保存',
+      message: '設置已保存',
       data: {
         ...newSettings,
         deepseek_api_key: newSettings.deepseek_api_key 
@@ -142,13 +142,13 @@ router.post('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('保存设置失败:', error);
-    throw new AppError(500, '保存设置失败');
+    console.error('保存設置失敗:', error);
+    throw new AppError(500, '保存設置失敗');
   }
 });
 
 /**
- * 重置设置为默认值
+ * 重置設置為默認值
  * DELETE /api/settings
  */
 router.delete('/', async (req: Request, res: Response) => {
@@ -164,12 +164,12 @@ router.delete('/', async (req: Request, res: Response) => {
     
     res.json({
       success: true,
-      message: '设置已重置为默认值',
+      message: '設置已重置為默認值',
       data: defaultSettings,
     });
   } catch (error) {
-    console.error('重置设置失败:', error);
-    throw new AppError(500, '重置设置失败');
+    console.error('重置設置失敗:', error);
+    throw new AppError(500, '重置設置失敗');
   }
 });
 

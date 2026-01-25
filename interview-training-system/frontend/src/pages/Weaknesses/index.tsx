@@ -43,37 +43,37 @@ const { Title, Paragraph } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
-// 专项类别映射
+// 專項類別映射
 const CATEGORY_MAP: Record<string, string> = {
-  'english-oral': '英文口语',
-  'chinese-expression': '中文表达',
-  'chinese-oral': '中文表达', // 兼容旧数据
-  'logic-thinking': '逻辑思维',
-  'logical-thinking': '逻辑思维', // 兼容旧数据
-  'current-affairs': '时事常识',
-  'science-knowledge': '科学常识',
-  'personal-growth': '个人成长',
-  'group-discussion': '小组讨论',
+  'english-oral': '英文口語',
+  'chinese-expression': '中文表達',
+  'chinese-oral': '中文表達', // 兼容舊數據
+  'logic-thinking': '邏輯思維',
+  'logical-thinking': '邏輯思維', // 兼容舊數據
+  'current-affairs': '時事常識',
+  'science-knowledge': '科學常識',
+  'personal-growth': '个人成長',
+  'group-discussion': '小組討論',
 };
 
-// 弱点类型映射
+// 弱點類型映射
 const WEAKNESS_TYPE_MAP: Record<string, string> = {
-  vocabulary: '词汇量不足',
-  grammar: '语法错误',
-  logic: '逻辑不清晰',
-  knowledge_gap: '知识盲区',
+  vocabulary: '詞汇量不足',
+  grammar: '語法错误',
+  logic: '邏輯不清晰',
+  knowledge_gap: '知識盲区',
   confidence: '信心不足',
-  expression: '表达能力弱',
+  expression: '表達能力弱',
 };
 
-// 严重程度映射
+// 嚴重程度映射
 const SEVERITY_MAP: Record<string, { label: string; color: string }> = {
   high: { label: '高', color: 'red' },
   medium: { label: '中', color: 'orange' },
   low: { label: '低', color: 'blue' },
 };
 
-// 状态映射
+// 狀態映射
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   active: { label: '活跃', color: 'orange' },
   improved: { label: '已改善', color: 'green' },
@@ -106,7 +106,7 @@ interface WeaknessStats {
   by_status: Array<{ status: string; count: number }>;
 }
 
-// 趋势数据接口（暂时未使用，保留用于后续可视化功能）
+// 趋勢數據接口（暫時未使用，保留用于後续可视化功能）
 // interface WeaknessTrend {
 //   period_days: number;
 //   total_weaknesses: number;
@@ -138,7 +138,7 @@ export default function Weaknesses() {
   const [currentWeakness, setCurrentWeakness] = useState<Weakness | null>(null);
   const [settings, setSettings] = useState<{ student_name?: string; target_school?: string } | null>(null);
   
-  // 筛选条件
+  // 筛選条件
   const [filters, setFilters] = useState<{
     category?: string;
     status?: string;
@@ -153,7 +153,7 @@ export default function Weaknesses() {
     total: 0,
   });
 
-  // 加载弱点列表
+  // 加载弱點列表
   const loadWeaknesses = useCallback(async () => {
     try {
       setLoading(true);
@@ -164,17 +164,17 @@ export default function Weaknesses() {
       if (res.success) {
         const data = res.data || [];
         setWeaknesses(data);
-        // 分页信息会在表格组件中自动处理
+        // 分页信息會在表格組件中自動处理
       }
     } catch (error) {
-      console.error('加载弱点列表失败:', error);
-      message.error('加载弱点列表失败');
+      console.error('加载弱點列表失敗:', error);
+      message.error('加载弱點列表失敗');
     } finally {
       setLoading(false);
     }
   }, [filters]);
 
-  // 加载统计数据
+  // 加载統計數據
   const loadStats = useCallback(async () => {
     try {
       const res = await api.weaknesses.stats();
@@ -182,7 +182,7 @@ export default function Weaknesses() {
         setStats(res.data);
       }
     } catch (error) {
-      console.error('加载统计数据失败:', error);
+      console.error('加载統計數據失敗:', error);
     }
   }, []);
 
@@ -194,12 +194,12 @@ export default function Weaknesses() {
         setSettings(res.data);
       }
     } catch (error) {
-      console.error('加载设置失败:', error);
+      console.error('加载设置失敗:', error);
     }
   }, []);
 
 
-  // 加载单个弱点详情
+  // 加载单个弱點详情
   const loadWeaknessDetail = useCallback(async (weaknessId: string) => {
     try {
       setLoading(true);
@@ -207,12 +207,12 @@ export default function Weaknesses() {
       if (res.success) {
         setCurrentWeakness(res.data);
       } else {
-        message.error('获取弱点详情失败');
+        message.error('获取弱點详情失敗');
         navigate('/weaknesses');
       }
     } catch (error) {
-      console.error('加载弱点详情失败:', error);
-      message.error('加载弱点详情失败');
+      console.error('加载弱點详情失敗:', error);
+      message.error('加载弱點详情失敗');
       navigate('/weaknesses');
     } finally {
       setLoading(false);
@@ -226,7 +226,7 @@ export default function Weaknesses() {
       loadWeaknesses();
       loadStats();
       loadSettings();
-      // 趋势数据和学校列表在需要时再加载（用于后续可视化功能）
+      // 趋勢數據和學校列表在需要時再加载（用于後续可视化功能）
     }
     
     return () => {
@@ -253,7 +253,7 @@ export default function Weaknesses() {
   />;
 }
 
-// 弱点列表组件
+// 弱點列表組件
 function WeaknessList({
   weaknesses,
   stats,
@@ -288,7 +288,7 @@ function WeaknessList({
       width: 60,
     },
     {
-      title: '类别',
+      title: '類別',
       dataIndex: 'category',
       key: 'category',
       width: 120,
@@ -297,7 +297,7 @@ function WeaknessList({
       ),
     },
     {
-      title: '弱点类型',
+      title: '弱點類型',
       dataIndex: 'weakness_type',
       key: 'weakness_type',
       width: 120,
@@ -306,7 +306,7 @@ function WeaknessList({
       ),
     },
     {
-      title: '严重程度',
+      title: '嚴重程度',
       dataIndex: 'severity',
       key: 'severity',
       width: 100,
@@ -316,7 +316,7 @@ function WeaknessList({
       },
     },
     {
-      title: '状态',
+      title: '狀態',
       dataIndex: 'status',
       key: 'status',
       width: 100,
@@ -332,14 +332,14 @@ function WeaknessList({
       ellipsis: true,
     },
     {
-      title: '练习次数',
+      title: '練習次數',
       dataIndex: 'practice_count',
       key: 'practice_count',
       width: 100,
       sorter: (a: Weakness, b: Weakness) => a.practice_count - b.practice_count,
     },
     {
-      title: '创建时间',
+      title: '創建時間',
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
@@ -368,10 +368,10 @@ function WeaknessList({
             icon={<EditOutlined />}
             onClick={() => handleUpdateStatus(record)}
           >
-            状态
+            狀態
           </Button>
           <Popconfirm
-            title="确定删除此弱点记录？"
+            title="確定删除此弱點記錄？"
             onConfirm={() => handleDelete(record.id)}
           >
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>
@@ -383,7 +383,7 @@ function WeaknessList({
     },
   ], [navigate]);
 
-  // 更新状态
+  // 更新狀態
   const handleUpdateStatus = async (weakness: Weakness) => {
     setCurrentWeaknessForStatus(weakness);
     setStatusModalOpen(true);
@@ -395,29 +395,29 @@ function WeaknessList({
     if (!currentWeaknessForStatus) return;
     try {
       await api.weaknesses.updateStatus(currentWeaknessForStatus.id.toString(), status);
-      message.success('状态更新成功');
+      message.success('狀態更新成功');
       setStatusModalOpen(false);
       onRefresh();
     } catch (error) {
-      message.error('状态更新失败');
+      message.error('狀態更新失敗');
     }
   };
 
-  // 删除弱点
+  // 删除弱點
   const handleDelete = async (id: number) => {
     try {
       await api.weaknesses.delete(id.toString());
       message.success('删除成功');
       onRefresh();
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   };
 
-  // 批量更新状态
+  // 批量更新狀態
   const handleBatchUpdateStatus = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('请先选择弱点');
+      message.warning('请先選擇弱點');
       return;
     }
     setBatchStatus('');
@@ -433,26 +433,26 @@ function WeaknessList({
           await api.weaknesses.updateStatus(key.toString(), batchStatus);
           successCount++;
         } catch (error) {
-          console.error(`更新弱点 ${key} 状态失败:`, error);
+          console.error(`更新弱點 ${key} 狀態失敗:`, error);
         }
       }
-      message.success(`成功更新 ${successCount} 个弱点的状态`);
+      message.success(`成功更新 ${successCount} 个弱點的狀態`);
       setStatusModalOpen(false);
       setSelectedRowKeys([]);
       onRefresh();
     } catch (error) {
-      message.error('批量更新失败');
+      message.error('批量更新失敗');
     }
   };
 
   // 批量删除
   const handleBatchDelete = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('请先选择弱点');
+      message.warning('请先選擇弱點');
       return;
     }
     Modal.confirm({
-      title: `确定删除选中的 ${selectedRowKeys.length} 条弱点记录？`,
+      title: `確定删除選中的 ${selectedRowKeys.length} 条弱點記錄？`,
       onOk: async () => {
         try {
           let successCount = 0;
@@ -461,20 +461,20 @@ function WeaknessList({
               await api.weaknesses.delete(key.toString());
               successCount++;
             } catch (error) {
-              console.error(`删除弱点 ${key} 失败:`, error);
+              console.error(`删除弱點 ${key} 失敗:`, error);
             }
           }
-          message.success(`成功删除 ${successCount} 条记录`);
+          message.success(`成功删除 ${successCount} 条記錄`);
           setSelectedRowKeys([]);
           onRefresh();
         } catch (error) {
-          message.error('批量删除失败');
+          message.error('批量删除失敗');
         }
       },
     });
   };
 
-  // 筛选预设
+  // 筛選预设
   const handleFilterPreset = (preset: string) => {
     switch (preset) {
       case 'high-active':
@@ -492,7 +492,7 @@ function WeaknessList({
     }
   };
 
-  // 表格行选择
+  // 表格行選擇
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
@@ -502,16 +502,16 @@ function WeaknessList({
     <div>
       <Title level={2}>
         <WarningOutlined style={{ marginRight: 8 }} />
-        弱点管理
+        弱點管理
       </Title>
 
-      {/* 统计卡片 */}
+      {/* 統計卡片 */}
       {stats && (
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="总弱点数"
+                title="總弱點數"
                 value={stats.total}
                 prefix={<WarningOutlined />}
                 valueStyle={{ color: '#ff4d4f' }}
@@ -521,7 +521,7 @@ function WeaknessList({
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="活跃弱点"
+                title="活跃弱點"
                 value={stats.by_status.find(s => s.status === 'active')?.count || 0}
                 valueStyle={{ color: '#faad14' }}
               />
@@ -530,7 +530,7 @@ function WeaknessList({
           <Col xs={24} sm={12} md={6}>
             <Card>
               <Statistic
-                title="高严重度"
+                title="高嚴重度"
                 value={stats.by_severity.find(s => s.severity === 'high')?.count || 0}
                 valueStyle={{ color: '#ff4d4f' }}
               />
@@ -551,12 +551,12 @@ function WeaknessList({
         </Row>
       )}
 
-      {/* 筛选和操作栏 */}
+      {/* 筛選和操作栏 */}
       <Card style={{ marginBottom: 16 }}>
         <Space wrap>
-          <span>筛选：</span>
+          <span>筛選：</span>
           <Select
-            placeholder="专项类别"
+            placeholder="專項類別"
             allowClear
             style={{ width: 150 }}
             value={filters.category}
@@ -567,7 +567,7 @@ function WeaknessList({
             ))}
           </Select>
           <Select
-            placeholder="状态"
+            placeholder="狀態"
             allowClear
             style={{ width: 120 }}
             value={filters.status}
@@ -578,7 +578,7 @@ function WeaknessList({
             <Option value="resolved">已解决</Option>
           </Select>
           <Select
-            placeholder="严重程度"
+            placeholder="嚴重程度"
             allowClear
             style={{ width: 120 }}
             value={filters.severity}
@@ -589,7 +589,7 @@ function WeaknessList({
             <Option value="low">低</Option>
           </Select>
           <Select
-            placeholder="弱点类型"
+            placeholder="弱點類型"
             allowClear
             style={{ width: 150 }}
             value={filters.weakness_type}
@@ -602,7 +602,7 @@ function WeaknessList({
           <Divider type="vertical" />
           <span>预设：</span>
           <Button size="small" onClick={() => handleFilterPreset('high-active')}>
-            高严重度活跃
+            高嚴重度活跃
           </Button>
           <Button size="small" onClick={() => handleFilterPreset('improved')}>
             已改善
@@ -620,7 +620,7 @@ function WeaknessList({
           {selectedRowKeys.length > 0 && (
             <>
               <Button onClick={handleBatchUpdateStatus}>
-                批量更新状态 ({selectedRowKeys.length})
+                批量更新狀態 ({selectedRowKeys.length})
               </Button>
               <Button danger onClick={handleBatchDelete}>
                 批量删除 ({selectedRowKeys.length})
@@ -630,7 +630,7 @@ function WeaknessList({
         </Space>
       </Card>
 
-      {/* 弱点列表表格 */}
+      {/* 弱點列表表格 */}
       <Card>
         <Table
           columns={columns}
@@ -648,9 +648,9 @@ function WeaknessList({
         />
       </Card>
 
-      {/* 状态更新对话框 */}
+      {/* 狀態更新對話框 */}
       <Modal
-        title={currentWeaknessForStatus ? "更新弱点状态" : `批量更新状态 (${selectedRowKeys.length}个)`}
+        title={currentWeaknessForStatus ? "更新弱點狀態" : `批量更新狀態 (${selectedRowKeys.length}个)`}
         open={statusModalOpen}
         onOk={() => {
           if (currentWeaknessForStatus) {
@@ -680,7 +680,7 @@ function WeaknessList({
   );
 }
 
-// 弱点详情组件
+// 弱點详情組件
 function WeaknessDetail({
   weakness,
   loading,
@@ -711,12 +711,12 @@ function WeaknessDetail({
           }
         });
       } catch (error) {
-        console.error('加载学校列表失败:', error);
+        console.error('加载學校列表失敗:', error);
       }
     };
     loadSchools();
 
-    // 加载关联的学习素材
+    // 加载關聯的學習素材
     const loadMaterials = async () => {
       if (weakness?.id) {
         try {
@@ -725,7 +725,7 @@ function WeaknessDetail({
             setMaterials(res.data || []);
           }
         } catch (error) {
-          console.error('加载学习素材失败:', error);
+          console.error('加载學習素材失敗:', error);
         }
       }
     };
@@ -737,37 +737,37 @@ function WeaknessDetail({
   }
 
   if (!weakness) {
-    return <Empty description="弱点不存在" />;
+    return <Empty description="弱點不存在" />;
   }
 
-  // 更新状态
+  // 更新狀態
   const handleUpdateStatus = async (status: string) => {
     try {
       await api.weaknesses.updateStatus(weakness.id.toString(), status);
-      message.success('状态更新成功');
+      message.success('狀態更新成功');
       setStatusModalOpen(false);
       onBack();
     } catch (error) {
-      message.error('状态更新失败');
+      message.error('狀態更新失敗');
     }
   };
 
-  // 删除弱点
+  // 删除弱點
   const handleDelete = async () => {
     try {
       await api.weaknesses.delete(weakness.id.toString());
       message.success('删除成功');
       navigate('/weaknesses');
     } catch (error) {
-      message.error('删除失败');
+      message.error('删除失敗');
     }
   };
 
-  // 生成针对性题目
+  // 生成針對性題目
   const [generatingQuestions, setGeneratingQuestions] = useState(false);
   const handleGenerateQuestions = async () => {
     if (generatingQuestions) {
-      message.warning('正在生成题目，请勿重复点击');
+      message.warning('正在生成題目，请勿重复點击');
       return;
     }
     try {
@@ -781,13 +781,13 @@ function WeaknessDetail({
           });
         },
         {
-          taskName: '生成针对性题目',
+          taskName: '生成針對性題目',
           onSuccess: () => {
-            message.success('题目生成成功');
+            message.success('題目生成成功');
             navigate('/questions');
           },
           onError: (error: any) => {
-            message.error(error?.response?.data?.message || '题目生成失败');
+            message.error(error?.response?.data?.message || '題目生成失敗');
           },
         }
       );
@@ -796,12 +796,12 @@ function WeaknessDetail({
     }
   };
 
-  // 创建训练计划
+  // 創建訓練計劃
   const handleCreatePlan = async (values: any) => {
     try {
-      // 检查设置中是否有学生信息
+      // 检查设置中是否有學生信息
       if (!settings?.student_name) {
-        message.warning('请先在设置页面配置学生姓名');
+        message.warning('请先在设置页面配置學生姓名');
         return;
       }
 
@@ -815,33 +815,33 @@ function WeaknessDetail({
             end_date: endDate.format('YYYY-MM-DD'),
             daily_duration: parseInt(values.daily_duration),
             target_school: values.target_school || settings?.target_school || null,
-            // 不传递student_name，让后端从设置获取
+            // 不傳递student_name，让後端從设置获取
           });
         },
         {
-          taskName: '生成训练计划',
+          taskName: '生成訓練計劃',
           onSuccess: (res) => {
-            message.success('训练计划创建成功');
+            message.success('訓練計劃創建成功');
             setPlanModalOpen(false);
             if (res.data?.plan_id) {
               navigate(`/plan`);
             }
           },
           onError: (error: any) => {
-            message.error(error?.response?.data?.message || error?.message || '训练计划创建失败');
+            message.error(error?.response?.data?.message || error?.message || '訓練計劃創建失敗');
           },
         }
       );
     } catch (error: any) {
-      message.error(error?.response?.data?.message || error?.message || '训练计划创建失败');
+      message.error(error?.response?.data?.message || error?.message || '訓練計劃創建失敗');
     }
   };
 
-  // 生成学习素材
+  // 生成學習素材
   const [generatingMaterial, setGeneratingMaterial] = useState(false);
   const handleGenerateMaterial = async () => {
     if (generatingMaterial) {
-      message.warning('正在生成学习素材，请勿重复点击');
+      message.warning('正在生成學習素材，请勿重复點击');
       return;
     }
     try {
@@ -855,9 +855,9 @@ function WeaknessDetail({
           });
         },
         {
-          taskName: '生成学习素材',
+          taskName: '生成學習素材',
           onSuccess: async (res) => {
-            message.success('学习素材生成成功');
+            message.success('學習素材生成成功');
             setMaterialModalOpen(false);
             
             // 重新加载素材列表
@@ -872,7 +872,7 @@ function WeaknessDetail({
             }
           },
           onError: (error: any) => {
-            message.error(error?.response?.data?.message || error?.message || '学习素材生成失败');
+            message.error(error?.response?.data?.message || error?.message || '學習素材生成失敗');
           },
         }
       );
@@ -891,24 +891,24 @@ function WeaknessDetail({
           <HomeOutlined /> <a onClick={() => navigate('/')}>首页</a>
         </Breadcrumb.Item>
         <Breadcrumb.Item>
-          <a onClick={() => navigate('/weaknesses')}>弱点管理</a>
+          <a onClick={() => navigate('/weaknesses')}>弱點管理</a>
         </Breadcrumb.Item>
-        <Breadcrumb.Item>弱点详情</Breadcrumb.Item>
+        <Breadcrumb.Item>弱點详情</Breadcrumb.Item>
       </Breadcrumb>
 
       <Card
         title={
           <Space>
             <WarningOutlined />
-            <span>弱点详情</span>
+            <span>弱點详情</span>
           </Space>
         }
         extra={
           <Space>
             <Button icon={<EditOutlined />} onClick={() => setStatusModalOpen(true)}>
-              更新状态
+              更新狀態
             </Button>
-            <Popconfirm title="确定删除此弱点记录？" onConfirm={handleDelete}>
+            <Popconfirm title="確定删除此弱點記錄？" onConfirm={handleDelete}>
               <Button danger icon={<DeleteOutlined />}>
                 删除
               </Button>
@@ -919,23 +919,23 @@ function WeaknessDetail({
       >
         <Descriptions column={2} bordered>
           <Descriptions.Item label="ID">{weakness.id}</Descriptions.Item>
-          <Descriptions.Item label="专项类别">
+          <Descriptions.Item label="專項類別">
             <Tag color="blue">{CATEGORY_MAP[weakness.category] || weakness.category}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="弱点类型">
+          <Descriptions.Item label="弱點類型">
             <Tag>{WEAKNESS_TYPE_MAP[weakness.weakness_type] || weakness.weakness_type}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="严重程度">
+          <Descriptions.Item label="嚴重程度">
             <Tag color={severityConfig.color}>{severityConfig.label}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="状态">
+          <Descriptions.Item label="狀態">
             <Tag color={statusConfig.color}>{statusConfig.label}</Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="练习次数">{weakness.practice_count}</Descriptions.Item>
-          <Descriptions.Item label="创建时间" span={2}>
+          <Descriptions.Item label="練習次數">{weakness.practice_count}</Descriptions.Item>
+          <Descriptions.Item label="創建時間" span={2}>
             {dayjs(weakness.created_at).format('YYYY-MM-DD HH:mm:ss')}
           </Descriptions.Item>
-          <Descriptions.Item label="更新时间" span={2}>
+          <Descriptions.Item label="更新時間" span={2}>
             {dayjs(weakness.updated_at).format('YYYY-MM-DD HH:mm:ss')}
           </Descriptions.Item>
           <Descriptions.Item label="描述" span={2}>
@@ -949,12 +949,12 @@ function WeaknessDetail({
             </Descriptions.Item>
           )}
           {weakness.improvement_suggestions && (
-            <Descriptions.Item label="改进建议" span={2}>
+            <Descriptions.Item label="改進建議" span={2}>
               <Paragraph>{weakness.improvement_suggestions}</Paragraph>
             </Descriptions.Item>
           )}
           {weakness.related_topics && weakness.related_topics.length > 0 && (
-            <Descriptions.Item label="相关话题" span={2}>
+            <Descriptions.Item label="相關話題" span={2}>
               <Space wrap>
                 {weakness.related_topics.map((topic, index) => (
                   <Tag key={index}>{topic}</Tag>
@@ -974,10 +974,10 @@ function WeaknessDetail({
             loading={generatingQuestions}
             disabled={generatingQuestions}
           >
-            生成针对性题目
+            生成針對性題目
           </Button>
           <Button type="primary" icon={<CalendarOutlined />} onClick={() => setPlanModalOpen(true)}>
-            创建训练计划
+            創建訓練計劃
           </Button>
           <Button 
             type="primary" 
@@ -985,15 +985,15 @@ function WeaknessDetail({
             onClick={() => setMaterialModalOpen(true)}
             disabled={generatingMaterial}
           >
-            生成学习素材
+            生成學習素材
           </Button>
         </Space>
 
-        {/* 关联的学习素材 */}
+        {/* 關聯的學習素材 */}
         {materials.length > 0 && (
           <>
             <Divider />
-            <Title level={5}>关联的学习素材 ({materials.length})</Title>
+            <Title level={5}>關聯的學習素材 ({materials.length})</Title>
             <Space direction="vertical" style={{ width: '100%' }} size="small">
               {materials.map((material) => (
                 <Card
@@ -1018,9 +1018,9 @@ function WeaknessDetail({
         )}
       </Card>
 
-      {/* 状态更新对话框 */}
+      {/* 狀態更新對話框 */}
       <Modal
-        title="更新弱点状态"
+        title="更新弱點狀態"
         open={statusModalOpen}
         onOk={() => {
           const status = (weakness as any).newStatus || weakness.status;
@@ -1045,9 +1045,9 @@ function WeaknessDetail({
         </Radio.Group>
       </Modal>
 
-      {/* 创建训练计划对话框 */}
+      {/* 創建訓練計劃對話框 */}
       <Modal
-        title="基于弱点创建训练计划"
+        title="基于弱點創建訓練計劃"
         open={planModalOpen}
         onOk={() => planForm.submit()}
         onCancel={() => setPlanModalOpen(false)}
@@ -1055,26 +1055,26 @@ function WeaknessDetail({
       >
         <Form form={planForm} onFinish={handleCreatePlan} layout="vertical">
           <Form.Item
-            label="训练周期"
+            label="訓練周期"
             name="dateRange"
-            rules={[{ required: true, message: '请选择训练周期' }]}
+            rules={[{ required: true, message: '请選擇訓練周期' }]}
           >
             <RangePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
-            label="每日可用时长（分钟）"
+            label="每日可用時長（分鐘）"
             name="daily_duration"
-            rules={[{ required: true, message: '请输入每日可用时长' }]}
+            rules={[{ required: true, message: '请输入每日可用時長' }]}
           >
             <Input type="number" placeholder="例如：30" />
           </Form.Item>
           <Form.Item 
-            label="目标学校（可选）" 
+            label="目標學校（可選）" 
             name="target_school"
             tooltip={settings?.target_school ? `当前设置：${settings.target_school}` : undefined}
           >
             <Select 
-              placeholder={settings?.target_school ? `当前设置：${settings.target_school}` : "选择目标学校"} 
+              placeholder={settings?.target_school ? `当前设置：${settings.target_school}` : "選擇目標學校"} 
               allowClear
             >
               {schools.map((school) => (
@@ -1084,9 +1084,9 @@ function WeaknessDetail({
               ))}
             </Select>
           </Form.Item>
-          <Card type="inner" title="学生信息" size="small" style={{ marginBottom: 16 }}>
+          <Card type="inner" title="學生信息" size="small" style={{ marginBottom: 16 }}>
             <Paragraph>
-              <strong>学生姓名：</strong>{settings?.student_name || '未设置'}
+              <strong>學生姓名：</strong>{settings?.student_name || '未设置'}
               {!settings?.student_name && (
                 <Button 
                   type="link" 
@@ -1100,32 +1100,32 @@ function WeaknessDetail({
             </Paragraph>
             {settings?.target_school && (
               <Paragraph>
-                <strong>默认目标学校：</strong>{settings.target_school}
+                <strong>默认目標學校：</strong>{settings.target_school}
               </Paragraph>
             )}
           </Card>
-          <Card type="inner" title="弱点信息" size="small">
+          <Card type="inner" title="弱點信息" size="small">
             <Paragraph>
-              <strong>类别：</strong>{CATEGORY_MAP[weakness.category] || weakness.category}
+              <strong>類別：</strong>{CATEGORY_MAP[weakness.category] || weakness.category}
             </Paragraph>
             <Paragraph>
-              <strong>类型：</strong>{WEAKNESS_TYPE_MAP[weakness.weakness_type] || weakness.weakness_type}
+              <strong>類型：</strong>{WEAKNESS_TYPE_MAP[weakness.weakness_type] || weakness.weakness_type}
             </Paragraph>
             <Paragraph>
-              <strong>严重程度：</strong>{severityConfig.label}
+              <strong>嚴重程度：</strong>{severityConfig.label}
             </Paragraph>
             {weakness.improvement_suggestions && (
               <Paragraph>
-                <strong>改进建议：</strong>{weakness.improvement_suggestions}
+                <strong>改進建議：</strong>{weakness.improvement_suggestions}
               </Paragraph>
             )}
           </Card>
         </Form>
       </Modal>
 
-      {/* 生成学习素材对话框 */}
+      {/* 生成學習素材對話框 */}
       <Modal
-        title="生成学习素材"
+        title="生成學習素材"
         open={materialModalOpen}
         onOk={handleGenerateMaterial}
         onCancel={() => {
@@ -1140,18 +1140,18 @@ function WeaknessDetail({
         cancelButtonProps={{ disabled: generatingMaterial }}
       >
         <Form layout="vertical">
-          <Form.Item label="素材类型" required>
+          <Form.Item label="素材類型" required>
             <Radio.Group value={materialType} onChange={(e) => setMaterialType(e.target.value)}>
               <Space direction="vertical">
-                <Radio value="text">知识点讲解</Radio>
+                <Radio value="text">知識點讲解</Radio>
                 <Radio value="example">常见错误示例</Radio>
-                <Radio value="tip">改进技巧</Radio>
-                <Radio value="practice">练习建议</Radio>
+                <Radio value="tip">改進技巧</Radio>
+                <Radio value="practice">練習建議</Radio>
               </Space>
             </Radio.Group>
           </Form.Item>
           <Paragraph type="secondary" style={{ marginTop: 16 }}>
-            系统将基于当前弱点的类型、严重程度和相关话题，使用AI生成个性化的学习素材。
+            係統将基于当前弱點的類型、嚴重程度和相關話題，使用AI生成个性化的學習素材。
           </Paragraph>
         </Form>
       </Modal>
