@@ -749,41 +749,75 @@ export default function Practice() {
     }
 
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // 創建會話
-      const sessionRes = await api.sessions.create({
-        category,
-        mode,
-        question_count: questionCount,
-      })
+      // 使用浮窗展示 AI 思考過程（當後端自動生成題目時）
+      await executeWithThinking(
+        'create-session',
+        async () => {
+          // 創建會話（後端會自動檢查題目數量，不足時會調用 AI 生成）
+          return await api.sessions.create({
+            category,
+            mode,
+            question_count: questionCount,
+          });
+        },
+        {
+          taskName: '創建練習會話並生成題目',
+          onSuccess: async (sessionRes) => {
+            if (!sessionRes.success || !sessionRes.data) {
+              throw new Error('創建練習會話失敗');
+            }
 
-      const session = sessionRes.data
-      setSessionData(session)
+            const session = sessionRes.data;
+            setSessionData(session);
 
-      // 获取題目详情
-      const questionIds = session.question_ids || []
-      if (questionIds.length === 0) {
-        message.error('该類別暫无題目，请選擇其他類別')
-        return
-      }
+            // 获取題目详情
+            const questionIds = session.question_ids || [];
+            if (questionIds.length === 0) {
+              message.error('该類別暫无題目，请選擇其他類別');
+              return;
+            }
 
-      const questionsRes = await api.questions.list({
-        ids: questionIds.join(','),
-        limit: questionIds.length,
-      })
+            const questionsRes = await api.questions.list({
+              ids: questionIds.join(','),
+              limit: questionIds.length,
+            });
 
-      const loadedQuestions = questionsRes.success ? questionsRes.data : []
-      setQuestions(loadedQuestions)
-      setCurrentIndex(0)
-      setAnswers({})
-      setStep('practice')
-      message.success(`練習開始！共 ${loadedQuestions.length} 題`)
+            const loadedQuestions = questionsRes.success ? questionsRes.data : [];
+            
+            if (loadedQuestions.length === 0) {
+              message.error('無法加載題目，请稍後重試');
+              return;
+            }
+
+            setQuestions(loadedQuestions);
+            setCurrentIndex(0);
+            setAnswers({});
+            setStep('practice');
+            
+            message.success({
+              content: `練習開始！共 ${loadedQuestions.length} 題`,
+              duration: 3,
+            });
+          },
+          onError: (error: any) => {
+            console.error('開始練習失敗:', error);
+            message.error({
+              content: error.response?.data?.message || '開始練習失敗',
+              duration: 5,
+            });
+          },
+        }
+      );
     } catch (error: any) {
-      console.error('開始練習失敗:', error)
-      message.error(error.response?.data?.message || '開始練習失敗')
+      console.error('開始練習失敗:', error);
+      message.error({
+        content: error.response?.data?.message || '開始練習失敗',
+        duration: 5,
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 

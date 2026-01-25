@@ -273,8 +273,9 @@ export const api = {
     todayTasks: () => enhancedRequest({ method: 'get', url: '/plans/today/tasks' }),
     pendingTasks: (params?: { date?: string; status?: string }) => 
       enhancedRequest({ method: 'get', url: '/plans/pending-tasks', params }),
+    // 啟動任務練習可能會觸發 AI 生成題目，不設置超時
     startTaskPractice: (taskId: string, data?: any) => 
-      apiClient.post(`/plans/tasks/${taskId}/start-practice`, data).then(res => res.data),
+      apiClient.post(`/plans/tasks/${taskId}/start-practice`, data, { timeout: 0 }).then(res => res.data),
     completeTask: (taskId: string) => 
       apiClient.patch(`/plans/tasks/${taskId}/complete`).then(res => res.data),
     skipTask: (taskId: string) => 
@@ -287,7 +288,8 @@ export const api = {
 
   // 練習會話相關
   sessions: {
-    create: (data: any) => apiClient.post('/sessions', data).then(res => res.data),
+    // 創建會話可能會觸發 AI 生成題目，不設置超時
+    create: (data: any) => apiClient.post('/sessions', data, { timeout: 0 }).then(res => res.data),
     createSchoolRoundMock: (data: any) => 
       apiClient.post('/sessions/school-round-mock', data, { timeout: 0 }).then(res => res.data),
     get: (id: string) => enhancedRequest({ method: 'get', url: `/sessions/${id}` }),
