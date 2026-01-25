@@ -165,10 +165,16 @@ export default function Weaknesses() {
         const data = res.data || [];
         setWeaknesses(data);
         // 分页信息會在表格組件中自動处理
+      } else {
+        console.warn('获取弱點列表失敗:', res);
+        setWeaknesses([]);
+        message.warning('获取弱點列表失敗，請稍後重試');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('加载弱點列表失敗:', error);
-      message.error('加载弱點列表失敗');
+      setWeaknesses([]);
+      const errorMsg = error?.response?.data?.message || error?.message || '加载弱點列表失敗';
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -180,9 +186,15 @@ export default function Weaknesses() {
       const res = await api.weaknesses.stats();
       if (res.success) {
         setStats(res.data);
+      } else {
+        console.warn('获取統計數據失敗:', res);
+        // 設置默認值，確保頁面可以顯示
+        setStats({ total: 0, by_category: [], by_type: [], by_severity: [], by_status: [] });
       }
     } catch (error) {
       console.error('加载統計數據失敗:', error);
+      // 設置默認值，確保頁面可以顯示
+      setStats({ total: 0, by_category: [], by_type: [], by_severity: [], by_status: [] });
     }
   }, []);
 
@@ -192,9 +204,15 @@ export default function Weaknesses() {
       const res = await api.settings.get();
       if (res.success) {
         setSettings(res.data);
+      } else {
+        console.warn('获取设置失敗:', res);
+        // 設置默認值，確保頁面可以顯示
+        setSettings({});
       }
     } catch (error) {
       console.error('加载设置失敗:', error);
+      // 設置默認值，確保頁面可以顯示
+      setSettings({});
     }
   }, []);
 
@@ -207,13 +225,23 @@ export default function Weaknesses() {
       if (res.success) {
         setCurrentWeakness(res.data);
       } else {
-        message.error('获取弱點详情失敗');
-        navigate('/weaknesses');
+        const errorMsg = res?.message || '获取弱點详情失敗';
+        message.error(errorMsg);
+        setCurrentWeakness(null);
+        // 延遲導航，讓用戶看到錯誤提示
+        setTimeout(() => {
+          navigate('/weaknesses');
+        }, 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('加载弱點详情失敗:', error);
-      message.error('加载弱點详情失敗');
-      navigate('/weaknesses');
+      const errorMsg = error?.response?.data?.message || error?.message || '加载弱點详情失敗';
+      message.error(errorMsg);
+      setCurrentWeakness(null);
+      // 延遲導航，讓用戶看到錯誤提示
+      setTimeout(() => {
+        navigate('/weaknesses');
+      }, 2000);
     } finally {
       setLoading(false);
     }
@@ -223,16 +251,22 @@ export default function Weaknesses() {
     if (id) {
       loadWeaknessDetail(id);
     } else {
-      loadWeaknesses();
-      loadStats();
-      loadSettings();
+      // 並行加載數據，即使部分失敗也不影響頁面顯示
+      Promise.allSettled([
+        loadWeaknesses(),
+        loadStats(),
+        loadSettings(),
+      ]).catch((error) => {
+        console.error('加載數據時發生錯誤:', error);
+      });
       // 趋勢數據和學校列表在需要時再加载（用于後续可视化功能）
     }
     
     return () => {
       cancelAllPendingRequests();
     };
-  }, [id, loadWeaknesses, loadStats, loadSettings, loadWeaknessDetail]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, filters]);
 
   // 如果有ID，显示详情页面
   if (id) {
@@ -383,34 +417,47 @@ function WeaknessList({
     },
   ], [navigate]);
 
+  const [currentWeaknessForStatus, setCurrentWeaknessForStatus] = useState<Weakness | null>(null);
+
   // 更新狀態
   const handleUpdateStatus = async (weakness: Weakness) => {
     setCurrentWeaknessForStatus(weakness);
     setStatusModalOpen(true);
   };
 
-  const [currentWeaknessForStatus, setCurrentWeaknessForStatus] = useState<Weakness | null>(null);
-
   const handleStatusConfirm = async (status: string) => {
     if (!currentWeaknessForStatus) return;
     try {
-      await api.weaknesses.updateStatus(currentWeaknessForStatus.id.toString(), status);
-      message.success('狀態更新成功');
-      setStatusModalOpen(false);
-      onRefresh();
-    } catch (error) {
-      message.error('狀態更新失敗');
+      const res = await api.weaknesses.updateStatus(currentWeaknessForStatus.id.toString(), status);
+      if (res.success !== false) {
+        message.success('狀態更新成功');
+        setStatusModalOpen(false);
+        setCurrentWeaknessForStatus(null);
+        onRefresh();
+      } else {
+        message.error(res.message || '狀態更新失敗');
+      }
+    } catch (error: any) {
+      console.error('狀態更新失敗:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || '狀態更新失敗';
+      message.error(errorMsg);
     }
   };
 
   // 删除弱點
   const handleDelete = async (id: number) => {
     try {
-      await api.weaknesses.delete(id.toString());
-      message.success('删除成功');
-      onRefresh();
-    } catch (error) {
-      message.error('删除失敗');
+      const res = await api.weaknesses.delete(id.toString());
+      if (res.success !== false) {
+        message.success('删除成功');
+        onRefresh();
+      } else {
+        message.error(res.message || '删除失敗');
+      }
+    } catch (error: any) {
+      console.error('删除失敗:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || '删除失敗';
+      message.error(errorMsg);
     }
   };
 
@@ -428,20 +475,33 @@ function WeaknessList({
     if (!batchStatus || selectedRowKeys.length === 0) return;
     try {
       let successCount = 0;
+      let failCount = 0;
       for (const key of selectedRowKeys) {
         try {
-          await api.weaknesses.updateStatus(key.toString(), batchStatus);
-          successCount++;
+          const res = await api.weaknesses.updateStatus(key.toString(), batchStatus);
+          if (res.success !== false) {
+            successCount++;
+          } else {
+            failCount++;
+            console.warn(`更新弱點 ${key} 狀態失敗:`, res);
+          }
         } catch (error) {
+          failCount++;
           console.error(`更新弱點 ${key} 狀態失敗:`, error);
         }
       }
-      message.success(`成功更新 ${successCount} 个弱點的狀態`);
+      if (successCount > 0) {
+        message.success(`成功更新 ${successCount} 个弱點的狀態${failCount > 0 ? `，${failCount} 个失敗` : ''}`);
+      } else {
+        message.error('批量更新失敗，請稍後重試');
+      }
       setStatusModalOpen(false);
+      setBatchStatus('');
       setSelectedRowKeys([]);
       onRefresh();
-    } catch (error) {
-      message.error('批量更新失敗');
+    } catch (error: any) {
+      console.error('批量更新失敗:', error);
+      message.error(error?.message || '批量更新失敗');
     }
   };
 
@@ -456,19 +516,31 @@ function WeaknessList({
       onOk: async () => {
         try {
           let successCount = 0;
+          let failCount = 0;
           for (const key of selectedRowKeys) {
             try {
-              await api.weaknesses.delete(key.toString());
-              successCount++;
+              const res = await api.weaknesses.delete(key.toString());
+              if (res.success !== false) {
+                successCount++;
+              } else {
+                failCount++;
+                console.warn(`删除弱點 ${key} 失敗:`, res);
+              }
             } catch (error) {
+              failCount++;
               console.error(`删除弱點 ${key} 失敗:`, error);
             }
           }
-          message.success(`成功删除 ${successCount} 条記錄`);
+          if (successCount > 0) {
+            message.success(`成功删除 ${successCount} 条記錄${failCount > 0 ? `，${failCount} 条失敗` : ''}`);
+          } else {
+            message.error('批量删除失敗，請稍後重試');
+          }
           setSelectedRowKeys([]);
           onRefresh();
-        } catch (error) {
-          message.error('批量删除失敗');
+        } catch (error: any) {
+          console.error('批量删除失敗:', error);
+          message.error(error?.message || '批量删除失敗');
         }
       },
     });
@@ -640,11 +712,15 @@ function WeaknessList({
           rowSelection={rowSelection}
           pagination={{
             ...pagination,
+            total: weaknesses.length,
             showSizeChanger: true,
             showTotal: (total) => `共 ${total} 条`,
             pageSizeOptions: ['10', '20', '50', '100'],
           }}
           scroll={{ x: 1200 }}
+          locale={{
+            emptyText: loading ? '加載中...' : '暫無弱點記錄',
+          }}
         />
       </Card>
 
@@ -702,16 +778,23 @@ function WeaknessDetail({
   const [materialType, setMaterialType] = useState<string>('text');
   const [materials, setMaterials] = useState<any[]>([]);
 
+  // 所有 hooks 必須在條件返回之前調用
+  const [generatingQuestions, setGeneratingQuestions] = useState(false);
+  const [generatingMaterial, setGeneratingMaterial] = useState(false);
+
   useEffect(() => {
     const loadSchools = async () => {
       try {
-        await api.schools.list().then((res) => {
-          if (res.success) {
-            setSchools(res.data || []);
-          }
-        });
+        const res = await api.schools.list();
+        if (res.success) {
+          setSchools(res.data || []);
+        } else {
+          console.warn('获取學校列表失敗:', res);
+          setSchools([]);
+        }
       } catch (error) {
         console.error('加载學校列表失敗:', error);
+        setSchools([]);
       }
     };
     loadSchools();
@@ -723,49 +806,62 @@ function WeaknessDetail({
           const res = await api.learningMaterials.getByWeakness(weakness.id);
           if (res.success) {
             setMaterials(res.data || []);
+          } else {
+            console.warn('获取學習素材失敗:', res);
+            setMaterials([]);
           }
         } catch (error) {
           console.error('加载學習素材失敗:', error);
+          setMaterials([]);
         }
+      } else {
+        setMaterials([]);
       }
     };
     loadMaterials();
   }, [weakness?.id]);
 
-  if (loading) {
-    return <Spin size="large" style={{ display: 'block', textAlign: 'center', padding: '50px' }} />;
-  }
-
-  if (!weakness) {
-    return <Empty description="弱點不存在" />;
-  }
-
+  // 所有 hooks（包括 useCallback）必須在條件返回之前
   // 更新狀態
-  const handleUpdateStatus = async (status: string) => {
+  const handleUpdateStatus = useCallback(async (status: string) => {
+    if (!weakness) return;
     try {
-      await api.weaknesses.updateStatus(weakness.id.toString(), status);
-      message.success('狀態更新成功');
-      setStatusModalOpen(false);
-      onBack();
-    } catch (error) {
-      message.error('狀態更新失敗');
+      const res = await api.weaknesses.updateStatus(weakness.id.toString(), status);
+      if (res.success !== false) {
+        message.success('狀態更新成功');
+        setStatusModalOpen(false);
+        onBack();
+      } else {
+        message.error(res.message || '狀態更新失敗');
+      }
+    } catch (error: any) {
+      console.error('狀態更新失敗:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || '狀態更新失敗';
+      message.error(errorMsg);
     }
-  };
+  }, [weakness, onBack]);
 
   // 删除弱點
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
+    if (!weakness) return;
     try {
-      await api.weaknesses.delete(weakness.id.toString());
-      message.success('删除成功');
-      navigate('/weaknesses');
-    } catch (error) {
-      message.error('删除失敗');
+      const res = await api.weaknesses.delete(weakness.id.toString());
+      if (res.success !== false) {
+        message.success('删除成功');
+        navigate('/weaknesses');
+      } else {
+        message.error(res.message || '删除失敗');
+      }
+    } catch (error: any) {
+      console.error('删除失敗:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || '删除失敗';
+      message.error(errorMsg);
     }
-  };
+  }, [weakness, navigate]);
 
   // 生成針對性題目
-  const [generatingQuestions, setGeneratingQuestions] = useState(false);
-  const handleGenerateQuestions = async () => {
+  const handleGenerateQuestions = useCallback(async () => {
+    if (!weakness) return;
     if (generatingQuestions) {
       message.warning('正在生成題目，请勿重复點击');
       return;
@@ -794,10 +890,10 @@ function WeaknessDetail({
     } finally {
       setGeneratingQuestions(false);
     }
-  };
+  }, [weakness, generatingQuestions, executeWithThinking, navigate]);
 
   // 創建訓練計劃
-  const handleCreatePlan = async (values: any) => {
+  const handleCreatePlan = useCallback(async (values: any) => {
     try {
       // 检查设置中是否有學生信息
       if (!settings?.student_name) {
@@ -835,11 +931,11 @@ function WeaknessDetail({
     } catch (error: any) {
       message.error(error?.response?.data?.message || error?.message || '訓練計劃創建失敗');
     }
-  };
+  }, [weakness, settings, executeWithThinking, navigate]);
 
   // 生成學習素材
-  const [generatingMaterial, setGeneratingMaterial] = useState(false);
-  const handleGenerateMaterial = async () => {
+  const handleGenerateMaterial = useCallback(async () => {
+    if (!weakness) return;
     if (generatingMaterial) {
       message.warning('正在生成學習素材，请勿重复點击');
       return;
@@ -879,7 +975,38 @@ function WeaknessDetail({
     } finally {
       setGeneratingMaterial(false);
     }
-  };
+  }, [weakness, generatingMaterial, materialType, executeWithThinking, navigate, setMaterials]);
+
+  // 條件返回必須在所有 hooks 之後
+  if (loading) {
+    return <Spin size="large" style={{ display: 'block', textAlign: 'center', padding: '50px' }} />;
+  }
+
+  if (!weakness) {
+    return (
+      <div>
+        <Breadcrumb style={{ marginBottom: 16 }}>
+          <Breadcrumb.Item>
+            <HomeOutlined /> <a onClick={() => navigate('/')}>首頁</a>
+          </Breadcrumb.Item>
+          <Breadcrumb.Item>
+            <a onClick={() => navigate('/weaknesses')}>弱點管理</a>
+          </Breadcrumb.Item>
+          <Breadcrumb.Item>弱點詳情</Breadcrumb.Item>
+        </Breadcrumb>
+        <Card>
+          <Empty 
+            description="弱點不存在或已刪除" 
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button type="primary" onClick={onBack}>
+              返回列表
+            </Button>
+          </Empty>
+        </Card>
+      </div>
+    );
+  }
 
   const severityConfig = SEVERITY_MAP[weakness.severity] || { label: weakness.severity, color: 'default' };
   const statusConfig = STATUS_MAP[weakness.status] || { label: weakness.status, color: 'default' };

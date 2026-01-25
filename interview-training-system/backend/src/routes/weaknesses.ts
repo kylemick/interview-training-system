@@ -73,6 +73,11 @@ router.get('/', async (req: Request, res: Response) => {
       params.push(severity);
     }
 
+    if (req.query.weakness_type) {
+      sql += ' AND weakness_type = ?';
+      params.push(req.query.weakness_type);
+    }
+
     sql += ' ORDER BY severity DESC, created_at DESC';
 
     const weaknesses = await query(sql, params);
