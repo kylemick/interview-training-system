@@ -16,6 +16,18 @@ router.post('/', async (req: Request, res: Response) => {
       throw new AppError(400, '缺少必填字段：category');
     }
 
+    // 如果有关联任务，检查是否已有进行中的会话（防止重复创建）
+    if (task_id) {
+      const existingSession = await queryOne(
+        `SELECT id FROM sessions WHERE task_id = ? AND status = 'in_progress'`,
+        [task_id]
+      );
+      
+      if (existingSession) {
+        throw new AppError(409, '该任务已有进行中的会话，请继续现有会话');
+      }
+    }
+
     // 选择题目（注意：LIMIT不能使用参数绑定，需要直接拼接）
     const questions = await query(
       `SELECT id FROM questions
@@ -24,6 +36,10 @@ router.post('/', async (req: Request, res: Response) => {
        LIMIT ${parseInt(question_count as string)}`,
       [category]
     );
+
+    if (questions.length === 0) {
+      throw new AppError(400, `该类别(${category})暂无可用题目,请先添加题目`);
+    }
 
     const questionIds = questions.map((q: any) => q.id);
 
@@ -34,7 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
       [task_id || null, category, mode, 'in_progress', JSON.stringify(questionIds)]
     );
 
-    console.log(`✅ 创建练习会话: ID=${sessionId}, 类别=${category}, 题目数=${questionIds.length}`);
+    console.log(`✅ 创建练习会话: ID=${sessionId}, 类别=${category}, 题目数=${questionIds.length}, 任务ID=${task_id || '无'}`);
 
     res.status(201).json({
       success: true,
@@ -96,7 +112,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return { ...record, ai_feedback };
     });
 
-    // 组织任务信息
+    // 组织任务信息（包含计划名称）
     const taskInfo = session.task_id ? {
       task_id: session.task_id,
       duration: session.duration,
@@ -104,6 +120,9 @@ router.get('/:id', async (req: Request, res: Response) => {
       plan_id: session.plan_id,
       student_name: session.student_name,
       target_school: session.target_school,
+      plan_name: session.student_name && session.target_school 
+        ? `${session.student_name}的${session.target_school}冲刺计划`
+        : null,
     } : null;
 
     // 解析 question_ids JSON 字段
@@ -116,6 +135,18 @@ router.get('/:id', async (req: Request, res: Response) => {
       } catch (e) {
         console.warn(`解析会话 ${session.id} 的 question_ids 失败:`, e);
       }
+    }
+
+    // 计算实际题目数量：使用question_ids的长度，如果为空则从qa_records统计唯一题目
+    let actualQuestionCount = questionIds.length;
+    if (actualQuestionCount === 0 && formattedRecords.length > 0) {
+      // 如果没有question_ids，从qa_records中统计唯一的题目ID
+      const uniqueQuestionIds = new Set(
+        formattedRecords
+          .map((r: any) => r.question_id)
+          .filter((id: any) => id !== null && id !== undefined)
+      );
+      actualQuestionCount = uniqueQuestionIds.size;
     }
 
     res.json({
@@ -132,7 +163,8 @@ router.get('/:id', async (req: Request, res: Response) => {
         },
         task_info: taskInfo,
         qa_records: formattedRecords,
-        total_answered: formattedRecords.length,
+        total_answered: formattedRecords.length, // 已回答的记录数
+        total_questions: actualQuestionCount, // 实际题目数量
         question_ids: questionIds, // 返回题目ID列表
       },
     });
@@ -248,20 +280,90 @@ router.get('/recent/list', async (req: Request, res: Response) => {
     const { limit = '10' } = req.query;
     const limitNum = Math.min(parseInt(limit as string) || 10, 100);
 
-    const sessions = await queryWithPagination(
-      `SELECT id, category, mode, start_time, end_time, status,
-              (SELECT COUNT(*) FROM qa_records WHERE session_id = sessions.id) as question_count
-       FROM sessions
-       ORDER BY start_time DESC`,
-      [],
-      limitNum,
-      0
+    // 查询所有会话，计算题目数量
+    // 优先使用question_ids的长度，如果为空则从qa_records统计唯一题目数
+    // 注意：包含所有会话（包括自由练习），只要它们有题目或问答记录
+    const queryLimit = limitNum * 2; // 多查询一些，因为后面会去重
+    const allSessions = await query(
+      `SELECT s.id, s.category, s.mode, s.start_time, s.end_time, s.status, s.task_id, s.question_ids,
+              COALESCE(JSON_LENGTH(s.question_ids), 0) as question_ids_count,
+              (SELECT COUNT(DISTINCT qr.question_id) FROM qa_records qr WHERE qr.session_id = s.id AND qr.question_id IS NOT NULL) as qa_records_count,
+              (SELECT COUNT(*) FROM qa_records qr WHERE qr.session_id = s.id) as total_qa_records
+       FROM sessions s
+       WHERE (s.question_ids IS NOT NULL AND JSON_LENGTH(s.question_ids) > 0)
+          OR EXISTS (SELECT 1 FROM qa_records qr WHERE qr.session_id = s.id)
+          OR s.status = 'in_progress'  -- 包含进行中的会话（即使还没有题目或记录）
+       ORDER BY s.start_time DESC
+       LIMIT ${queryLimit}`,
+      [] // LIMIT不使用参数绑定
     );
+    
+    // 计算正确的题目数量：优先使用question_ids，如果为0则使用qa_records的唯一题目数
+    // 对于自由练习，如果没有question_ids但有qa_records，使用qa_records的唯一题目数
+    const sessionsWithCount = allSessions.map((session: any) => {
+      let questionCount = 0;
+      
+      if (session.question_ids_count > 0) {
+        // 优先使用question_ids的长度
+        questionCount = session.question_ids_count;
+      } else if (session.qa_records_count > 0) {
+        // 如果没有question_ids，使用qa_records的唯一题目数
+        questionCount = session.qa_records_count;
+      } else if (session.total_qa_records > 0) {
+        // 如果qa_records_count为0但total_qa_records > 0，说明有记录但question_id为NULL
+        // 这种情况下，使用总记录数作为题目数（兼容旧数据）
+        questionCount = session.total_qa_records;
+      }
+      
+      return {
+        ...session,
+        question_count: questionCount
+      };
+    });
+
+    // 去重：如果有相同task_id的多个会话，只保留最新的一个（优先保留进行中的）
+    const sessionMap = new Map<string, any>();
+    sessionsWithCount.forEach((session: any) => {
+      if (session.task_id) {
+        // 任务关联的会话：每个任务只保留一个
+        const key = `task_${session.task_id}`;
+        const existing = sessionMap.get(key);
+        if (!existing) {
+          sessionMap.set(key, session);
+        } else {
+          // 优先保留进行中的会话，否则保留最新的
+          if (session.status === 'in_progress' && existing.status !== 'in_progress') {
+            sessionMap.set(key, session);
+          } else if (existing.status !== 'in_progress' && 
+                     new Date(session.start_time) > new Date(existing.start_time)) {
+            sessionMap.set(key, session);
+          }
+        }
+      } else {
+        // 自由练习会话：每个会话ID都是唯一的
+        sessionMap.set(`free_${session.id}`, session);
+      }
+    });
+
+    // 转换为数组，过滤掉没有题目且没有问答记录的会话，并按时间排序
+    // 注意：保留有question_ids、qa_records或正在进行中的会话
+    const uniqueSessions = Array.from(sessionMap.values())
+      .filter((s: any) => {
+        // 保留有题目的会话，或者有问答记录的会话，或者正在进行中的会话
+        return s.question_count > 0 || s.status === 'in_progress';
+      })
+      .sort((a: any, b: any) => {
+        // 先按状态排序（进行中的在前），再按时间排序
+        if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+        if (a.status !== 'in_progress' && b.status === 'in_progress') return 1;
+        return new Date(b.start_time).getTime() - new Date(a.start_time).getTime();
+      })
+      .slice(0, limitNum);
 
     res.json({
       success: true,
-      data: sessions,
-      total: sessions.length,
+      data: uniqueSessions,
+      total: uniqueSessions.length,
     });
   } catch (error) {
     console.error('获取最近会话失败:', error);

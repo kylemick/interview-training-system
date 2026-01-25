@@ -413,16 +413,80 @@ router.patch('/tasks/:taskId/complete', async (req: Request, res: Response) => {
   }
 });
 
+// 跳过任务
+router.patch('/tasks/:taskId/skip', async (req: Request, res: Response) => {
+  try {
+    const { taskId } = req.params;
+
+    // 检查任务是否存在
+    const task = await queryOne(
+      'SELECT id, status FROM daily_tasks WHERE id = ?',
+      [taskId]
+    );
+
+    if (!task) {
+      throw new AppError(404, '任务不存在');
+    }
+
+    if (task.status === 'completed') {
+      throw new AppError(400, '任务已完成，无法跳过');
+    }
+
+    // 读取现有的 metadata（如果存在）
+    const existingTask = await queryOne(
+      'SELECT metadata FROM daily_tasks WHERE id = ?',
+      [taskId]
+    );
+    
+    let metadata: any = {};
+    if (existingTask?.metadata) {
+      try {
+        metadata = typeof existingTask.metadata === 'string' 
+          ? JSON.parse(existingTask.metadata) 
+          : existingTask.metadata;
+      } catch (e) {
+        metadata = {};
+      }
+    }
+    
+    // 设置跳过标记
+    metadata.skipped = true;
+    metadata.skipped_at = new Date().toISOString();
+    
+    // 更新任务状态为完成，并保存 metadata
+    await execute(
+      'UPDATE daily_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP, metadata = ? WHERE id = ?',
+      ['completed', JSON.stringify(metadata), taskId]
+    );
+
+    console.log(`✅ 任务已跳过: 任务ID=${taskId}`);
+
+    res.json({
+      success: true,
+      message: '任务已跳过',
+      data: {
+        task_id: taskId,
+        skipped: true,
+      },
+    });
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    console.error('跳过任务失败:', error);
+    throw new AppError(500, '跳过任务失败');
+  }
+});
+
 // 从任务创建练习会话
 router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
-    const { question_count = 10 } = req.body;
+    const { question_count } = req.body;
     
-    // 获取任务详情
+    // 获取任务详情（包含计划名称）
     const task = await queryOne(
-      `SELECT dt.id, dt.plan_id, dt.category, dt.duration, dt.status,
-              tp.student_name, tp.target_school
+      `SELECT dt.id, dt.plan_id, dt.category, dt.duration, dt.status, dt.task_date,
+              tp.student_name, tp.target_school,
+              CONCAT(tp.student_name, '的', tp.target_school, '冲刺计划') as plan_name
        FROM daily_tasks dt
        INNER JOIN training_plans tp ON dt.plan_id = tp.id
        WHERE dt.id = ?`,
@@ -436,6 +500,12 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
     if (task.status === 'completed') {
       throw new AppError(400, '任务已完成,无法再次练习');
     }
+    
+    // 根据任务时长计算题目数量：每10分钟1题，最少1题
+    // 如果前端指定了question_count，优先使用前端的值
+    const calculatedQuestionCount = question_count 
+      ? parseInt(question_count as string)
+      : Math.max(1, Math.ceil(task.duration / 10));
     
     // 检查是否已有进行中的会话
     const existingSession = await queryOne(
@@ -464,8 +534,13 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
       
       // 如果会话中没有保存题目ID，从 qa_records 中提取（兼容旧数据）
       if (questionIds.length === 0) {
+        // 使用子查询来获取按时间排序的唯一题目ID
         const qaRecords = await query(
-          `SELECT DISTINCT question_id FROM qa_records WHERE session_id = ? AND question_id IS NOT NULL ORDER BY created_at ASC`,
+          `SELECT question_id 
+           FROM qa_records 
+           WHERE session_id = ? AND question_id IS NOT NULL 
+           GROUP BY question_id 
+           ORDER BY MIN(created_at) ASC`,
           [sessionId]
         );
         questionIds = qaRecords.map((r: any) => r.question_id);
@@ -479,19 +554,25 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
         }
       }
       
-      // 获取题目详情
+      // 获取题目详情（按会话保存的题目ID顺序）
       let questions = [];
       if (questionIds.length > 0) {
         const placeholders = questionIds.map(() => '?').join(',');
-        questions = await query(
+        const allQuestions = await query(
           `SELECT id, question_text, category, difficulty, reference_answer
            FROM questions
            WHERE id IN (${placeholders})`,
           questionIds
         );
+        
+        // 按会话保存的题目ID顺序排序
+        const questionMap = new Map(allQuestions.map((q: any) => [q.id, q]));
+        questions = questionIds
+          .map((id: number) => questionMap.get(id))
+          .filter((q: any) => q !== undefined); // 过滤掉已删除的题目
       }
       
-      // 如果会话中没有题目（可能是新创建的会话），从题库选择题目
+      // 如果会话中没有题目或题目被删除了，从题库重新选择题目
       if (questions.length === 0) {
         questions = await query(
           `SELECT id, question_text, category, difficulty, reference_answer
@@ -506,7 +587,7 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
           throw new AppError(400, `该类别(${task.category})暂无可用题目,请先添加题目`);
         }
         
-        // 更新会话，保存题目ID列表
+        // 更新会话，保存新的题目ID列表
         const newQuestionIds = questions.map((q: any) => q.id);
         await execute(
           `UPDATE sessions SET question_ids = ? WHERE id = ?`,
@@ -529,6 +610,8 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
             duration: task.duration,
             student_name: task.student_name,
             target_school: task.target_school,
+            task_date: task.task_date,
+            plan_name: task.plan_name,
           },
           is_existing: true, // 标记这是现有会话
         },
@@ -536,13 +619,13 @@ router.post('/tasks/:taskId/start-practice', async (req: Request, res: Response)
     }
     
     // 如果没有现有会话，创建新会话
-    // 从题库选择题目
+    // 从题库选择题目（使用计算出的题目数量）
     const questions = await query(
       `SELECT id, question_text, category, difficulty, reference_answer
        FROM questions
        WHERE category = ?
        ORDER BY RAND()
-       LIMIT ${parseInt(question_count as string)}`,
+       LIMIT ${calculatedQuestionCount}`,
       [task.category]
     );
     

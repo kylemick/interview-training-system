@@ -71,6 +71,7 @@ interface TaskInfo {
   target_school: string
   task_date?: string
   plan_id?: string
+  plan_name?: string
 }
 
 export default function Practice() {
@@ -261,9 +262,8 @@ export default function Practice() {
       message.loading({ content: '正在加载任务...', key: 'loading' })
 
       // 调用API，后端会自动处理：如果有现有会话就返回，没有就创建
-      const response = await api.plans.startTaskPractice(taskId, {
-        question_count: 10,
-      })
+      // 不指定question_count，让后端根据任务duration自动计算
+      const response = await api.plans.startTaskPractice(taskId, {})
 
       // api.plans.startTaskPractice 返回的是 apiClient.post().then(res => res.data)
       // 后端返回: { success: true, data: { session_id, questions, is_existing, ... } }
@@ -282,8 +282,79 @@ export default function Practice() {
 
       // 如果是现有会话，需要加载已提交的答案和反馈
       if (data.is_existing) {
-        // 直接调用 continueExistingSession，它会完整加载所有数据（包括题目、答案、反馈）
-        await continueExistingSession(String(data.session_id))
+        // 后端已经返回了题目，但需要加载已提交的答案和反馈
+        // 先设置题目和会话信息
+        setSessionData({
+          session_id: data.session_id,
+          question_ids: data.questions.map((q: any) => q.id),
+        })
+        setQuestions(data.questions)
+        setTaskInfo(data.task_info || null)
+        setCategory(data.task_info?.category || data.category || '')
+        
+        // 然后加载已提交的答案和反馈
+        try {
+          const sessionRes = await api.sessions.get(String(data.session_id))
+          const sessionData = sessionRes.success ? sessionRes.data : null
+          
+          if (sessionData && sessionData.qa_records) {
+            const qaRecords = sessionData.qa_records || []
+            const loadedAnswers: Record<number, string> = {}
+            const loadedFeedbacks: Record<number, AIFeedback> = {}
+            
+            // 按题目ID匹配答案和反馈
+            data.questions.forEach((question: Question, index: number) => {
+              // 找到该题目的最新记录
+              const records = qaRecords.filter((r: any) => r.question_id === question.id)
+              if (records.length > 0) {
+                // 取最新的记录
+                const latestRecord = records.reduce((latest: any, current: any) => {
+                  return new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+                })
+                
+                if (latestRecord.answer_text) {
+                  loadedAnswers[index] = latestRecord.answer_text
+                }
+                
+                if (latestRecord.ai_feedback) {
+                  try {
+                    const feedback = typeof latestRecord.ai_feedback === 'string' 
+                      ? JSON.parse(latestRecord.ai_feedback) 
+                      : latestRecord.ai_feedback
+                    if (feedback && typeof feedback === 'object') {
+                      loadedFeedbacks[index] = feedback
+                    }
+                  } catch (e) {
+                    console.warn('解析反馈失败:', latestRecord.id, e)
+                  }
+                }
+              }
+            })
+            
+            setAnswers(loadedAnswers)
+            setFeedbacks(loadedFeedbacks)
+            
+            // 找到第一个未完成的题目索引
+            const firstUnansweredIndex = data.questions.findIndex((_: any, index: number) => !loadedAnswers[index])
+            setCurrentIndex(firstUnansweredIndex >= 0 ? firstUnansweredIndex : data.questions.length - 1)
+          } else {
+            setCurrentIndex(0)
+            setAnswers({})
+            setFeedbacks({})
+          }
+        } catch (error) {
+          console.warn('加载会话详情失败，使用默认状态:', error)
+          setCurrentIndex(0)
+          setAnswers({})
+          setFeedbacks({})
+        }
+        
+        setStep('practice')
+        message.success({ 
+          content: `继续练习！共 ${data.questions?.length || 0} 题`, 
+          key: 'loading',
+          duration: 2
+        })
         return
       }
 
@@ -647,6 +718,12 @@ export default function Practice() {
           }
           description={
             <div>
+              {taskInfo.plan_name && (
+                <>
+                  <Text strong style={{ color: '#1890ff' }}>{taskInfo.plan_name}</Text>
+                  <Divider type="vertical" />
+                </>
+              )}
               <Text>
                 <strong>{taskInfo.student_name}</strong> → <strong>{taskInfo.target_school}</strong>
               </Text>
@@ -659,7 +736,7 @@ export default function Practice() {
               {taskInfo.task_date && (
                 <>
                   <Divider type="vertical" />
-                  <Text type="secondary">{taskInfo.task_date}</Text>
+                  <Text type="secondary">{new Date(taskInfo.task_date).toLocaleDateString('zh-CN')}</Text>
                 </>
               )}
             </div>

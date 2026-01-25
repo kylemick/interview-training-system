@@ -25,6 +25,7 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
   PlayCircleFilled,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -309,6 +310,26 @@ const TrainingPlan = () => {
     navigate(`/practice?taskId=${taskId}`);
   };
 
+  // 跳过任务
+  const handleSkipTask = async (taskId: number, category: string) => {
+    Modal.confirm({
+      title: '确认跳过任务',
+      content: `确认跳过此任务?将不计入练习记录。`,
+      okText: '确认跳过',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await api.plans.skipTask(String(taskId));
+          message.success('任务已跳过');
+          loadPlans(); // 重新加载数据
+        } catch (error: any) {
+          message.error(error.response?.data?.message || '跳过任务失败');
+        }
+      },
+    });
+  };
+
   const taskColumns = [
     {
       title: '日期',
@@ -379,14 +400,24 @@ const TrainingPlan = () => {
           );
         }
         return (
-          <Button
-            type="primary"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            onClick={() => handleStartTask(record.id)}
-          >
-            开始练习
-          </Button>
+          <Space size="small">
+            <Button
+              type="primary"
+              size="small"
+              icon={<PlayCircleOutlined />}
+              onClick={() => handleStartTask(record.id)}
+            >
+              开始
+            </Button>
+            <Button
+              type="default"
+              size="small"
+              icon={<CloseCircleOutlined />}
+              onClick={() => handleSkipTask(record.id, record.category)}
+            >
+              跳过
+            </Button>
+          </Space>
         );
       },
     },

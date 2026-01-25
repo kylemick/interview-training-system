@@ -53,6 +53,7 @@ interface Session {
 
 interface QARecord {
   id: string
+  question_id?: number
   question_text: string
   answer_text: string
   ai_feedback: any
@@ -63,6 +64,8 @@ interface SessionDetail {
   session: Session
   qa_records: QARecord[]
   total_answered: number
+  total_questions?: number
+  question_ids?: number[]
 }
 
 export default function Feedback() {
@@ -92,15 +95,37 @@ export default function Feedback() {
     try {
       setLoading(true)
       const res = await api.sessions.recent(50)
-      const data = res.success ? res.data : []
-      setSessions(data)
+      let data = res.success ? res.data : []
+      
+      // 前端去重：确保没有重复的会话ID
+      const sessionMap = new Map<string, Session>()
+      data.forEach((session: Session) => {
+        if (!sessionMap.has(session.id)) {
+          sessionMap.set(session.id, session)
+        }
+      })
+      
+      // 过滤：保留有题目、有问答记录或正在进行中的会话
+      const uniqueSessions = Array.from(sessionMap.values())
+        .filter((s: Session) => {
+          // 保留有题目的会话，或者正在进行中的会话（可能还没有题目）
+          return (s.question_count || 0) > 0 || s.status === 'in_progress'
+        })
+        .sort((a: Session, b: Session) => {
+          // 先按状态排序（进行中的在前），再按时间倒序排序
+          if (a.status === 'in_progress' && b.status !== 'in_progress') return -1
+          if (a.status !== 'in_progress' && b.status === 'in_progress') return 1
+          return new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        })
+      
+      setSessions(uniqueSessions)
 
       // 如果URL中有session参数且没有选中，则选中它
       if (sessionIdFromUrl && !selectedSession) {
         setSelectedSession(sessionIdFromUrl)
-      } else if (!selectedSession && data.length > 0) {
+      } else if (!selectedSession && uniqueSessions.length > 0) {
         // 否则选中第一个
-        setSelectedSession(data[0].id)
+        setSelectedSession(uniqueSessions[0].id)
       }
     } catch (error) {
       console.error('加载会话列表失败:', error)
@@ -114,7 +139,54 @@ export default function Feedback() {
     try {
       setLoading(true)
       const res = await api.sessions.get(sessionId)
-      setSessionDetail(res.success ? res.data : null)
+      const detail = res.success ? res.data : null
+      
+      if (detail) {
+        // 如果有question_ids，按题目ID去重qa_records，确保每个题目只显示一次
+        if (detail.question_ids && Array.isArray(detail.question_ids) && detail.question_ids.length > 0) {
+          // 按题目ID分组，每个题目只保留最新的记录
+          const recordsByQuestion = new Map<number, any>()
+          detail.qa_records.forEach((record: any) => {
+            if (record.question_id) {
+              const existing = recordsByQuestion.get(record.question_id)
+              if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
+                recordsByQuestion.set(record.question_id, record)
+              }
+            }
+          })
+          
+          // 按question_ids的顺序构建记录列表
+          const orderedRecords: any[] = []
+          detail.question_ids.forEach((questionId: number) => {
+            const record = recordsByQuestion.get(questionId)
+            if (record) {
+              orderedRecords.push(record)
+            }
+          })
+          
+          // 更新qa_records为去重后的列表
+          detail.qa_records = orderedRecords
+          detail.total_questions = detail.question_ids.length
+        } else if (detail.qa_records && detail.qa_records.length > 0) {
+          // 如果没有question_ids，按question_id去重
+          const uniqueRecords = new Map<number, any>()
+          detail.qa_records.forEach((record: any) => {
+            if (record.question_id) {
+              const existing = uniqueRecords.get(record.question_id)
+              if (!existing || new Date(record.created_at) > new Date(existing.created_at)) {
+                uniqueRecords.set(record.question_id, record)
+              }
+            } else {
+              // 没有question_id的记录，按id去重
+              uniqueRecords.set(parseInt(record.id), record)
+            }
+          })
+          detail.qa_records = Array.from(uniqueRecords.values())
+          detail.total_questions = uniqueRecords.size
+        }
+      }
+      
+      setSessionDetail(detail)
     } catch (error) {
       console.error('加载会话详情失败:', error)
       message.error('加载会话详情失败')
@@ -296,7 +368,12 @@ export default function Feedback() {
                           <Text strong>
                             {CATEGORY_MAP[session.category] || session.category}
                           </Text>
-                          {session.question_count && (
+                          {session.task_id ? (
+                            <Tag color="blue">任务练习</Tag>
+                          ) : (
+                            <Tag color="green">自由练习</Tag>
+                          )}
+                          {session.question_count && session.question_count > 0 && (
                             <Tag>{session.question_count}题</Tag>
                           )}
                         </Space>
@@ -360,7 +437,7 @@ export default function Feedback() {
                     <div style={{ textAlign: 'center' }}>
                       <Text type="secondary">题目数量</Text>
                       <div style={{ fontSize: 24, fontWeight: 'bold', color: '#1890ff' }}>
-                        {sessionDetail.total_answered}
+                        {sessionDetail.total_questions || sessionDetail.qa_records?.length || 0}
                       </div>
                     </div>
                   </Col>
@@ -415,22 +492,25 @@ export default function Feedback() {
                   <Empty description="暂无问答记录" />
                 ) : (
                   <Collapse accordion>
-                    {sessionDetail.qa_records.map((record, index) => (
-                      <Panel
-                        header={
-                          <Space>
-                            <Text strong>第 {index + 1} 题</Text>
-                            {record.ai_feedback ? (
-                              <Tag color="success" icon={<CheckCircleOutlined />}>
-                                已反馈
-                              </Tag>
-                            ) : (
-                              <Tag color="default">未反馈</Tag>
-                            )}
-                          </Space>
-                        }
-                        key={record.id}
-                      >
+                    {sessionDetail.qa_records.map((record, index) => {
+                      // 计算总题目数
+                      const totalQuestions = sessionDetail.total_questions || sessionDetail.qa_records.length
+                      return (
+                        <Panel
+                          header={
+                            <Space>
+                              <Text strong>第 {index + 1} / {totalQuestions} 题</Text>
+                              {record.ai_feedback ? (
+                                <Tag color="success" icon={<CheckCircleOutlined />}>
+                                  已反馈
+                                </Tag>
+                              ) : (
+                                <Tag color="default">未反馈</Tag>
+                              )}
+                            </Space>
+                          }
+                          key={record.id || record.question_id || index}
+                        >
                         {/* 问题 */}
                         <div style={{ marginBottom: 16 }}>
                           <Text strong style={{ fontSize: 15 }}>
@@ -558,8 +638,9 @@ export default function Feedback() {
                             生成AI反馈
                           </Button>
                         )}
-                      </Panel>
-                    ))}
+                        </Panel>
+                      )
+                    })}
                   </Collapse>
                 )}
               </Card>

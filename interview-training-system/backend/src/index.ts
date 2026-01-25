@@ -3,7 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { errorHandler } from './middleware/errorHandler.js'
 import { logger } from './middleware/logger.js'
-import { initDatabase } from './db/index.js'
+import { initDatabase, closePool } from './db/index.js'
 import schoolRoutes from './routes/schools.js'
 import aiRoutes from './routes/ai.js'
 
@@ -49,7 +49,47 @@ app.use('/api/progress', (req, res) => res.json({ message: 'Progress API - TODO'
 app.use(errorHandler)
 
 // 启动服务器
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
   console.log(`📝 Health check: http://localhost:${PORT}/health`)
+})
+
+// 优雅关闭：确保热加载时正确清理资源
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n收到 ${signal} 信号，正在优雅关闭服务器...`)
+  
+  // 关闭HTTP服务器
+  server.close(async () => {
+    console.log('✅ HTTP 服务器已关闭')
+    
+    // 关闭数据库连接池
+    try {
+      await closePool()
+    } catch (error) {
+      console.error('关闭数据库连接池时出错:', error)
+    }
+    
+    process.exit(0)
+  })
+  
+  // 如果10秒内没有关闭，强制退出
+  setTimeout(() => {
+    console.error('⚠️  强制退出（超时）')
+    process.exit(1)
+  }, 10000)
+}
+
+// 监听退出信号
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
+// 处理未捕获的异常
+process.on('uncaughtException', (error) => {
+  console.error('未捕获的异常:', error)
+  gracefulShutdown('uncaughtException')
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('未处理的 Promise 拒绝:', reason)
+  gracefulShutdown('unhandledRejection')
 })

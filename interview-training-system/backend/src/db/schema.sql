@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS daily_tasks (
   question_ids JSON COMMENT '题目ID数组',
   status VARCHAR(20) DEFAULT 'pending' COMMENT '状态: pending, in_progress, completed',
   completed_at TIMESTAMP NULL COMMENT '完成时间',
+  metadata JSON COMMENT '元数据(如 skipped 标记)',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_plan_id (plan_id),

@@ -146,7 +146,7 @@ router.post('/cleanup', async (req: Request, res: Response) => {
     
     // 1. 修复没有 question_ids 的会话（从 qa_records 中提取并保存）
     const sessionsWithoutQuestions = await query(
-      `SELECT id FROM sessions WHERE question_ids IS NULL`
+      `SELECT id, task_id, status FROM sessions WHERE question_ids IS NULL`
     );
     
     for (const session of sessionsWithoutQuestions) {
@@ -158,6 +158,7 @@ router.post('/cleanup', async (req: Request, res: Response) => {
       );
       
       if (qaRecords.length > 0) {
+        // 从qa_records中提取题目ID并保存到question_ids
         const questionIds = qaRecords.map((r: any) => r.question_id);
         await execute(
           `UPDATE sessions SET question_ids = ? WHERE id = ?`,
@@ -166,10 +167,34 @@ router.post('/cleanup', async (req: Request, res: Response) => {
         results.fixed_sessions++;
         console.log(`✅ 修复会话 ${session.id}，补充了 ${questionIds.length} 个题目ID`);
       } else {
-        // 如果会话没有任何问答记录，可能是无效会话，删除它
-        await execute(`DELETE FROM sessions WHERE id = ?`, [session.id]);
-        results.deleted_invalid_sessions++;
-        console.log(`🗑️  删除无效会话 ${session.id}（没有问答记录）`);
+        // 只删除既没有question_ids也没有qa_records且不是进行中的会话
+        // 保留进行中的会话（可能还没开始答题）和自由练习的会话
+        const hasAnyRecords = await query(
+          `SELECT COUNT(*) as count FROM qa_records WHERE session_id = ?`,
+          [session.id]
+        );
+        
+        const recordCount = hasAnyRecords[0]?.count || 0;
+        
+        // 只删除：没有问答记录、不是进行中、且创建时间超过7天的会话
+        if (recordCount === 0 && session.status !== 'in_progress') {
+          const sessionAge = await query(
+            `SELECT TIMESTAMPDIFF(DAY, created_at, NOW()) as days_old FROM sessions WHERE id = ?`,
+            [session.id]
+          );
+          const daysOld = sessionAge[0]?.days_old || 0;
+          
+          // 只删除超过7天的空会话
+          if (daysOld > 7) {
+            await execute(`DELETE FROM sessions WHERE id = ?`, [session.id]);
+            results.deleted_invalid_sessions++;
+            console.log(`🗑️  删除无效会话 ${session.id}（没有问答记录且超过7天）`);
+          } else {
+            console.log(`ℹ️  保留会话 ${session.id}（可能是新创建的自由练习会话）`);
+          }
+        } else {
+          console.log(`ℹ️  保留会话 ${session.id}（有记录或进行中）`);
+        }
       }
     }
     

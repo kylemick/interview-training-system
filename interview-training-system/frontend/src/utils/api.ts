@@ -276,6 +276,8 @@ export const api = {
       apiClient.post(`/plans/tasks/${taskId}/start-practice`, data).then(res => res.data),
     completeTask: (taskId: string) => 
       apiClient.patch(`/plans/tasks/${taskId}/complete`).then(res => res.data),
+    skipTask: (taskId: string) => 
+      apiClient.patch(`/plans/tasks/${taskId}/skip`).then(res => res.data),
   },
 
   // 练习会话相关

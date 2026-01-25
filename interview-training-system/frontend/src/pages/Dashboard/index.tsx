@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Card, Row, Col, Typography, List, Tag, Progress, Statistic, Empty, Button, Space } from 'antd'
+import { Card, Row, Col, Typography, List, Tag, Progress, Statistic, Empty, Button, Space, Modal, message } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -9,6 +9,7 @@ import {
   RightOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api, cancelAllPendingRequests } from '../../utils/api'
@@ -49,6 +50,7 @@ interface Session {
   end_time: string | null
   status: string
   question_count: number
+  task_id?: number | null
 }
 
 interface Weakness {
@@ -70,6 +72,10 @@ export default function Dashboard() {
     totalSessions: 0,
     completedToday: 0,
     totalQuestions: 0,
+    taskSessions: 0,
+    freeSessions: 0,
+    taskQuestions: 0,
+    freeQuestions: 0,
   })
   const [weaknesses, setWeaknesses] = useState<Weakness[]>([])
 
@@ -96,12 +102,23 @@ export default function Dashboard() {
 
       // 计算统计数据
       const completedToday = tasks.filter((t: DailyTask) => t.status === 'completed').length
-      const totalQuestions = sessions.reduce((sum: number, s: Session) => sum + (s.question_count || 0), 0)
+      
+      // 区分计划内练习和自由练习的统计
+      const taskSessions = sessions.filter((s: Session) => s.task_id != null)
+      const freeSessions = sessions.filter((s: Session) => s.task_id == null)
+      
+      const taskQuestions = taskSessions.reduce((sum: number, s: Session) => sum + (s.question_count || 0), 0)
+      const freeQuestions = freeSessions.reduce((sum: number, s: Session) => sum + (s.question_count || 0), 0)
+      const totalQuestions = taskQuestions + freeQuestions
 
       setStats({
         totalSessions: sessions.length,
         completedToday,
         totalQuestions,
+        taskSessions: taskSessions.length,
+        freeSessions: freeSessions.length,
+        taskQuestions,
+        freeQuestions,
       })
     } catch (error) {
       console.error('加载仪表盘数据失败:', error)
@@ -124,6 +141,26 @@ export default function Dashboard() {
   const handleStartTask = useCallback((taskId: string) => {
     navigate(`/practice?taskId=${taskId}`)
   }, [navigate])
+
+  // 跳过任务
+  const handleSkipTask = useCallback(async (taskId: string, category: string) => {
+    Modal.confirm({
+      title: '确认跳过任务',
+      content: `确认跳过此任务?将不计入练习记录。`,
+      okText: '确认跳过',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await api.plans.skipTask(taskId)
+          message.success('任务已跳过')
+          loadDashboardData() // 重新加载数据
+        } catch (error: any) {
+          message.error(error.response?.data?.message || '跳过任务失败')
+        }
+      },
+    })
+  }, [loadDashboardData])
 
   // 优化：使用 useMemo 缓存计算结果
   const todayProgress = useMemo(() => {
@@ -174,6 +211,9 @@ export default function Dashboard() {
               prefix={<BookOutlined />}
               valueStyle={{ color: '#722ed1' }}
             />
+            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
+              计划内: {stats.taskSessions} | 自由: {stats.freeSessions}
+            </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
@@ -185,6 +225,9 @@ export default function Dashboard() {
               prefix={<TrophyOutlined />}
               valueStyle={{ color: '#faad14' }}
             />
+            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
+              计划内: {stats.taskQuestions} | 自由: {stats.freeQuestions}
+            </div>
           </Card>
         </Col>
       </Row>
@@ -226,21 +269,33 @@ export default function Dashboard() {
                           已完成
                         </Tag>
                       ) : task.status === 'in_progress' ? (
-                        <Button
-                          type="primary"
-                          size="small"
-                          onClick={() => handleStartTask(task.id)}
-                        >
-                          继续练习
-                        </Button>
+                        <Space>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => handleStartTask(task.id)}
+                          >
+                            继续练习
+                          </Button>
+                        </Space>
                       ) : (
-                        <Button
-                          type="primary"
-                          size="small"
-                          onClick={() => handleStartTask(task.id)}
-                        >
-                          开始练习
-                        </Button>
+                        <Space>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => handleStartTask(task.id)}
+                          >
+                            开始练习
+                          </Button>
+                          <Button
+                            type="default"
+                            size="small"
+                            icon={<CloseCircleOutlined />}
+                            onClick={() => handleSkipTask(task.id, task.category)}
+                          >
+                            跳过
+                          </Button>
+                        </Space>
                       ),
                     ]}
                   >
