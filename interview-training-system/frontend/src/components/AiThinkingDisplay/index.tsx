@@ -19,6 +19,18 @@ const AiThinkingDisplay: React.FC = memo(() => {
     toggleMinimize,
   } = useAiThinkingStore()
 
+  // 調試日志
+  if (visible || currentTask) {
+    console.log('🎨 [AiThinkingDisplay] 渲染狀態:', {
+      visible,
+      hasCurrentTask: !!currentTask,
+      taskName: currentTask?.name,
+      taskType: currentTask?.type,
+      minimized,
+      stepsCount: currentTask?.steps?.length || 0
+    })
+  }
+
   // 如果不可见或没有任務，不渲染
   if (!visible || !currentTask) {
     return null

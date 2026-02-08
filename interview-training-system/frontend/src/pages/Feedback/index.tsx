@@ -325,9 +325,19 @@ export default function Feedback() {
           })
         }
         
-        // 解析反馈數據
+        // 解析反馈數據（確保正確解析 JSON 字符串）
         detail.qa_records = finalRecords.map((record: any) => {
-          return parseFeedbackData(record)
+          const parsed = parseFeedbackData(record)
+          // 調試日志：檢查解析後的數據
+          if (parsed.ai_feedback) {
+            console.log(`✅ 解析反馈數據成功 (記錄ID: ${parsed.id}):`, {
+              recordId: parsed.id,
+              hasFeedback: !!parsed.ai_feedback,
+              feedbackType: typeof parsed.ai_feedback,
+              feedbackKeys: typeof parsed.ai_feedback === 'object' ? Object.keys(parsed.ai_feedback) : null
+            })
+          }
+          return parsed
         })
         
         // 更新 total_questions
@@ -361,11 +371,22 @@ export default function Feedback() {
       
       // 如果是字符串，尝試解析
       if (typeof record.ai_feedback === 'string') {
+        // 檢查是否為空字符串
+        if (record.ai_feedback.trim() === '') {
+          return { ...record, ai_feedback: null }
+        }
         const parsed = JSON.parse(record.ai_feedback)
-        return { ...record, ai_feedback: parsed }
+        // 確保解析後的數據是對象
+        if (parsed && typeof parsed === 'object') {
+          return { ...record, ai_feedback: parsed }
+        } else {
+          console.warn(`解析反馈數據格式異常 (記錄ID: ${record.id}): 解析後不是對象`, parsed)
+          return { ...record, ai_feedback: null }
+        }
       }
     } catch (error) {
       console.warn(`解析反馈數據失敗 (記錄ID: ${record.id}):`, error)
+      console.warn(`原始數據類型: ${typeof record.ai_feedback}`, record.ai_feedback)
       // 解析失敗時，返回原記錄但将 ai_feedback 设为 null，避免页面崩溃
       return { ...record, ai_feedback: null }
     }
@@ -374,40 +395,128 @@ export default function Feedback() {
   }
 
   // 生成AI反馈
-  const generateFeedback = async (recordId: string, questionText: string, answerText: string) => {
-    if (!sessionDetail) return
+  const generateFeedback = async (recordId: string | number, questionText: string, answerText: string) => {
+    // 確保 recordId 是字符串類型
+    const recordIdStr = String(recordId || '')
+    
+    console.log('🔍 [Feedback] generateFeedback 被調用:', { 
+      recordId: recordIdStr,
+      recordIdType: typeof recordId,
+      questionText: questionText?.substring(0, 30), 
+      answerText: answerText?.substring(0, 30),
+      hasSessionDetail: !!sessionDetail,
+      selectedSession
+    })
+    
+    // 基本驗證
+    if (!sessionDetail) {
+      const errorMsg = '無法生成反饋：會話詳情未加載'
+      console.error('❌', errorMsg)
+      message.error(errorMsg)
+      return
+    }
+    
+    // 驗證 recordId（確保是字符串後再檢查）
+    if (!recordIdStr || recordIdStr === 'undefined' || recordIdStr === 'null' || recordIdStr.startsWith('placeholder_')) {
+      const errorMsg = '無法生成反饋：記錄ID無效'
+      console.error('❌', errorMsg, { recordId, recordIdStr })
+      message.error(errorMsg)
+      return
+    }
+    
+    const trimmedQuestionText = questionText?.trim() || ''
+    const trimmedAnswerText = answerText?.trim() || ''
+    
+    if (!trimmedQuestionText) {
+      const errorMsg = '無法生成反饋：問題文本為空'
+      console.error('❌', errorMsg, { recordId, questionText })
+      message.error(errorMsg)
+      return
+    }
+    
+    if (!trimmedAnswerText) {
+      const errorMsg = '無法生成反饋：答案文本為空'
+      console.error('❌', errorMsg, { recordId, answerText })
+      message.error(errorMsg)
+      return
+    }
+    
+    if (!sessionDetail.session?.category) {
+      const errorMsg = '無法生成反饋：會話類別未設置'
+      console.error('❌', errorMsg, { sessionDetail })
+      message.error(errorMsg)
+      return
+    }
+    
+    // 確保 executeWithThinking 存在
+    if (!executeWithThinking) {
+      console.error('❌ executeWithThinking 未定義！')
+      message.error('系統錯誤：AI思考組件未初始化')
+      return
+    }
     
     try {
       setGeneratingFeedback(true)
-      await executeWithThinking(
+      console.log(`✅ [Feedback] 參數驗證通過，開始生成反饋`)
+      console.log(`📋 [Feedback] 參數詳情:`, {
+        recordId: recordIdStr,
+        sessionId: selectedSession,
+        category: sessionDetail.session.category,
+        questionTextLength: trimmedQuestionText.length,
+        answerTextLength: trimmedAnswerText.length
+      })
+      
+      // 強制顯示浮窗測試
+      console.log('🔄 [Feedback] 調用 executeWithThinking...')
+      console.log('🔍 [Feedback] executeWithThinking 類型:', typeof executeWithThinking)
+      
+      const result = await executeWithThinking(
         'generate-feedback',
         async () => {
-          return await api.feedback.generate({
-            session_id: selectedSession,
-            record_id: recordId,
-            question_text: questionText,
-            answer_text: answerText,
-            category: sessionDetail.session.category, // 從會話中获取類別
-            target_school: targetSchool,
-          });
+          console.log('📤 [Feedback] 發送 API 請求...')
+          try {
+            const response = await api.feedback.generate({
+              session_id: selectedSession,
+              record_id: recordIdStr, // 使用字符串類型的 recordId
+              question_text: trimmedQuestionText,
+              answer_text: trimmedAnswerText,
+              category: sessionDetail.session.category,
+              target_school: targetSchool,
+            });
+            console.log('📥 [Feedback] API 響應:', response)
+            return response
+          } catch (apiError: any) {
+            console.error('❌ [Feedback] API 請求失敗:', apiError)
+            throw apiError
+          }
         },
         {
           taskName: '生成AI反馈',
-          onSuccess: async () => {
+          onSuccess: async (response) => {
+            console.log('✅ [Feedback] 反饋生成成功:', response)
             message.success('反馈生成成功')
-            // 重新加载會話详情
+            // 重新加载會話详情，確保獲取最新的反饋數據
             if (selectedSession) {
+              // 等待一小段時間確保後端數據已保存
+              await new Promise(resolve => setTimeout(resolve, 300))
+              // 重新加載會話詳情，確保獲取最新的反饋數據
               await loadSessionDetail(selectedSession)
             }
           },
           onError: (error: any) => {
-            console.error('生成反馈失敗:', error)
-            message.error(error.response?.data?.message || '生成反馈失敗')
+            console.error('❌ [Feedback] 生成反馈失敗:', error)
+            const errorMsg = error.response?.data?.error?.message || error.response?.data?.message || '生成反馈失敗'
+            message.error(errorMsg)
           },
         }
       );
+      console.log('✅ [Feedback] executeWithThinking 完成:', result)
+    } catch (error: any) {
+      console.error('❌ [Feedback] generateFeedback 異常:', error)
+      message.error('生成反馈時發生異常：' + (error.message || '未知錯誤'))
     } finally {
       setGeneratingFeedback(false)
+      console.log('🏁 [Feedback] generateFeedback 結束')
     }
   }
 
@@ -903,10 +1012,53 @@ export default function Feedback() {
                                 <Button
                                   type="primary"
                                   icon={<ThunderboltOutlined />}
-                                  onClick={() =>
-                                    generateFeedback(record.id, record.question_text, record.answer_text)
-                                  }
+                                  onClick={async (e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    console.log('🖱️ [Feedback] 點擊重新生成反馈按鈕')
+                                    console.log('📋 [Feedback] 記錄信息:', {
+                                      recordId: record.id,
+                                      recordType: typeof record.id,
+                                      questionText: record.question_text?.substring(0, 30),
+                                      answerText: record.answer_text?.substring(0, 30),
+                                      hasQuestionText: !!record.question_text,
+                                      hasAnswerText: !!record.answer_text,
+                                      questionTextLength: record.question_text?.length || 0,
+                                      answerTextLength: record.answer_text?.length || 0,
+                                    })
+                                    
+                                    // 驗證參數
+                                    if (!record.question_text || !record.question_text.trim()) {
+                                      const errorMsg = '無法生成反饋：問題文本為空'
+                                      console.error('❌ [Feedback]', errorMsg)
+                                      message.error(errorMsg)
+                                      return
+                                    }
+                                    
+                                    if (!record.answer_text || !record.answer_text.trim()) {
+                                      const errorMsg = '無法生成反饋：答案文本為空'
+                                      console.error('❌ [Feedback]', errorMsg)
+                                      message.error(errorMsg)
+                                      return
+                                    }
+                                    
+                                    if (!record.id) {
+                                      const errorMsg = '無法生成反饋：記錄ID為空'
+                                      console.error('❌ [Feedback]', errorMsg)
+                                      message.error(errorMsg)
+                                      return
+                                    }
+                                    
+                                    console.log('✅ [Feedback] 參數驗證通過，調用 generateFeedback')
+                                    try {
+                                      await generateFeedback(record.id, record.question_text, record.answer_text)
+                                    } catch (err: any) {
+                                      console.error('❌ [Feedback] generateFeedback 調用異常:', err)
+                                      message.error('調用生成反饋函數時發生錯誤：' + (err.message || '未知錯誤'))
+                                    }
+                                  }}
                                   loading={generatingFeedback}
+                                  disabled={generatingFeedback}
                                   style={{ marginTop: 8 }}
                                   size="small"
                                 >
@@ -920,10 +1072,53 @@ export default function Feedback() {
                               <Button
                                 type="primary"
                                 icon={<ThunderboltOutlined />}
-                                onClick={() =>
-                                  generateFeedback(record.id, record.question_text, record.answer_text)
-                                }
+                                onClick={async (e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  console.log('🖱️ [Feedback] 點擊生成AI反馈按鈕')
+                                  console.log('📋 [Feedback] 記錄信息:', {
+                                    recordId: record.id,
+                                    recordType: typeof record.id,
+                                    questionText: record.question_text?.substring(0, 30),
+                                    answerText: record.answer_text?.substring(0, 30),
+                                    hasQuestionText: !!record.question_text,
+                                    hasAnswerText: !!record.answer_text,
+                                    questionTextLength: record.question_text?.length || 0,
+                                    answerTextLength: record.answer_text?.length || 0,
+                                  })
+                                  
+                                  // 驗證參數
+                                  if (!record.question_text || !record.question_text.trim()) {
+                                    const errorMsg = '無法生成反饋：問題文本為空'
+                                    console.error('❌ [Feedback]', errorMsg)
+                                    message.error(errorMsg)
+                                    return
+                                  }
+                                  
+                                  if (!record.answer_text || !record.answer_text.trim()) {
+                                    const errorMsg = '無法生成反饋：答案文本為空'
+                                    console.error('❌ [Feedback]', errorMsg)
+                                    message.error(errorMsg)
+                                    return
+                                  }
+                                  
+                                  if (!record.id) {
+                                    const errorMsg = '無法生成反饋：記錄ID為空'
+                                    console.error('❌ [Feedback]', errorMsg)
+                                    message.error(errorMsg)
+                                    return
+                                  }
+                                  
+                                  console.log('✅ [Feedback] 參數驗證通過，調用 generateFeedback')
+                                  try {
+                                    await generateFeedback(record.id, record.question_text, record.answer_text)
+                                  } catch (err: any) {
+                                    console.error('❌ [Feedback] generateFeedback 調用異常:', err)
+                                    message.error('調用生成反饋函數時發生錯誤：' + (err.message || '未知錯誤'))
+                                  }
+                                }}
                                 loading={generatingFeedback}
+                                disabled={generatingFeedback}
                                 style={{ marginTop: 16 }}
                               >
                                 生成AI反馈

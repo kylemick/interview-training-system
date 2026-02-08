@@ -1,7 +1,7 @@
 /**
  * 反饋路由
  */
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { query, queryOne, insert, execute, queryWithPagination } from '../db/index.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateFeedback, generateSessionSummary } from '../ai/feedbackGenerator.js';
@@ -9,12 +9,32 @@ import { generateFeedback, generateSessionSummary } from '../ai/feedbackGenerato
 const router = Router();
 
 // 為單個問答生成反饋
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', async (req: Request, res: Response, next: NextFunction) => {
   try {
     let { session_id, record_id, question_text, answer_text, category, target_school } = req.body;
 
-    if (!question_text || !answer_text || !category) {
-      throw new AppError(400, '缺少必填字段：question_text, answer_text, category');
+    // 調試日志：檢查接收到的參數
+    console.log(`📥 接收反饋生成請求:`, {
+      session_id,
+      record_id,
+      has_question_text: !!question_text,
+      has_answer_text: !!answer_text,
+      category,
+      question_text_preview: question_text ? question_text.substring(0, 50) + '...' : 'null',
+      answer_text_preview: answer_text ? answer_text.substring(0, 50) + '...' : 'null',
+    });
+
+    // 驗證必填字段（檢查是否存在且非空字符串）
+    if (!question_text || (typeof question_text === 'string' && !question_text.trim())) {
+      return next(new AppError(400, '缺少必填字段：question_text'));
+    }
+    
+    if (!answer_text || (typeof answer_text === 'string' && !answer_text.trim())) {
+      return next(new AppError(400, '缺少必填字段：answer_text'));
+    }
+    
+    if (!category || (typeof category === 'string' && !category.trim())) {
+      return next(new AppError(400, '缺少必填字段：category'));
     }
 
     // 統一類別名稱：將 logical-thinking 轉換為 logic-thinking（兼容舊數據）
@@ -46,11 +66,31 @@ router.post('/generate', async (req: Request, res: Response) => {
 
     // 如果提供了 record_id，更新問答記錄
     if (record_id) {
-      await execute(
-        'UPDATE qa_records SET ai_feedback = ? WHERE id = ?',
-        [JSON.stringify(feedback), record_id]
-      );
-      console.log(`✅ 反饋已保存到記錄 ${record_id}`);
+      // 確保 record_id 是數字類型
+      const recordIdNum = typeof record_id === 'string' ? parseInt(record_id, 10) : record_id;
+      if (!isNaN(recordIdNum)) {
+        const feedbackJson = JSON.stringify(feedback);
+        await execute(
+          'UPDATE qa_records SET ai_feedback = ? WHERE id = ?',
+          [feedbackJson, recordIdNum]
+        );
+        console.log(`✅ 反饋已保存到記錄 ${recordIdNum}`);
+        
+        // 驗證保存是否成功
+        const verifyRecord = await queryOne(
+          'SELECT id, ai_feedback FROM qa_records WHERE id = ?',
+          [recordIdNum]
+        );
+        if (verifyRecord && verifyRecord.ai_feedback) {
+          console.log(`✅ 驗證成功: 記錄 ${recordIdNum} 的反饋已保存`);
+        } else {
+          console.warn(`⚠️ 驗證失敗: 記錄 ${recordIdNum} 的反饋可能未正確保存`);
+        }
+      } else {
+        console.warn(`⚠️ 無效的 record_id: ${record_id}`);
+      }
+    } else {
+      console.warn(`⚠️ 未提供 record_id，反饋不會保存到數據庫`);
     }
 
     res.json({
@@ -59,19 +99,21 @@ router.post('/generate', async (req: Request, res: Response) => {
       data: feedback,
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error('生成反饋失敗:', error);
-    throw new AppError(500, '生成反饋失敗');
+    return next(new AppError(500, '生成反饋失敗'));
   }
 });
 
 // 為會話生成總結
-router.post('/session-summary', async (req: Request, res: Response) => {
+router.post('/session-summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { session_id } = req.body;
 
     if (!session_id) {
-      throw new AppError(400, '缺少必填字段：session_id');
+      return next(new AppError(400, '缺少必填字段：session_id'));
     }
 
     // 檢查會話是否存在
@@ -134,14 +176,16 @@ router.post('/session-summary', async (req: Request, res: Response) => {
       data: summary,
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error('生成會話總結失敗:', error);
-    throw new AppError(500, '生成會話總結失敗');
+    return next(new AppError(500, '生成會話總結失敗'));
   }
 });
 
 // 獲取會話總結
-router.get('/session/:sessionId/summary', async (req: Request, res: Response) => {
+router.get('/session/:sessionId/summary', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
 
@@ -153,7 +197,7 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
     );
 
     if (!summary) {
-      throw new AppError(404, '會話總結不存在');
+      return next(new AppError(404, '會話總結不存在'));
     }
 
     // 解析 JSON 字段（添加錯誤處理）
@@ -183,14 +227,16 @@ router.get('/session/:sessionId/summary', async (req: Request, res: Response) =>
       data: formattedSummary,
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error('獲取會話總結失敗:', error);
-    throw new AppError(500, '獲取會話總結失敗');
+    return next(new AppError(500, '獲取會話總結失敗'));
   }
 });
 
 // 獲取歷史反饋列表
-router.get('/history', async (req: Request, res: Response) => {
+router.get('/history', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { category, limit = '20' } = req.query;
     const limitNum = Math.min(parseInt(limit as string) || 20, 100);
@@ -246,23 +292,23 @@ router.get('/history', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('獲取歷史反饋失敗:', error);
-    throw new AppError(500, '獲取歷史反饋失敗');
+    return next(new AppError(500, '獲取歷史反饋失敗'));
   }
 });
 
 // 删除单个反馈
-router.delete('/record/:recordId', async (req: Request, res: Response) => {
+router.delete('/record/:recordId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { recordId } = req.params;
 
     // 檢查記錄是否存在
     const record = await queryOne('SELECT id, ai_feedback FROM qa_records WHERE id = ?', [recordId]);
     if (!record) {
-      throw new AppError(404, '問答記錄不存在');
+      return next(new AppError(404, '問答記錄不存在'));
     }
 
     if (!record.ai_feedback) {
-      throw new AppError(400, '該記錄沒有反饋');
+      return next(new AppError(400, '該記錄沒有反饋'));
     }
 
     // 清除反饋（設置為 NULL）
@@ -275,21 +321,23 @@ router.delete('/record/:recordId', async (req: Request, res: Response) => {
       message: '反饋已刪除',
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error('刪除反饋失敗:', error);
-    throw new AppError(500, '刪除反饋失敗');
+    return next(new AppError(500, '刪除反饋失敗'));
   }
 });
 
 // 批量删除會話的所有反馈
-router.delete('/session/:sessionId', async (req: Request, res: Response) => {
+router.delete('/session/:sessionId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
 
     // 檢查會話是否存在
     const session = await queryOne('SELECT id FROM sessions WHERE id = ?', [sessionId]);
     if (!session) {
-      throw new AppError(404, '會話不存在');
+      return next(new AppError(404, '會話不存在'));
     }
 
     // 清除該會話所有問答記錄的反饋
@@ -308,9 +356,11 @@ router.delete('/session/:sessionId', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      return next(error);
+    }
     console.error('批量删除反馈失敗:', error);
-    throw new AppError(500, '批量删除反馈失敗');
+    return next(new AppError(500, '批量删除反馈失敗'));
   }
 });
 

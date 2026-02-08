@@ -21,6 +21,7 @@ export type AiTaskType =
   | 'generate-learning-material'
   | 'save-interview-questions'
   | 'save-weaknesses'
+  | 'create-session'
 
 interface AiThinkingState {
   // 当前任務信息
@@ -110,6 +111,13 @@ function getThinkingStepsTemplate(taskType: AiTaskType): string[] {
       '更新學生弱點統計',
       '完成',
     ],
+    'create-session': [
+      '檢查題目可用性',
+      '生成所需題目（如需要）',
+      '創建練習會話',
+      '加載題目列表',
+      '完成',
+    ],
   }
 
   return templates[taskType] || ['处理中', '完成']
@@ -128,6 +136,7 @@ function getTaskTypeName(taskType: AiTaskType): string {
     'generate-learning-material': '生成學習素材',
     'save-interview-questions': '保存面試題目',
     'save-weaknesses': '保存弱點分析',
+    'create-session': '創建練習會話並生成題目',
   }
   return names[taskType] || 'AI处理'
 }
@@ -138,6 +147,7 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
   minimized: false,
 
   startThinking: (taskType: AiTaskType, taskName?: string) => {
+    console.log('🎬 startThinking 被調用:', { taskType, taskName })
     const steps = getThinkingStepsTemplate(taskType).map((text, index) => ({
       id: `step-${index}`,
       text,
@@ -150,16 +160,26 @@ export const useAiThinkingStore = create<AiThinkingState>((set, get) => ({
       clearInterval(state.updateInterval)
     }
 
+    const finalTaskName = taskName || getTaskTypeName(taskType)
+    console.log('✅ 設置思考狀態:', {
+      taskType,
+      taskName: finalTaskName,
+      stepsCount: steps.length,
+      visible: true
+    })
+
     set({
       currentTask: {
         type: taskType,
-        name: taskName || getTaskTypeName(taskType),
+        name: finalTaskName,
         steps,
         currentStepIndex: 0,
       },
       visible: true,
       minimized: false,
     })
+    
+    console.log('✅ 思考狀態已設置，浮窗應該顯示')
 
     // 自動更新步骤（模拟AI处理過程）
     // 每2-3秒自動推進到下一步，直到最後一步

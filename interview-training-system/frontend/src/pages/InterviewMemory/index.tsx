@@ -136,9 +136,15 @@ export default function InterviewMemory() {
         {
           taskName: '提取面試回憶',
           onSuccess: (response) => {
-            setExtractedData(response.data)
+            const raw = response?.data ?? response
+            const data = {
+              questions: Array.isArray(raw?.questions) ? raw.questions : [],
+              summary: typeof raw?.summary === 'string' ? raw.summary : '',
+              weaknesses: Array.isArray(raw?.weaknesses) ? raw.weaknesses : [],
+            }
+            setExtractedData(data)
             setCurrentStep(1)
-            message.success(response.message || 'AI 分析成功')
+            message.success(response?.message || 'AI 分析成功')
           },
           onError: (error: any) => {
             message.error(error.response?.data?.message || 'AI 分析失敗')
@@ -493,15 +499,24 @@ export default function InterviewMemory() {
       {/* 步骤 2: 查看和编輯提取結果 */}
       {currentStep === 1 && extractedData && (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {extractedData.summary && (
-            <Card title="📊 AI 分析總結">
-              <Paragraph>{extractedData.summary}</Paragraph>
-            </Card>
-          )}
+          {/* AI 分析總結：始終顯示，無內容時顯示佔位 */}
+          <Card title="📊 AI 分析總結">
+            <Paragraph>
+              {extractedData.summary?.trim()
+                ? extractedData.summary
+                : '本次分析未生成總結。可重新貼上更完整的面試回憶文本後再試。'}
+            </Paragraph>
+          </Card>
 
-          {/* 弱點分析卡片 */}
-          {extractedData.weaknesses && extractedData.weaknesses.length > 0 && (
-            <Card title={`⚠️ 識別到 ${extractedData.weaknesses.length} 个需要改進的弱點`}>
+          {/* 弱點分析：始終顯示，無弱點時顯示佔位 */}
+          <Card
+            title={
+              extractedData.weaknesses && extractedData.weaknesses.length > 0
+                ? `⚠️ 識別到 ${extractedData.weaknesses.length} 個需要改進的弱點`
+                : '⚠️ 弱點分析'
+            }
+          >
+            {extractedData.weaknesses && extractedData.weaknesses.length > 0 ? (
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 {extractedData.weaknesses.map((weakness, index) => (
                   <Card
@@ -558,8 +573,12 @@ export default function InterviewMemory() {
                 showIcon
                 style={{ marginTop: 16 }}
               />
-            </Card>
-          )}
+            ) : (
+              <Paragraph type="secondary">
+                本次未識別到需要改進的弱點。若面試回憶中包含學生回答或表現描述，AI 會嘗試從中分析弱點。
+              </Paragraph>
+            )}
+          </Card>
 
           <Card
             title={`✅ 提取到 ${extractedData.questions.length} 个問題`}
