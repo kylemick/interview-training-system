@@ -517,62 +517,64 @@ export default function InterviewMemory() {
             }
           >
             {extractedData.weaknesses && extractedData.weaknesses.length > 0 ? (
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                {extractedData.weaknesses.map((weakness, index) => (
-                  <Card
-                    key={index}
-                    type="inner"
-                    size="small"
-                    title={
-                      <Space>
-                        <Tag color={
-                          weakness.severity === 'high' ? 'red' :
-                          weakness.severity === 'medium' ? 'orange' : 'blue'
-                        }>
-                          {weakness.severity === 'high' ? '高' :
-                           weakness.severity === 'medium' ? '中' : '低'}嚴重
-                        </Tag>
-                        <Tag color="blue">{getCategoryLabel(weakness.category)}</Tag>
-                        <span>{weakness.description}</span>
-                      </Space>
-                    }
-                  >
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      {weakness.example_text && (
+              <>
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                  {extractedData.weaknesses.map((weakness, index) => (
+                    <Card
+                      key={index}
+                      type="inner"
+                      size="small"
+                      title={
+                        <Space>
+                          <Tag color={
+                            weakness.severity === 'high' ? 'red' :
+                            weakness.severity === 'medium' ? 'orange' : 'blue'
+                          }>
+                            {weakness.severity === 'high' ? '高' :
+                             weakness.severity === 'medium' ? '中' : '低'}嚴重
+                          </Tag>
+                          <Tag color="blue">{getCategoryLabel(weakness.category)}</Tag>
+                          <span>{weakness.description}</span>
+                        </Space>
+                      }
+                    >
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {weakness.example_text && (
+                          <div>
+                            <Text type="secondary">示例：</Text>
+                            <Paragraph style={{ marginLeft: 16, fontStyle: 'italic' }}>
+                              "{weakness.example_text}"
+                            </Paragraph>
+                          </div>
+                        )}
                         <div>
-                          <Text type="secondary">示例：</Text>
-                          <Paragraph style={{ marginLeft: 16, fontStyle: 'italic' }}>
-                            "{weakness.example_text}"
+                          <Text type="secondary">改進建議：</Text>
+                          <Paragraph style={{ marginLeft: 16 }}>
+                            {weakness.improvement_suggestions}
                           </Paragraph>
                         </div>
-                      )}
-                      <div>
-                        <Text type="secondary">改進建議：</Text>
-                        <Paragraph style={{ marginLeft: 16 }}>
-                          {weakness.improvement_suggestions}
-                        </Paragraph>
-                      </div>
-                      {weakness.related_topics && weakness.related_topics.length > 0 && (
-                        <div>
-                          <Text type="secondary">相關話題：</Text>
-                          <div style={{ marginLeft: 16, marginTop: 8 }}>
-                            {weakness.related_topics.map((topic) => (
-                              <Tag key={topic}>{topic}</Tag>
-                            ))}
+                        {weakness.related_topics && weakness.related_topics.length > 0 && (
+                          <div>
+                            <Text type="secondary">相關話題：</Text>
+                            <div style={{ marginLeft: 16, marginTop: 8 }}>
+                              {weakness.related_topics.map((topic) => (
+                                <Tag key={topic}>{topic}</Tag>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </Space>
-                  </Card>
-                ))}
-              </Space>
-              <Alert
-                message="💡 提示"
-                description="係統将保存这些弱點分析，後续可以根據弱點生成針對性的練習題目。"
-                type="info"
-                showIcon
-                style={{ marginTop: 16 }}
-              />
+                        )}
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+                <Alert
+                  message="💡 提示"
+                  description="係統将保存这些弱點分析，後续可以根據弱點生成針對性的練習題目。"
+                  type="info"
+                  showIcon
+                  style={{ marginTop: 16 }}
+                />
+              </>
             ) : (
               <Paragraph type="secondary">
                 本次未識別到需要改進的弱點。若面試回憶中包含學生回答或表現描述，AI 會嘗試從中分析弱點。

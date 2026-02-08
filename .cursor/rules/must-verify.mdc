@@ -1,0 +1,60 @@
+---
+description: 強制驗證規則 - 所有代碼變更必須通過驗證才能算完成
+globs: 
+alwaysApply: true
+---
+
+# 強制驗證規則（MANDATORY）
+
+## 核心原則
+**任何代碼變更都必須通過自動驗證後才能視為任務完成。驗證未通過前，不可以停止任務。**
+
+## 驗證流程
+
+### 每次修改代碼後，必須執行以下驗證：
+
+1. **前端 TypeScript 編譯檢查**（修改了前端代碼時）:
+```bash
+cd interview-training-system/frontend && npx tsc --noEmit
+```
+
+2. **後端 TypeScript 編譯檢查**（修改了後端代碼時）:
+```bash
+cd interview-training-system/backend && npx tsc --noEmit
+```
+
+3. **或者使用一鍵驗證腳本**:
+```bash
+./scripts/verify.sh          # 全量驗證
+./scripts/verify.sh --quick  # 快速驗證（推薦，僅 TypeScript 檢查）
+```
+
+### 驗證時機
+- **修改代碼後、回報完成前** — 必須驗證
+- **修復 bug 後** — 必須驗證修復沒有引入新問題
+- **重構代碼後** — 必須驗證
+- **新增功能後** — 必須驗證
+
+### 驗證失敗的處理
+1. 仔細閱讀錯誤信息
+2. 定位並修復問題
+3. 重新執行驗證
+4. 重複直到所有檢查通過
+5. **在所有驗證通過之前，絕不可以宣告任務完成**
+
+## 常見驗證錯誤速查
+
+| 錯誤類型 | 範例 | 修復方式 |
+|---------|------|---------|
+| TS2657 | JSX expressions must have one parent element | 用 `<>...</>` 或 `<div>` 包裹多個並列 JSX 元素 |
+| TS2454 | Variable used before assigned | 確保所有分支都有賦值，或用 `else` 替代 `else if` |
+| TS18047 | 'x' is possibly 'null' | 添加 null 檢查 `if (!x) return` |
+| TS2322 | Type 'X' is not assignable to type 'Y' | 檢查類型定義，添加類型斷言或修正類型 |
+| TS2345 | Argument type mismatch | 確認函數參數類型匹配 |
+| TS7006 | Parameter implicitly has 'any' type | 為參數添加明確的類型標註 |
+
+## 重要提醒
+- 不要忽略 TypeScript 錯誤，它們往往揭示了真正的 bug
+- 如果修復一個錯誤引入了新的錯誤，繼續修復直到零錯誤
+- 後端代碼注意 ESM 導入要加 `.js` 後綴
+- 前端嚴格模式下 `noUnusedLocals` 和 `noUnusedParameters` 都會報錯

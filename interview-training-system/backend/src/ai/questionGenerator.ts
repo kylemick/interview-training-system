@@ -65,7 +65,8 @@ Requirements:
 - Suitable for P5-P6 students (10-12 years old)
 - Focus on: self-introduction, daily conversation, picture description, impromptu speech
 - Assess: grammar, vocabulary, fluency, expression ability`;
-    } else if (category === 'english-reading') {
+    } else {
+      // category === 'english-reading'（由外層 if 保證只會是這兩個值之一）
       prompt = `IMPORTANT: You MUST respond in English ONLY. All content must be in English.
 
 You are an experienced Hong Kong secondary school interview tutor.

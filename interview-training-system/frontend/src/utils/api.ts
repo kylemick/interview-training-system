@@ -451,6 +451,12 @@ export const api = {
       apiClient.post(`/learning-materials/${id}/increment-usage`).then(res => res.data),
   },
 
+  // 語音識別相關
+  speech: {
+    getWsUrl: (lang: string = 'cn') =>
+      enhancedRequest({ method: 'get', url: '/speech/ws-url', params: { lang } }),
+  },
+
 }
 
 export default apiClient

@@ -894,6 +894,7 @@ function WeaknessDetail({
 
   // 創建訓練計劃
   const handleCreatePlan = useCallback(async (values: any) => {
+    if (!weakness) return;
     try {
       // 检查设置中是否有學生信息
       if (!settings?.student_name) {

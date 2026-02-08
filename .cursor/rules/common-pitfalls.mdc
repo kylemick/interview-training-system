@@ -52,6 +52,33 @@ const parsed = JSON.parse(cleaned.trim())
 **問題**: 開發環境熱加載可能導致連接池未正確關閉
 **解決**: `index.ts` 中已實現優雅關閉機制，監聽 SIGTERM/SIGINT
 
+## JSX 多元素並列
+**問題**: 三元表達式的分支中放了多個並列 JSX 元素，沒有父容器包裹（TS2657）
+**解決**: 用 `<>...</>` (Fragment) 包裹
+```tsx
+// ❌ 錯誤
+{condition ? (
+  <ComponentA />
+  <ComponentB />
+) : null}
+
+// ✅ 正確
+{condition ? (
+  <>
+    <ComponentA />
+    <ComponentB />
+  </>
+) : null}
+```
+
+## if/else if 未窮舉導致變量未賦值
+**問題**: `let x: string` 在 `if/else if` 中賦值但缺少 `else`，TS 認為可能未賦值（TS2454）
+**解決**: 將最後一個 `else if` 改為 `else`（邏輯等價時），或給變量默認值
+
+## 可空參數未做 null 檢查
+**問題**: 函數參數類型為 `Type | null`，直接訪問屬性導致 TS18047
+**解決**: 在使用前加 `if (!param) return` 或可選鏈 `param?.prop`
+
 ## 環境變量
 **問題**: `.env` 文件未提交到 git，新環境需要手動配置
 **必需變量**: `DEEPSEEK_API_KEY`, MySQL 連接信息（host, port, user, password, database）
