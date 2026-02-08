@@ -6,18 +6,21 @@ alwaysApply: false
 
 # 上次 Rules 更新摘要
 
-- **更新時間**: 2026-02-08 18:23:36
+- **更新時間**: 2026-02-08 18:23:45
 - **更新模式**: commit
-- **觸發**: 增強反饋模塊錯誤處理和 AI 思考展示功能
+- **觸發**: 新增 Cursor Rules 項目知識沉淀體系和自動更新機制
 
 ## 最近變更的文件
 ```
-interview-training-system/backend/src/routes/feedback.ts
-interview-training-system/frontend/src/components/AiThinkingDisplay/index.tsx
-interview-training-system/frontend/src/hooks/useAiThinking.ts
-interview-training-system/frontend/src/pages/Feedback/index.tsx
-interview-training-system/frontend/src/pages/InterviewMemory/index.tsx
-interview-training-system/frontend/src/store/useAiThinkingStore.ts
+.cursor/rules/ai-integration.mdc
+.cursor/rules/auto-last-update.mdc
+.cursor/rules/auto-project-snapshot.mdc
+.cursor/rules/backend-patterns.mdc
+.cursor/rules/coding-conventions.mdc
+.cursor/rules/common-pitfalls.mdc
+.cursor/rules/frontend-patterns.mdc
+.cursor/rules/project-overview.mdc
+scripts/update-cursor-rules.sh
 ```
 
 ## 當前項目統計
