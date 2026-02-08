@@ -1,0 +1,57 @@
+---
+description: 常見陷阱和問題 - 避免重複踩坑
+globs: interview-training-system/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 常見陷阱和注意事項
+
+## ESM 導入後綴
+**問題**: 後端使用 ESM 模塊，TypeScript 編譯後導入路徑不會自動添加 `.js`
+**解決**: 導入本地模塊時始終添加 `.js` 後綴
+```typescript
+// ✅ 正確
+import { foo } from './bar.js'
+// ❌ 錯誤 - 運行時會報 ERR_MODULE_NOT_FOUND
+import { foo } from './bar'
+```
+
+## 路由註冊順序
+**問題**: `index.ts` 中部分 import 寫在中間位置（非文件頂部）
+**注意**: 雖然功能正常，但新增路由時保持同樣的格式以保持一致性
+
+## AI JSON 解析
+**問題**: DeepSeek 返回的內容有時會被 markdown 代碼塊包裹
+**解決**: 解析前先清理 markdown 標記
+```typescript
+let cleaned = result.trim()
+if (cleaned.startsWith('```json')) {
+  cleaned = cleaned.slice(7)
+}
+if (cleaned.startsWith('```')) {
+  cleaned = cleaned.slice(3)
+}
+if (cleaned.endsWith('```')) {
+  cleaned = cleaned.slice(0, -3)
+}
+const parsed = JSON.parse(cleaned.trim())
+```
+
+## Zustand Store 中的定時器清理
+**問題**: `useAiThinkingStore` 中使用 `setInterval` 自動推進步驟，如果不正確清理會導致內存洩漏
+**解決**: 在 `completeThinking`、`hide`、`reset` 中都要清理 interval
+
+## 前端路由和頁面
+**問題**: 新增頁面後忘記在 `App.tsx` 中添加路由
+**解決**: 新增頁面的完整清單：
+1. 創建 `pages/NewPage/index.tsx`
+2. 在 `App.tsx` 中 import 並添加 `<Route>`
+3. 在 `components/Layout.tsx` 的側邊導航中添加菜單項
+
+## MySQL 連接池
+**問題**: 開發環境熱加載可能導致連接池未正確關閉
+**解決**: `index.ts` 中已實現優雅關閉機制，監聽 SIGTERM/SIGINT
+
+## 環境變量
+**問題**: `.env` 文件未提交到 git，新環境需要手動配置
+**必需變量**: `DEEPSEEK_API_KEY`, MySQL 連接信息（host, port, user, password, database）

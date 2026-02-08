@@ -1,0 +1,95 @@
+---
+description: 自動生成 - 項目結構快照（每次 commit 自動更新）
+globs: 
+alwaysApply: false
+---
+
+# 項目結構快照
+> 自動生成於 2026-02-08 18:23:36，請勿手動編輯
+
+## 前端頁面 (pages/)
+- Dashboard
+- DataManagement
+- Feedback
+- InterviewMemory
+- LearningMaterials
+- Practice
+- Progress
+- Questions
+- Schools
+- Settings
+- TrainingPlan
+- Weaknesses
+
+## 前端路由 (App.tsx)
+- /
+- /plan
+- /practice
+- /feedback
+- /progress
+- /weaknesses
+- /weaknesses/:id
+- /learning-materials
+- /learning-materials/:id
+- /schools
+- /questions
+- /data
+- /settings
+- /memory
+
+## 後端 API 路由
+- /api/schools
+- /api/ai
+- /api/questions
+- /api/data
+- /api/plans
+- /api/sessions
+- /api/feedback
+- /api/settings
+- /api/weaknesses
+- /api/learning-materials
+
+## AI 任務類型 (AiTaskType)
+- create-session
+- extract-interview-memory
+- generate-feedback
+- generate-learning-material
+- generate-plan
+- generate-questions
+- generate-school
+- save-interview-questions
+- save-weaknesses
+
+## Zustand Stores
+- useAiThinkingStore.ts
+- useAppStore.ts
+- useSessionStore.ts
+
+## 自定義 Hooks
+- useAiLoading.ts
+- useAiThinking.ts
+
+## AI 生成器 (backend/src/ai/)
+- deepseek.ts
+- feedbackGenerator.ts
+- materialGenerator.ts
+- questionGenerator.ts
+- schoolProfile.ts
+- services.ts
+- trainingPlanner.ts
+
+## 依賴版本（主要）
+### 前端
+    "dev": "vite"
+    "react": "^18.2.0"
+    "react-router-dom": "^6.20.0"
+    "antd": "^5.12.0"
+    "zustand": "^4.4.7"
+    "echarts": "^5.4.3"
+    "vite": "^5.0.8"
+
+### 後端
+    "express": "^4.18.2"
+    "mysql2": "^3.11.5"
+    "axios": "^1.6.2"
+    "zod": "^3.22.4"

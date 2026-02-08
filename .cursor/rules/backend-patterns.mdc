@@ -1,0 +1,79 @@
+---
+description: 後端代碼模式和約定
+globs: interview-training-system/backend/**/*.ts
+alwaysApply: false
+---
+
+# 後端代碼模式
+
+## 模塊系統
+- 使用 ESM (ECMAScript Modules)，`package.json` 中 `"type": "module"`
+- 導入時必須加 `.js` 後綴：`import { foo } from './bar.js'`（即使源碼是 `.ts`）
+- 這是 TSX + ESM 的要求，遺漏 `.js` 會導致運行時錯誤
+
+## Express 路由模式
+- 路由文件放在 `routes/` 目錄，每個功能模塊一個文件
+- 使用 `express.Router()` 創建路由器，然後 `export default router`
+- 在 `index.ts` 中通過 `app.use('/api/[resource]', resourceRoutes)` 註冊
+- RESTful 風格：GET 查詢、POST 創建、PUT 更新、DELETE 刪除
+
+```typescript
+// 標準路由模式
+import { Router } from 'express'
+const router = Router()
+
+router.get('/', async (req, res, next) => {
+  try {
+    // 業務邏輯
+    res.json({ success: true, data: result })
+  } catch (error) {
+    next(error)
+  }
+})
+
+export default router
+```
+
+## AI 服務架構
+- `ai/deepseek.ts` - DeepSeek API 客戶端（單例模式 `deepseekClient`）
+- `ai/services.ts` - AI 服務統一入口
+- `ai/feedbackGenerator.ts` - 反饋生成器
+- `ai/questionGenerator.ts` - 題目生成器
+- `ai/trainingPlanner.ts` - 訓練計劃生成器
+- `ai/materialGenerator.ts` - 學習素材生成器
+- `ai/schoolProfile.ts` - 學校檔案生成器
+- 每個生成器構建系統 prompt + 用戶 prompt，調用 `deepseekClient.chat()`
+
+## AI 調用模式
+```typescript
+// 標準 AI 調用模式
+const messages: DeepSeekMessage[] = [
+  { role: 'system', content: systemPrompt },
+  { role: 'user', content: userPrompt }
+]
+const result = await deepseekClient.chat(messages, temperature, maxTokens)
+// 解析 JSON 響應
+const parsed = JSON.parse(result)
+```
+
+## 錯誤處理
+- 使用自定義 `AppError` 類：`new AppError(statusCode, message, errorCode)`
+- 路由中使用 `try/catch` + `next(error)` 將錯誤傳遞到全局錯誤處理中間件
+- 全局錯誤處理在 `middleware/errorHandler.ts`
+
+## 數據庫
+- 使用 mysql2 連接池（`db/index.ts`）
+- `initDatabase()` 初始化數據庫和表
+- `closePool()` 優雅關閉連接池
+- 數據庫操作使用 prepared statements 防止 SQL 注入
+
+## 環境變量
+- `DEEPSEEK_API_KEY` - DeepSeek API 密鑰
+- `DEEPSEEK_API_URL` - API 基礎 URL（默認 https://api.deepseek.com）
+- `PORT` - 服務器端口（默認 3001）
+- MySQL 相關配置
+
+## 優雅關閉
+- 監聽 SIGTERM、SIGINT 信號
+- 先關閉 HTTP 服務器，再關閉數據庫連接池
+- 10 秒超時強制退出

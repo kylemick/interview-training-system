@@ -1,0 +1,88 @@
+---
+description: AI 集成模式 - DeepSeek API 調用和思考展示
+globs: interview-training-system/**/ai/**/*.ts, interview-training-system/frontend/src/store/useAiThinkingStore.ts, interview-training-system/frontend/src/hooks/useAiThinking.ts
+alwaysApply: false
+---
+
+# AI 集成模式
+
+## 新增 AI 功能的完整流程
+
+### 1. 後端：創建生成器
+在 `backend/src/ai/` 下新建生成器文件：
+
+```typescript
+import { deepseekClient, DeepSeekMessage } from './deepseek.js'
+
+export async function generateSomething(params: SomeParams): Promise<SomeResult> {
+  const systemPrompt = `你是一個...（角色設定和輸出格式要求）`
+  const userPrompt = `根據以下信息...（用戶輸入）`
+  
+  const messages: DeepSeekMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ]
+  
+  const result = await deepseekClient.chat(messages, 0.7, 2000)
+  return JSON.parse(result) // 或其他解析方式
+}
+```
+
+### 2. 後端：註冊路由
+在 `backend/src/routes/` 中添加路由：
+
+```typescript
+router.post('/generate', async (req, res, next) => {
+  try {
+    const result = await generateSomething(req.body)
+    res.json({ success: true, data: result })
+  } catch (error) {
+    next(error)
+  }
+})
+```
+
+### 3. 前端：添加任務類型
+在 `useAiThinkingStore.ts` 中：
+- 在 `AiTaskType` 聯合類型中添加新類型
+- 在 `getThinkingStepsTemplate` 中添加步驟模板
+- 在 `getTaskTypeName` 中添加中文名稱
+
+### 4. 前端：調用 AI
+使用 `useAiThinking` hook：
+
+```typescript
+const { executeWithThinking } = useAiThinking()
+
+const handleGenerate = async () => {
+  await executeWithThinking(
+    'new-task-type',
+    () => api.post('/api/some-endpoint', data),
+    {
+      taskName: '自定義任務名稱',
+      onSuccess: (result) => {
+        message.success('生成成功')
+        // 更新狀態...
+      },
+      onError: (error) => {
+        message.error('生成失敗')
+      }
+    }
+  )
+}
+```
+
+## AI 思考展示的自動推進機制
+- `startThinking` 會啟動一個 2.5 秒間隔的定時器自動推進步驟
+- 實際 AI 調用完成後，`completeThinking` 會立即標記所有步驟為完成
+- 完成後 3 秒自動隱藏浮窗
+- 錯誤時通過 `errorThinking` 展示錯誤信息
+
+## 後端 AI 思考步驟（aiThinkingSteps.ts）
+- `utils/aiThinkingSteps.ts` 提供後端步驟定義
+- 可用於 SSE (Server-Sent Events) 實時推送思考進度
+
+## 注意事項
+- DeepSeek API 調用不設超時（`timeout: 0`），因為 AI 生成可能耗時較長
+- AI 返回的 JSON 需要做容錯解析（可能包含 markdown 代碼塊包裹）
+- 系統 prompt 需要明確指定返回格式（JSON schema）

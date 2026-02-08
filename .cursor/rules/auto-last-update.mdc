@@ -1,0 +1,29 @@
+---
+description: 自動生成 - 上次更新摘要
+globs: 
+alwaysApply: false
+---
+
+# 上次 Rules 更新摘要
+
+- **更新時間**: 2026-02-08 18:23:36
+- **更新模式**: commit
+- **觸發**: 增強反饋模塊錯誤處理和 AI 思考展示功能
+
+## 最近變更的文件
+```
+interview-training-system/backend/src/routes/feedback.ts
+interview-training-system/frontend/src/components/AiThinkingDisplay/index.tsx
+interview-training-system/frontend/src/hooks/useAiThinking.ts
+interview-training-system/frontend/src/pages/Feedback/index.tsx
+interview-training-system/frontend/src/pages/InterviewMemory/index.tsx
+interview-training-system/frontend/src/store/useAiThinkingStore.ts
+```
+
+## 當前項目統計
+- 前端 TS/TSX 文件: 27 個
+- 後端 TS 文件: 27 個
+- 頁面數量: 12 個
+- API 路由文件: 10 個
+- AI 生成器: 7 個
+- Cursor Rules: 8 個

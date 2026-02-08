@@ -1,0 +1,56 @@
+---
+description: 編碼約定和風格指南
+globs: interview-training-system/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 編碼約定
+
+## 語言
+- UI 面向用戶的文字：繁體中文
+- 代碼變量名和函數名：英文（camelCase）
+- 代碼註釋：中文（簡體或繁體皆可）
+- 文檔和 README：繁體中文優先
+
+## TypeScript 規範
+- 嚴格模式（strict: true）
+- 優先使用 `interface` 定義對象類型，`type` 用於聯合類型和工具類型
+- 使用 `export type` 導出類型（確保類型擦除正確）
+- 前端組件使用函數式組件 + Hooks
+
+## 命名約定
+- **文件命名**: 
+  - 頁面和組件：PascalCase 資料夾 + `index.tsx`
+  - Hooks：`use[Feature].ts`（camelCase）
+  - Store：`use[Feature]Store.ts`（camelCase）
+  - 路由：`[resource].ts`（camelCase）
+  - 工具函數：`[name].ts`（camelCase）
+- **變量/函數**: camelCase
+- **類型/接口**: PascalCase
+- **常量**: UPPER_SNAKE_CASE 或 camelCase
+
+## Console 日誌約定
+- 使用 emoji 前綴標識日誌類型：
+  - 🚀 啟動/初始化
+  - ✅ 成功
+  - ❌ 錯誤
+  - ⚠️ 警告
+  - 🤖 AI 調用
+  - 🔑 配置/認證
+  - 🎬 流程開始
+  - ⏳ 等待中
+  - 📢 事件觸發
+
+## 格式化
+- 使用 Prettier 格式化（配置在 `.prettierrc.json`）
+- 單引號
+- 分號結尾
+- 2 空格縮進
+
+## 錯誤處理
+- 後端：`try/catch` + `next(error)` + `AppError` 自定義錯誤類
+- 前端：`executeWithThinking` 統一處理 AI 調用錯誤，或 `try/catch` + `message.error()`
+
+## Git 約定
+- 使用 OpenSpec 進行變更管理（重大變更需要先提 proposal）
+- commit message 使用中文或英文均可

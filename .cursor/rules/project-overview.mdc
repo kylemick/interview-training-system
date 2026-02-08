@@ -1,0 +1,72 @@
+---
+description: 項目整體架構和技術棧概覽 - 面試培訓系統
+globs: 
+alwaysApply: true
+---
+
+# 項目概覽：面試培訓系統（Interview Training System）
+
+## 項目目的
+幫助學生準備學校面試的 AI 輔助訓練系統，包含題目生成、練習、反饋、弱點分析、學習素材生成等功能。
+
+## 技術棧
+
+### 前端
+- **框架**: React 18 + TypeScript
+- **構建工具**: Vite 5
+- **UI 組件庫**: Ant Design 5
+- **狀態管理**: Zustand 4
+- **路由**: React Router DOM 6
+- **圖表**: ECharts 5 + echarts-for-react
+- **HTTP 客戶端**: Axios
+- **語音識別**: vosk-browser
+- **日期處理**: Day.js
+
+### 後端
+- **運行時**: Node.js + TypeScript (ESM modules)
+- **框架**: Express 4
+- **數據庫**: MySQL (mysql2)
+- **AI 服務**: DeepSeek API
+- **數據驗證**: Zod
+- **開發工具**: tsx (熱加載)
+
+## 項目結構
+```
+interview-training-system/
+├── frontend/src/
+│   ├── pages/          # 頁面組件（每個頁面一個資料夾，index.tsx 為入口）
+│   ├── components/     # 共用組件
+│   ├── hooks/          # 自定義 Hooks
+│   ├── store/          # Zustand 狀態管理
+│   ├── services/       # API 服務層
+│   ├── utils/          # 工具函數
+│   ├── types/          # TypeScript 型別定義
+│   └── App.tsx         # 路由配置
+├── backend/src/
+│   ├── routes/         # Express 路由（RESTful API）
+│   ├── ai/             # AI 相關服務（DeepSeek 客戶端、各種生成器）
+│   ├── db/             # 數據庫連接和初始化
+│   ├── middleware/      # Express 中間件
+│   ├── utils/          # 工具函數
+│   └── types/          # TypeScript 型別定義
+└── openspec/           # OpenSpec 變更管理
+```
+
+## 主要功能模塊
+1. **Dashboard** - 總覽面板
+2. **TrainingPlan** - AI 生成訓練計劃
+3. **Practice** - 面試練習（含語音輸入）
+4. **Feedback** - AI 生成練習反饋
+5. **Progress** - 學習進度追蹤
+6. **Weaknesses** - 弱點分析和管理
+7. **LearningMaterials** - AI 生成學習素材
+8. **Schools** - 學校檔案管理
+9. **Questions** - 題目管理
+10. **InterviewMemory** - 面試回憶錄（AI 提取）
+11. **DataManagement** - 數據管理
+12. **Settings** - 系統設置
+
+## API 基礎路徑
+- 後端服務: `http://localhost:3001`
+- 所有 API 路由前綴: `/api/`
+- 健康檢查: `/health`
